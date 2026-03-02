@@ -1,0 +1,30 @@
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+!deploy/.env.example
+
+# Secrets - NEVER commit
+*.pem
+*credentials*.json
+*service-account*.json
+google-*.json
+almoneytracker-*.json
+client_secret_*.json
+
+# Local dev files
+token_tunel.txt
+tunel.bat
+
+# Laravel
+api/vendor/
+api/storage/logs/*
+!api/storage/logs/.gitkeep
+
+# IDE
+.idea/
+.vscode/
