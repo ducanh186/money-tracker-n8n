@@ -214,7 +214,7 @@ class TransactionsController extends Controller
             $dt = $row['datetime'] ?? '';
             if ($dt > $latestDatetime) {
                 $latestDatetime   = $dt;
-                $endingBalanceVnd = TransactionResource::parseNumeric($row['balance'] ?? null);
+                $endingBalanceVnd = TransactionResource::parseNumeric($row['balance'] ?? null) * 1000;
             }
         }
 

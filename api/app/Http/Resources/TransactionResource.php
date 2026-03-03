@@ -29,8 +29,8 @@ class TransactionResource extends JsonResource
         };
 
         $balanceRaw = self::parseNumeric($row['balance'] ?? null);
-        // balance is already in VND (not "k"), per the spec clarification.
-        $balanceVnd = (int) $balanceRaw;
+        // balance is stored in "k" (thousands) just like amount.
+        $balanceVnd = $balanceRaw * 1000;
 
         $datetimeIso = self::toIso8601($row['datetime'] ?? null);
 
