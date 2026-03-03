@@ -1,0 +1,23 @@
+[Unit]
+Description=AlMoney Tracker Boot Script - Ensure Docker containers start after EC2 boot
+After=docker.service network-online.target
+Requires=docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStartPre=/bin/sleep 5
+ExecStart=/opt/almoney/on-boot.sh
+RemainAfterExit=yes
+TimeoutStartSec=300
+StandardOutput=journal
+StandardError=journal
+
+# Retry on failure
+Restart=on-failure
+RestartSec=10
+StartLimitBurst=3
+StartLimitIntervalSec=120
+
+[Install]
+WantedBy=multi-user.target

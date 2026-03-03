@@ -19,7 +19,16 @@ client_secret_*.json
 # Local dev files
 token_tunel.txt
 tunel.bat
+rule_deploy.md
+al-admin_accessKeys.csv
 
+# EC2 scheduler temp files
+deploy/ec2-scheduler/ec2-policy.json
+deploy/ec2-scheduler/ssm-policy.json
+deploy/ec2-scheduler/ec2-trust-policy.json
+deploy/ec2-scheduler/debug-ssm.sh
+deploy/ec2-scheduler/ssm-test-cmd.json
+deploy/ec2-scheduler/ssm-pull.json
 # Laravel
 api/vendor/
 api/storage/logs/*
@@ -28,3 +37,5 @@ api/storage/logs/*
 # IDE
 .idea/
 .vscode/
+al-admin_credentials.csv
+al-admin_accessKeys.csv
