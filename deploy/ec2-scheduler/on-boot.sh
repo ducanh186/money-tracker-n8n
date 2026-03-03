@@ -81,7 +81,7 @@ TRIES=0
 MAX_TRIES=12
 HTTP_OK=false
 while [ "$TRIES" -lt "$MAX_TRIES" ]; do
-    HTTP_CODE=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/api/health 2>/dev/null || echo "000")
+    HTTP_CODE=$(curl -s -o /dev/null -w '%{http_code}' -H 'Host: almoneytracker.live' http://localhost:8080/api/health 2>/dev/null || echo "000")
     if [ "$HTTP_CODE" = "200" ]; then
         log "API health check PASSED (HTTP $HTTP_CODE)"
         HTTP_OK=true
