@@ -1,9 +1,10 @@
 FROM php:8.2-fpm-alpine
 
-# Install system dependencies
+# Install system dependencies + fcgi for healthcheck
 RUN apk add --no-cache \
     git \
     curl \
+    fcgi \
     libzip-dev \
     zip \
     unzip \
@@ -36,13 +37,20 @@ RUN mkdir -p /var/www/storage/framework/cache/data \
     && chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache /var/www/database \
     && chmod -R 775 /var/www/storage /var/www/bootstrap/cache /var/www/database
 
-# PHP-FPM config
+# PHP-FPM config (tuning + ping endpoint for healthcheck)
 RUN echo "pm = dynamic" >> /usr/local/etc/php-fpm.d/www.conf \
     && echo "pm.max_children = 10" >> /usr/local/etc/php-fpm.d/www.conf \
     && echo "pm.start_servers = 2" >> /usr/local/etc/php-fpm.d/www.conf \
     && echo "pm.min_spare_servers = 1" >> /usr/local/etc/php-fpm.d/www.conf \
-    && echo "pm.max_spare_servers = 3" >> /usr/local/etc/php-fpm.d/www.conf
+    && echo "pm.max_spare_servers = 3" >> /usr/local/etc/php-fpm.d/www.conf \
+    && echo "ping.path = /fpm-ping" >> /usr/local/etc/php-fpm.d/www.conf \
+    && echo "ping.response = pong" >> /usr/local/etc/php-fpm.d/www.conf
+
+# Copy entrypoint script
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 EXPOSE 9000
 
+ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["php-fpm"]

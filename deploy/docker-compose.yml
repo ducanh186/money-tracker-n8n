@@ -14,6 +14,12 @@ services:
         condition: service_healthy
       n8n:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "kill -0 $$(cat /run/nginx.pid 2>/dev/null) 2>/dev/null || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
     networks:
       - almoney_network
 
@@ -24,23 +30,30 @@ services:
       dockerfile: Dockerfile
     container_name: almoney_api
     restart: unless-stopped
+    # ── Config strategy ──────────────────────────────────────
+    # Laravel reads its config ONLY from the mounted .env file.
+    # Do NOT add env_file: here — it injects Docker env vars that
+    # silently override the mounted .env and cause hard-to-debug
+    # conflicts (e.g. CACHE_STORE mismatch).
+    # Production overrides below are intentional; everything else
+    # lives in ../api/.env (edit → config:clear → done).
+    # ─────────────────────────────────────────────────────────
     environment:
       - APP_ENV=production
       - APP_DEBUG=false
       - APP_URL=https://almoneytracker.live
       - LOG_CHANNEL=stderr
-    env_file:
-      - ../api/.env
     volumes:
       - ../api/.env:/var/www/.env:ro
       - ../api/storage:/var/www/storage
       - ../secrets/google-service-account.json:/var/www/storage/app/gsheets.json:ro
     healthcheck:
-      test: ["CMD-SHELL", "pgrep php-fpm || exit 1"]
+      # Verify PHP-FPM actually responds to FastCGI requests (not just process alive)
+      test: ["CMD-SHELL", "SCRIPT_NAME=/fpm-ping SCRIPT_FILENAME=/fpm-ping REQUEST_METHOD=GET cgi-fcgi -bind -connect 127.0.0.1:9000 2>/dev/null | grep -q pong || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 20s
+      start_period: 40s
     networks:
       - almoney_network
 
@@ -82,7 +95,8 @@ services:
     command: tunnel --no-autoupdate run --token ${CF_TUNNEL_TOKEN}
     network_mode: host
     depends_on:
-      - nginx
+      nginx:
+        condition: service_healthy
 
 volumes:
   n8n_data:

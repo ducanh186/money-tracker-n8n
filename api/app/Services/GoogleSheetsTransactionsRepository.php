@@ -45,6 +45,11 @@ class GoogleSheetsTransactionsRepository implements TransactionsRepositoryInterf
         $this->spreadsheetId = config('google_sheets.spreadsheet_id');
         $this->sheetName = config('google_sheets.sheet_name');
         $this->cacheTtl = config('google_sheets.cache_ttl', 60);
+
+        // Fail fast with clear error messages
+        if (empty($this->spreadsheetId)) {
+            Log::error('Google Sheets: GOOGLE_SHEETS_SPREADSHEET_ID is empty in config');
+        }
     }
 
     /**
@@ -106,7 +111,17 @@ class GoogleSheetsTransactionsRepository implements TransactionsRepositoryInterf
             if (is_file($absolutePath)) {
                 $client->setAuthConfig($absolutePath);
             } else {
-                throw new \RuntimeException('Google Sheets credentials file not found: ' . $credentialsConfig);
+                $tried = [$credentialsConfig, $absolutePath];
+                Log::error('Google Sheets credentials file not found', [
+                    'configured_value' => $credentialsConfig,
+                    'tried_paths' => $tried,
+                    'base_path' => base_path(),
+                    'hint' => 'Check GOOGLE_SHEETS_CREDENTIALS_JSON in .env. Docker mount should place file at /var/www/storage/app/gsheets.json',
+                ]);
+                throw new \RuntimeException(
+                    'Google Sheets credentials file not found. Tried: ' . implode(', ', $tried) .
+                    '. Set GOOGLE_SHEETS_CREDENTIALS_JSON to the correct path (e.g. /var/www/storage/app/gsheets.json).'
+                );
             }
         }
 
@@ -151,9 +166,12 @@ class GoogleSheetsTransactionsRepository implements TransactionsRepositoryInterf
             } catch (\Throwable $e) {
                 Log::error('Google Sheets fetch failed', [
                     'message' => $e->getMessage(),
+                    'spreadsheet_id' => $this->spreadsheetId,
+                    'sheet_name' => $this->sheetName,
+                    'exception_class' => get_class($e),
                     'trace' => $e->getTraceAsString(),
                 ]);
-                throw new \RuntimeException('Failed to fetch data from Google Sheets.');
+                throw new \RuntimeException('Failed to fetch data from Google Sheets: ' . $e->getMessage());
             }
         });
     }

@@ -9,15 +9,15 @@ Type=oneshot
 ExecStartPre=/bin/sleep 5
 ExecStart=/opt/almoney/on-boot.sh
 RemainAfterExit=yes
-TimeoutStartSec=300
+TimeoutStartSec=600
 StandardOutput=journal
 StandardError=journal
 
 # Retry on failure
 Restart=on-failure
-RestartSec=10
+RestartSec=15
 StartLimitBurst=3
-StartLimitIntervalSec=120
+StartLimitIntervalSec=180
 
 [Install]
 WantedBy=multi-user.target
