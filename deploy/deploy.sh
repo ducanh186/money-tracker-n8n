@@ -77,10 +77,8 @@ docker run --rm \
     -v $REPO_DIR/dist:/in:ro \
     alpine sh -c "rm -rf /out/* && cp -r /in/* /out/"
 
-# 7. Create symlink for secrets
-echo "🔗 Setting up secrets..."
-mkdir -p $REPO_DIR/secrets
-ln -sf $DEPLOY_DIR/secrets/google-service-account.json $REPO_DIR/secrets/google-service-account.json
+# 7. Ensure n8n local-files dir exists (mounted volume)
+mkdir -p $REPO_DIR/n8n/local-files
 
 # 8. Stop old containers if running
 echo "🛑 Stopping old containers..."
@@ -93,7 +91,7 @@ cd /opt/n8n 2>/dev/null && docker compose down --remove-orphans 2>/dev/null || t
 # 9. Start new stack
 echo "🚀 Starting services..."
 cd $REPO_DIR/deploy
-docker compose up -d --build
+docker compose --env-file .env up -d --build
 
 # 10. Health check
 echo "⏳ Waiting for services to start..."
