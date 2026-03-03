@@ -2,6 +2,7 @@ import type {
   TransactionsResponse,
   TransactionDetailResponse,
   TransactionsQuery,
+  BudgetPlanResponse,
 } from './types';
 
 // Base URL — in dev the Vite proxy forwards /api → Laravel at :8000
@@ -39,6 +40,19 @@ export async function fetchTransactionDetail(
   const res = await fetch(
     `${BASE}/transactions/${encodeURIComponent(idempotencyKey)}`,
   );
+  if (!res.ok) {
+    throw new Error(`API error ${res.status}: ${res.statusText}`);
+  }
+  return res.json();
+}
+
+/**
+ * Fetch budget plan comparison for a given month.
+ */
+export async function fetchBudgetPlan(
+  month: string,
+): Promise<BudgetPlanResponse> {
+  const res = await fetch(`${BASE}/budget-plan?month=${encodeURIComponent(month)}`);
   if (!res.ok) {
     throw new Error(`API error ${res.status}: ${res.statusText}`);
   }

@@ -1,4 +1,4 @@
-import { PieChart, List, Wallet, User, Settings, LogOut } from 'lucide-react';
+import { PieChart, List, Wallet, User, Settings, LogOut, Target } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 export default function Sidebar({ currentView, setCurrentView }: { currentView: string, setCurrentView: (v: string) => void }) {
@@ -6,6 +6,7 @@ export default function Sidebar({ currentView, setCurrentView }: { currentView: 
     { id: 'overview', label: 'Tổng quan', icon: PieChart },
     { id: 'transactions', label: 'Giao dịch', icon: List },
     { id: 'jars', label: 'Quản lý Hũ', icon: Wallet },
+    { id: 'budget', label: 'Kế hoạch chi tiêu', icon: Target },
     { id: 'account', label: 'Tài khoản', icon: User },
   ];
 

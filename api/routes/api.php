@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\BudgetPlanController;
 use App\Http\Controllers\Api\TransactionsController;
 use Illuminate\Support\Facades\Route;
 
@@ -109,3 +110,5 @@ Route::prefix('transactions')->group(function () {
     Route::get('/', [TransactionsController::class, 'index']);
     Route::get('/{idempotencyKey}', [TransactionsController::class, 'show']);
 });
+
+Route::get('/budget-plan', BudgetPlanController::class);

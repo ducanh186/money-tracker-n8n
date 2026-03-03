@@ -63,3 +63,37 @@ export interface TransactionsQuery {
   pageSize?: number;
   sort?: 'datetime_asc' | 'datetime_desc';
 }
+
+// ---------------------------------------------------------------
+// Budget Plan types matching GET /api/budget-plan response
+// ---------------------------------------------------------------
+
+export interface BudgetJar {
+  key: string;
+  label: string;
+  percent: number;
+  planned_amount: number;
+  actual_amount: number;
+  remaining: number;
+  usage_pct: number;
+  status: 'OK' | 'WARN' | 'OVER';
+}
+
+export interface BudgetPlanSummary {
+  total_planned: number;
+  total_actual: number;
+  total_remaining: number;
+  usage_pct: number;
+}
+
+export interface BudgetPlanData {
+  month: string;
+  base_income: number;
+  jars: BudgetJar[];
+  summary: BudgetPlanSummary;
+  thresholds: { ok_max: number; warn_max: number };
+}
+
+export interface BudgetPlanResponse {
+  data: BudgetPlanData;
+}
