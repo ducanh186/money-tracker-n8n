@@ -3,9 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState } from 'react';
-import Sidebar from './components/Sidebar';
-import Header from './components/Header';
+import { useState, useEffect } from 'react';
+import TopBar from './components/TopBar';
 import Overview from './views/Overview';
 import Transactions from './views/Transactions';
 import Jars from './views/Jars';
@@ -16,41 +15,36 @@ import { getCurrentMonth } from './lib/api';
 
 export default function App() {
   const [currentView, setCurrentView] = useState('overview');
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
+  const [darkMode, setDarkMode] = useState(() => {
+    const saved = localStorage.getItem('darkMode');
+    if (saved !== null) return saved === 'true';
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  });
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', darkMode);
+    localStorage.setItem('darkMode', String(darkMode));
+  }, [darkMode]);
 
   return (
-    <div className="flex h-screen w-full bg-slate-50 text-slate-900 font-sans">
-      {/* Mobile Sidebar Overlay */}
-      {mobileMenuOpen && (
-        <div className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-40 lg:hidden" onClick={() => setMobileMenuOpen(false)}></div>
-      )}
-      
-      {/* Mobile Sidebar */}
-      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white transform transition-transform duration-300 ease-in-out lg:hidden ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <Sidebar currentView={currentView} setCurrentView={(v) => { setCurrentView(v); setMobileMenuOpen(false); }} />
-      </div>
-
-      {/* Desktop Sidebar */}
-      <div className="hidden lg:block h-full">
-        <Sidebar currentView={currentView} setCurrentView={setCurrentView} />
-      </div>
-      
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <Header
-          toggleMobileMenu={() => setMobileMenuOpen(true)}
-          selectedMonth={selectedMonth}
-          onMonthChange={setSelectedMonth}
-        />
-        <main className="flex-1 overflow-y-auto p-4 md:p-8">
-          {currentView === 'overview' && <Overview month={selectedMonth} />}
-          {currentView === 'transactions' && <Transactions month={selectedMonth} />}
-          {currentView === 'jars' && <Jars month={selectedMonth} />}
-          {currentView === 'budget' && <BudgetPlan month={selectedMonth} />}
-          {currentView === 'goals' && <Goals month={selectedMonth} />}
-          {currentView === 'account' && <Accounts month={selectedMonth} />}
-        </main>
-      </div>
+    <div className="min-h-screen bg-slate-50 dark:bg-[#0f172a] text-slate-900 dark:text-slate-200 font-sans transition-colors duration-200">
+      <TopBar
+        currentView={currentView}
+        setCurrentView={setCurrentView}
+        selectedMonth={selectedMonth}
+        onMonthChange={setSelectedMonth}
+        darkMode={darkMode}
+        toggleDarkMode={() => setDarkMode(!darkMode)}
+      />
+      <main className="max-w-7xl mx-auto px-4 md:px-8 py-6">
+        {currentView === 'overview' && <Overview month={selectedMonth} />}
+        {currentView === 'transactions' && <Transactions month={selectedMonth} />}
+        {currentView === 'jars' && <Jars month={selectedMonth} />}
+        {currentView === 'budget' && <BudgetPlan month={selectedMonth} />}
+        {currentView === 'goals' && <Goals month={selectedMonth} />}
+        {currentView === 'account' && <Accounts month={selectedMonth} />}
+      </main>
     </div>
   );
 }
