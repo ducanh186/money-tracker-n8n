@@ -196,7 +196,7 @@ class TransactionsController extends Controller
 
         foreach ($rows as $row) {
             $amountK   = TransactionResource::parseNumeric($row['amount'] ?? null);
-            $amountVnd = $amountK * 1000;
+            $amountVnd = abs($amountK) * 1000;
             $flow      = mb_strtolower(trim($row['flow'] ?? ''));
 
             if ($flow === 'income') {

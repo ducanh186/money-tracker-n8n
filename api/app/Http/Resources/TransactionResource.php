@@ -17,7 +17,7 @@ class TransactionResource extends JsonResource
         $row = $this->resource; // associative array from repository
 
         $amountK = self::parseNumeric($row['amount'] ?? null);
-        $amountVnd = $amountK * 1000;
+        $amountVnd = abs($amountK) * 1000;
 
         $flow = mb_strtolower(trim($row['flow'] ?? ''));
 
@@ -95,7 +95,7 @@ class TransactionResource extends JsonResource
     public static function signedAmountVnd(array $row): int
     {
         $amountK = self::parseNumeric($row['amount'] ?? null);
-        $amountVnd = $amountK * 1000;
+        $amountVnd = abs($amountK) * 1000;
         $flow = mb_strtolower(trim($row['flow'] ?? ''));
 
         return match ($flow) {

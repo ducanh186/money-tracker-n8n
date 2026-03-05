@@ -8,6 +8,65 @@
 }
 
 /* ============================================
+   GLOBAL COLOR SYSTEM (CSS Custom Properties)
+   ============================================ */
+
+:root {
+  /* Semantic financial colors */
+  --color-income:          #16a34a; /* green-600 */
+  --color-income-muted:    #15803d; /* green-700 */
+  --color-income-bg:       #dcfce7; /* green-100 */
+  --color-expense:         #dc2626; /* red-600 */
+  --color-expense-muted:   #b91c1c; /* red-700 */
+  --color-expense-bg:      #fee2e2; /* red-100 */
+  --color-transfer:        #2563eb; /* blue-600 */
+  --color-transfer-muted:  #1d4ed8; /* blue-700 */
+  --color-transfer-bg:     #dbeafe; /* blue-100 */
+
+  /* Surface & Layout */
+  --color-surface:         #ffffff;
+  --color-surface-alt:     #f8fafc;
+  --color-surface-raised:  #ffffff;
+  --color-border:          #e2e8f0;
+  --color-border-light:    #f1f5f9;
+
+  /* Text hierarchy */
+  --color-text-primary:    #0f172a;
+  --color-text-secondary:  #475569;
+  --color-text-muted:      #64748b;
+  --color-text-header:     #64748b;
+  --color-text-faint:      #94a3b8;
+}
+
+.dark {
+  /* Desaturated pastel tones — eye-friendly on dark backgrounds */
+  --color-income:          #86efac; /* pastel green */
+  --color-income-muted:    #6ee7a0;
+  --color-income-bg:       rgba(134, 239, 172, 0.15);
+  --color-expense:         #fda4af; /* pastel rose */
+  --color-expense-muted:   #fb8a97;
+  --color-expense-bg:      rgba(253, 164, 175, 0.15);
+  --color-transfer:        #93c5fd; /* pastel blue */
+  --color-transfer-muted:  #7cb8fd;
+  --color-transfer-bg:     rgba(147, 197, 253, 0.15);
+
+  /* Surface & Layout */
+  --color-surface:         #1e293b;
+  --color-surface-alt:     #162236;
+  --color-surface-raised:  #1e293b;
+  --color-border:          #334155;
+  --color-border-light:    #1e293b;
+
+  /* Text hierarchy — brighter for contrast on dark */
+  --color-text-primary:    #f1f5f9;
+  --color-text-secondary:  #cbd5e1;
+  --color-text-muted:      #94a3b8;
+  --color-text-header:     #94a3b8;
+  --color-text-faint:      #64748b;
+}
+
+
+/* ============================================
    Dark Mode Global Overrides
    Maps light-mode Tailwind classes to dark equivalents
    following NewUI theme: bg-[#0f172a] / bg-[#1e293b]
@@ -40,6 +99,60 @@
 .dark .text-slate-600 {
   color: #94a3b8;
 }
+/* Increase contrast for table headers & muted text */
+.dark .text-slate-500 {
+  color: #94a3b8;
+}
+.dark .text-slate-400 {
+  color: #cbd5e1;
+}
+
+/* --- Desaturated accent text colors for dark mode --- */
+.dark .text-green-600 {
+  color: var(--color-income);       /* #86efac pastel green */
+}
+.dark .text-green-700 {
+  color: var(--color-income-muted);  /* #6ee7a0 */
+}
+.dark .text-green-500 {
+  color: #86efac;
+}
+.dark .text-red-600 {
+  color: var(--color-expense);       /* #fda4af pastel rose */
+}
+.dark .text-red-700 {
+  color: var(--color-expense-muted); /* #fb8a97 */
+}
+.dark .text-red-500 {
+  color: #fda4af;
+}
+.dark .text-blue-600 {
+  color: var(--color-transfer);      /* #93c5fd pastel blue */
+}
+.dark .text-blue-700 {
+  color: var(--color-transfer-muted); /* #7cb8fd */
+}
+.dark .text-emerald-600 {
+  color: #6ee7b7;
+}
+.dark .text-emerald-700 {
+  color: #6ee7b7;
+}
+.dark .text-rose-600 {
+  color: #fda4af;
+}
+.dark .text-rose-700 {
+  color: #fda4af;
+}
+.dark .text-amber-600 {
+  color: #fcd34d;
+}
+.dark .text-amber-500 {
+  color: #fcd34d;
+}
+.dark .text-orange-600 {
+  color: #fdba74;
+}
 
 /* --- Border colors --- */
 .dark .border-slate-200 {
@@ -60,66 +173,80 @@
 .dark .divide-slate-200 > :not(:last-child) {
   border-color: #334155;
 }
+.dark .divide-slate-50 > :not(:last-child) {
+  border-color: #162236;
+}
 
 /* --- Accent-50 backgrounds (badges, highlights) --- */
 .dark .bg-blue-50 {
-  background-color: rgba(59, 130, 246, 0.1);
+  background-color: rgba(147, 197, 253, 0.1);
 }
 .dark .bg-green-50 {
-  background-color: rgba(34, 197, 94, 0.1);
+  background-color: rgba(134, 239, 172, 0.1);
 }
 .dark .bg-red-50 {
-  background-color: rgba(239, 68, 68, 0.1);
+  background-color: rgba(253, 164, 175, 0.1);
 }
 .dark .bg-emerald-50 {
-  background-color: rgba(16, 185, 129, 0.1);
+  background-color: rgba(110, 231, 183, 0.1);
 }
 .dark .bg-amber-50 {
-  background-color: rgba(245, 158, 11, 0.1);
+  background-color: rgba(252, 211, 77, 0.1);
 }
 .dark .bg-purple-50 {
-  background-color: rgba(168, 85, 247, 0.1);
+  background-color: rgba(196, 167, 255, 0.1);
 }
 .dark .bg-teal-50 {
-  background-color: rgba(20, 184, 166, 0.1);
+  background-color: rgba(94, 234, 212, 0.1);
 }
 .dark .bg-pink-50 {
-  background-color: rgba(236, 72, 153, 0.1);
+  background-color: rgba(249, 168, 212, 0.1);
 }
 
-/* --- Accent-100 backgrounds (tags, badges) --- */
+/* --- Accent-100 backgrounds (tags, badges) — semi-transparent 15-20% --- */
 .dark .bg-blue-100 {
-  background-color: rgba(59, 130, 246, 0.15);
+  background-color: rgba(147, 197, 253, 0.18);
 }
 .dark .bg-green-100 {
-  background-color: rgba(34, 197, 94, 0.15);
+  background-color: rgba(134, 239, 172, 0.18);
 }
 .dark .bg-red-100 {
-  background-color: rgba(239, 68, 68, 0.15);
+  background-color: rgba(253, 164, 175, 0.18);
 }
 .dark .bg-orange-100 {
-  background-color: rgba(249, 115, 22, 0.15);
+  background-color: rgba(253, 186, 116, 0.18);
 }
 .dark .bg-emerald-100 {
-  background-color: rgba(16, 185, 129, 0.15);
+  background-color: rgba(110, 231, 183, 0.18);
 }
 .dark .bg-amber-100 {
-  background-color: rgba(245, 158, 11, 0.15);
+  background-color: rgba(252, 211, 77, 0.18);
 }
 .dark .bg-purple-100 {
-  background-color: rgba(168, 85, 247, 0.15);
+  background-color: rgba(196, 167, 255, 0.18);
 }
 .dark .bg-teal-100 {
-  background-color: rgba(20, 184, 166, 0.15);
+  background-color: rgba(94, 234, 212, 0.18);
 }
 .dark .bg-pink-100 {
-  background-color: rgba(236, 72, 153, 0.15);
+  background-color: rgba(249, 168, 212, 0.18);
 }
 .dark .bg-cyan-100 {
-  background-color: rgba(6, 182, 212, 0.15);
+  background-color: rgba(103, 232, 249, 0.18);
 }
 .dark .bg-rose-100 {
-  background-color: rgba(244, 63, 94, 0.15);
+  background-color: rgba(253, 164, 175, 0.18);
+}
+
+/* --- Status dot/bg colors for dark mode --- */
+.dark .bg-green-500 {
+  background-color: #86efac;
+}
+.dark .bg-red-500 {
+  background-color: #fda4af;
+}
+.dark .bg-amber-500 {
+  background-color: #fcd34d;
 }
 
 /* --- Form elements --- */

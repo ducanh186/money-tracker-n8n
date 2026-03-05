@@ -169,18 +169,19 @@ function JarDrillDown({ jar, month }: { jar: BudgetJar; month: string }) {
 // ── Main component ────────────────────────────────────────────
 
 export default function BudgetPlan({ month }: { month: string }) {
-  const { data, isPending, error } = useBudgetPlan(month);
+  const { data, isPending, error } = useBudgetPlan(month, planOverride);
   const { data: jarsRes } = useJars();
   const updateJarMutation = useUpdateJar();
   const [expandedJar, setExpandedJar] = useState<string | null>(null);
 
-  // Editable base income state
-  const [editingIncome, setEditingIncome] = useState(false);
-  const [incomeValue, setIncomeValue] = useState('');
+  // Editable total plan (base_income override) state
+  const [editingPlan, setEditingPlan] = useState(false);
+  const [planValue, setPlanValue] = useState('');
+  const [planOverride, setPlanOverride] = useState<number | null>(null);
 
   useEffect(() => {
     if (data?.data?.base_income) {
-      setIncomeValue(String(data.data.base_income));
+      setPlanValue(String(data.data.base_income));
     }
   }, [data?.data?.base_income]);
 
@@ -230,62 +231,96 @@ export default function BudgetPlan({ month }: { month: string }) {
 
       {/* Summary cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* BASE INCOME — editable */}
+        {/* BASE INCOME — read-only from Sheet */}
         <div className="relative overflow-hidden rounded-xl bg-white dark:bg-[#1e293b] p-6 shadow-sm border border-slate-100 dark:border-slate-700">
           <div className="absolute right-0 top-0 h-24 w-24 translate-x-8 -translate-y-8 rounded-full bg-blue-50 dark:bg-blue-500/10" />
           <div className="relative z-10 flex flex-col gap-1">
             <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Thu nhập gốc</span>
-            {editingIncome ? (
+            <h3 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+              {formatCurrency(plan.sheet_income ?? plan.base_income)}
+            </h3>
+            <div className="mt-2 flex items-center gap-1 text-sm font-medium text-blue-600 dark:text-blue-400">
+              <Wallet className="size-4" />
+              <span>Từ Sheet (tự động)</span>
+            </div>
+          </div>
+        </div>
+
+        {/* TOTAL PLANNED — editable */}
+        <div className="relative overflow-hidden rounded-xl bg-white dark:bg-[#1e293b] p-6 shadow-sm border border-slate-100 dark:border-slate-700">
+          <div className="absolute right-0 top-0 h-24 w-24 translate-x-8 -translate-y-8 rounded-full bg-green-50 dark:bg-green-500/10" />
+          <div className="relative z-10 flex flex-col gap-1">
+            <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Tổng kế hoạch</span>
+            {editingPlan ? (
               <div className="flex items-center gap-2">
                 <input
-                  type="number"
-                  value={incomeValue}
-                  onChange={e => setIncomeValue(e.target.value)}
+                  type="text"
+                  inputMode="numeric"
+                  value={planValue}
+                  onChange={e => {
+                    const raw = e.target.value.replace(/\D/g, '');
+                    setPlanValue(raw);
+                  }}
                   className="w-36 text-lg font-bold px-2 py-1 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-[#0f172a] text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
                   autoFocus
                   onKeyDown={e => {
-                    if (e.key === 'Enter') setEditingIncome(false);
+                    if (e.key === 'Enter') {
+                      const num = Number(planValue);
+                      if (num > 0) {
+                        setPlanOverride(num);
+                      }
+                      setEditingPlan(false);
+                    }
                     if (e.key === 'Escape') {
-                      setIncomeValue(String(plan.base_income));
-                      setEditingIncome(false);
+                      setPlanValue(String(plan.base_income));
+                      setPlanOverride(null);
+                      setEditingPlan(false);
                     }
                   }}
                 />
-                <button onClick={() => setEditingIncome(false)} className="text-green-600 hover:text-green-700 cursor-pointer">
+                <button
+                  onClick={() => {
+                    const num = Number(planValue);
+                    if (num > 0) {
+                      setPlanOverride(num);
+                    }
+                    setEditingPlan(false);
+                  }}
+                  className="text-green-600 hover:text-green-700 cursor-pointer"
+                >
                   <Check className="size-5" />
+                </button>
+                <button
+                  onClick={() => {
+                    setPlanValue(String(plan.base_income));
+                    setPlanOverride(null);
+                    setEditingPlan(false);
+                  }}
+                  className="text-slate-400 hover:text-slate-600 cursor-pointer"
+                >
+                  <X className="size-4" />
                 </button>
               </div>
             ) : (
               <div className="flex items-center gap-2">
-                <h3 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-                  {formatCurrency(Number(incomeValue) || plan.base_income)}
+                <h3 className="text-2xl font-bold tracking-tight text-green-600 dark:text-green-400">
+                  {formatCurrency(summary.total_planned)}
                 </h3>
                 <button
-                  onClick={() => setEditingIncome(true)}
+                  onClick={() => {
+                    setPlanValue(String(plan.base_income));
+                    setEditingPlan(true);
+                  }}
                   className="text-slate-400 hover:text-blue-500 cursor-pointer"
-                  title="Sửa thu nhập"
+                  title="Sửa tổng kế hoạch"
                 >
                   <Pencil className="size-4" />
                 </button>
               </div>
             )}
-            <div className="mt-2 flex items-center gap-1 text-sm font-medium text-blue-600 dark:text-blue-400">
-              <Wallet className="size-4" />
-              <span>Từ Sheet: {formatCurrency(plan.sheet_income ?? 0)}</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="relative overflow-hidden rounded-xl bg-white dark:bg-[#1e293b] p-6 shadow-sm border border-slate-100 dark:border-slate-700">
-          <div className="absolute right-0 top-0 h-24 w-24 translate-x-8 -translate-y-8 rounded-full bg-green-50 dark:bg-green-500/10" />
-          <div className="relative z-10 flex flex-col gap-1">
-            <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Tổng kế hoạch</span>
-            <h3 className="text-2xl font-bold tracking-tight text-green-600 dark:text-green-400">
-              {formatCurrency(summary.total_planned)}
-            </h3>
             <div className="mt-2 flex items-center gap-1 text-sm font-medium text-green-600 dark:text-green-400">
               <TrendingUp className="size-4" />
-              <span>100%</span>
+              <span>{planOverride ? 'Đã tuỳ chỉnh' : '100%'}</span>
             </div>
           </div>
         </div>

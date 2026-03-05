@@ -62,16 +62,16 @@ class BudgetPlanController extends Controller
             $flow = mb_strtolower(trim($row['flow'] ?? ''));
             if ($flow === 'income') {
                 $amountK   = $this->parseNumeric($row['amount'] ?? null);
-                $sheetIncome += $amountK * 1000;
+                $sheetIncome += abs($amountK) * 1000;
             }
             if ($flow === 'expense') {
-                $jarLabel = trim($row['jar'] ?? '');
-                if ($jarLabel === '') {
-                    $jarLabel = 'Không phân loại';
+                $jarKey = trim($row['jar'] ?? '');
+                if ($jarKey === '') {
+                    $jarKey = 'Không phân loại';
                 }
                 $amountK   = $this->parseNumeric($row['amount'] ?? null);
-                $amountVnd = $amountK * 1000;
-                $actualByJar[$jarLabel] = ($actualByJar[$jarLabel] ?? 0) + $amountVnd;
+                $amountVnd = abs($amountK) * 1000;
+                $actualByJar[$jarKey] = ($actualByJar[$jarKey] ?? 0) + $amountVnd;
             }
         }
 
@@ -89,7 +89,8 @@ class BudgetPlanController extends Controller
             $label    = $jar->label;
             $percent  = (float) $jar->percent;
             $planned  = (int) round($baseIncome * $percent / 100);
-            $actual   = $actualByJar[$label] ?? 0;
+            // Match by jar key first (sheet uses keys like NEC, LTSS), fallback to label
+            $actual   = $actualByJar[$jar->key] ?? ($actualByJar[$label] ?? 0);
             $remaining = $planned - $actual;
             $usagePct = $planned > 0 ? round(($actual / $planned) * 100, 1) : 0;
 

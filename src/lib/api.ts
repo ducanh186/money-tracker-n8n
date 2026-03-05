@@ -127,8 +127,13 @@ export async function fetchTransactionDetail(
  */
 export async function fetchBudgetPlan(
   month: string,
+  baseIncome?: number | null,
 ): Promise<BudgetPlanResponse> {
-  return smartFetch(`${BASE}/budget-plan?month=${encodeURIComponent(month)}`);
+  let url = `${BASE}/budget-plan?month=${encodeURIComponent(month)}`;
+  if (baseIncome != null) {
+    url += `&base_income=${baseIncome}`;
+  }
+  return smartFetch(url);
 }
 
 // ---------------------------------------------------------------

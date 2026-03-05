@@ -1,5 +1,5 @@
 import { TrendingDown, TrendingUp, Wallet } from 'lucide-react';
-import { formatCurrency } from '../lib/utils';
+import { formatCurrency, formatSignedAmount } from '../lib/utils';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 interface JarSummary {
@@ -87,7 +87,7 @@ export default function JarStats({ jarSummaries, totalExpense }: JarStatsProps) 
                 <div className="flex flex-col">
                   <span className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Net</span>
                   <span className={`font-bold text-lg ${isPositiveNet ? 'text-emerald-600' : 'text-rose-600'}`}>
-                    {isPositiveNet ? '+' : ''}{formatCurrency(item.net)}
+                    {formatSignedAmount(item.net)}
                   </span>
                 </div>
                 <div className="flex flex-col items-start md:items-end justify-center">

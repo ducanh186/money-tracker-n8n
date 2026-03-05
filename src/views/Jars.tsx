@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Wallet, Loader2, AlertCircle } from 'lucide-react';
-import { formatCurrency } from '../lib/utils';
+import { formatCurrency, formatSignedAmount } from '../lib/utils';
 import { useTransactions } from '../lib/hooks';
 import type { Transaction } from '../lib/types';
 import JarStats from './JarStats';
@@ -145,7 +145,7 @@ export default function Jars({ month }: { month: string }) {
               <p className="text-sm font-medium uppercase tracking-wider">Net</p>
             </div>
             <p className={`text-2xl font-bold leading-tight ${totals.net_vnd >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {totals.net_vnd >= 0 ? '+' : ''}{formatCurrency(totals.net_vnd)}
+              {formatSignedAmount(totals.net_vnd)}
             </p>
           </div>
         </div>
@@ -227,7 +227,7 @@ export default function Jars({ month }: { month: string }) {
                 <div className="border-t border-slate-200 pt-4 flex justify-between items-baseline">
                   <span className="text-sm font-semibold text-slate-700">Net</span>
                   <span className={`text-xl font-bold ${selectedJar.net >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {selectedJar.net >= 0 ? '+' : ''}{formatCurrency(selectedJar.net)}
+                    {formatSignedAmount(selectedJar.net)}
                   </span>
                 </div>
               </div>

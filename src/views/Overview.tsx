@@ -1,5 +1,5 @@
 import { TrendingUp, TrendingDown, Wallet, ArrowUpCircle, ArrowDownCircle, ArrowRightLeft, Loader2, RefreshCw } from 'lucide-react';
-import { formatCurrency } from '../lib/utils';
+import { formatCurrency, formatSignedAmount } from '../lib/utils';
 import { useDashboardSummary, useSyncStatus, useTriggerSync } from '../lib/hooks';
 import { IncomeExpenseChart } from '../components/IncomeExpenseChart';
 import { ExpenseStructureChart } from '../components/ExpenseStructureChart';
@@ -158,7 +158,7 @@ export default function Overview({ month }: { month: string }) {
                   </div>
                 </div>
                 <span className={`font-bold ${tx.flow === 'income' ? 'text-green-600' : 'text-slate-900 dark:text-white'}`}>
-                  {tx.flow === 'income' ? '+' : '-'}{formatCurrency(tx.amount_vnd)}
+                  {formatSignedAmount(tx.amount_vnd, tx.flow)}
                 </span>
               </div>
             );

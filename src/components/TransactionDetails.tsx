@@ -1,5 +1,5 @@
 import { X, Store, ArrowUpRight, ArrowDownLeft, ArrowLeftRight, Calendar, Clock, Tag, Wallet, Building2, CheckCircle2, FileText, Hash } from 'lucide-react';
-import { formatCurrency } from '../lib/utils';
+import { formatCurrency, formatSignedAmount } from '../lib/utils';
 import type { Transaction } from '../lib/types';
 
 function flowLabel(flow: string | null) {
@@ -22,10 +22,10 @@ function FlowIcon({ flow }: { flow: string | null }) {
 
 function flowBadgeColor(flow: string | null) {
   switch (flow) {
-    case 'income': return 'bg-green-100 text-green-700';
-    case 'expense': return 'bg-red-100 text-red-700';
-    case 'transfer': return 'bg-blue-100 text-blue-700';
-    default: return 'bg-slate-100 text-slate-700';
+    case 'income': return 'bg-green-100 text-green-700 dark:bg-green-100 dark:text-green-400';
+    case 'expense': return 'bg-red-100 text-red-700 dark:bg-red-100 dark:text-red-400';
+    case 'transfer': return 'bg-blue-100 text-blue-700 dark:bg-blue-100 dark:text-blue-400';
+    default: return 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300';
   }
 }
 
@@ -63,8 +63,7 @@ export default function TransactionDetails({ tx, onClose }: { tx: Transaction; o
                   tx.flow === 'expense' ? 'text-red-600' :
                   'text-slate-900'
                 }`}>
-                  {tx.flow === 'income' ? '+' : tx.flow === 'expense' ? '-' : ''}
-                  {formatCurrency(tx.amount_vnd)}
+                  {formatSignedAmount(tx.amount_vnd, tx.flow)}
                 </span>
               </div>
               {tx.amount_k !== tx.amount_vnd && (

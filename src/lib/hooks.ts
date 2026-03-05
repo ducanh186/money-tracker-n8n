@@ -78,10 +78,10 @@ export function useTransactions(params: TransactionsQuery) {
  * - 2 min staleTime
  * - No polling (user triggers "Làm mới" manually)
  */
-export function useBudgetPlan(month: string) {
+export function useBudgetPlan(month: string, baseIncome?: number | null) {
   return useQuery({
-    queryKey: ['budget-plan', month],
-    queryFn: () => fetchBudgetPlan(month),
+    queryKey: ['budget-plan', month, baseIncome ?? 'default'],
+    queryFn: () => fetchBudgetPlan(month, baseIncome),
     staleTime: 2 * 60_000,
     gcTime: 5 * 60_000,
     refetchOnWindowFocus: false,

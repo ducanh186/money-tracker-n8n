@@ -11,9 +11,11 @@ import {
   ChevronDown,
   ChevronUp,
   ArrowUpCircle,
+  Pencil,
+  Trash2,
 } from 'lucide-react';
 import { formatCurrency } from '../lib/utils';
-import { useGoals, useGoal, useCreateGoal, useContributeGoal, useJars } from '../lib/hooks';
+import { useGoals, useGoal, useCreateGoal, useContributeGoal, useUpdateGoal, useDeleteGoal, useJars } from '../lib/hooks';
 import type { Goal, CreateGoalPayload, ContributePayload } from '../lib/types';
 
 // ── Status helpers ─────────────────────────────
@@ -201,6 +203,208 @@ function CreateGoalForm({ onClose }: { onClose: () => void }) {
 
           {createMutation.isError && (
             <p className="text-sm text-red-500 mt-1">{createMutation.error.message}</p>
+          )}
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ── Edit Goal Form (modal) ─────────────────────────
+
+function EditGoalForm({ goal, onClose }: { goal: Goal; onClose: () => void }) {
+  const { data: jarsRes } = useJars();
+  const updateMutation = useUpdateGoal();
+  const deleteMutation = useDeleteGoal();
+
+  const [form, setForm] = useState<Partial<CreateGoalPayload> & { status?: string }>({
+    name: goal.name,
+    target_amount: goal.target_amount,
+    deadline: goal.deadline,
+    priority: goal.priority,
+    funding_mode: goal.funding_mode,
+    notes: goal.notes,
+    status: goal.status,
+  });
+  const [amountStr, setAmountStr] = useState(goal.target_amount.toLocaleString('vi-VN'));
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  const jars = jarsRes?.data ?? [];
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.name || !form.target_amount || form.target_amount <= 0) return;
+    updateMutation.mutate(
+      { id: goal.id, payload: form },
+      { onSuccess: () => onClose() },
+    );
+  };
+
+  const handleDelete = () => {
+    deleteMutation.mutate(goal.id, {
+      onSuccess: () => onClose(),
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/30 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+          <h2 className="text-lg font-bold text-slate-900">Sửa quỹ "{goal.name}"</h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X className="size-5" /></button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-4">
+          {/* Name */}
+          <div>
+            <label className="text-sm font-medium text-slate-700">Tên quỹ *</label>
+            <input
+              type="text"
+              required
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+
+          {/* Target Amount */}
+          <div>
+            <label className="text-sm font-medium text-slate-700">Số tiền mục tiêu *</label>
+            <input
+              type="text"
+              inputMode="numeric"
+              required
+              value={amountStr}
+              onChange={(e) => {
+                const raw = e.target.value.replace(/\D/g, '');
+                setAmountStr(raw ? Number(raw).toLocaleString('vi-VN') : '');
+                setForm({ ...form, target_amount: Number(raw) || 0 });
+              }}
+              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+
+          {/* Status */}
+          <div>
+            <label className="text-sm font-medium text-slate-700">Trạng thái</label>
+            <select
+              value={form.status}
+              onChange={(e) => setForm({ ...form, status: e.target.value })}
+              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="active">Đang thực hiện</option>
+              <option value="completed">Hoàn thành</option>
+              <option value="paused">Tạm dừng</option>
+              <option value="cancelled">Đã huỷ</option>
+            </select>
+          </div>
+
+          {/* Deadline */}
+          <div>
+            <label className="text-sm font-medium text-slate-700">Hạn chót</label>
+            <input
+              type="date"
+              value={form.deadline ?? ''}
+              onChange={(e) => setForm({ ...form, deadline: e.target.value || null })}
+              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+
+          {/* Priority */}
+          <div>
+            <label className="text-sm font-medium text-slate-700">Độ ưu tiên</label>
+            <select
+              value={form.priority}
+              onChange={(e) => setForm({ ...form, priority: Number(e.target.value) })}
+              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value={0}>Bình thường</option>
+              <option value={1}>Quan trọng</option>
+              <option value={2}>Rất quan trọng</option>
+            </select>
+          </div>
+
+          {/* Funding mode */}
+          <div>
+            <label className="text-sm font-medium text-slate-700">Phương thức góp</label>
+            <select
+              value={form.funding_mode}
+              onChange={(e) => setForm({ ...form, funding_mode: e.target.value as 'fund_now' | 'fund_over_time' })}
+              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="fund_over_time">Góp dần hàng tháng</option>
+              <option value="fund_now">Góp ngay một lần</option>
+            </select>
+          </div>
+
+          {/* Notes */}
+          <div>
+            <label className="text-sm font-medium text-slate-700">Ghi chú</label>
+            <textarea
+              value={form.notes ?? ''}
+              onChange={(e) => setForm({ ...form, notes: e.target.value || null })}
+              rows={2}
+              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+            />
+          </div>
+
+          {/* Actions */}
+          <div className="flex items-center justify-between pt-2">
+            {/* Delete */}
+            <div>
+              {!confirmDelete ? (
+                <button
+                  type="button"
+                  onClick={() => setConfirmDelete(true)}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
+                >
+                  <Trash2 className="size-4" />
+                  Xoá quỹ
+                </button>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-red-600 font-medium">Chắc chắn?</span>
+                  <button
+                    type="button"
+                    onClick={handleDelete}
+                    disabled={deleteMutation.isPending}
+                    className="px-3 py-1.5 rounded-lg text-sm font-bold text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 flex items-center gap-1"
+                  >
+                    {deleteMutation.isPending && <Loader2 className="size-3 animate-spin" />}
+                    Xoá
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDelete(false)}
+                    className="px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100"
+                  >
+                    Huỷ
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Save / Cancel */}
+            <div className="flex gap-3">
+              <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100">
+                Huỷ
+              </button>
+              <button
+                type="submit"
+                disabled={updateMutation.isPending || !form.name || !form.target_amount || form.target_amount <= 0}
+                className="px-4 py-2 rounded-lg text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+              >
+                {updateMutation.isPending && <Loader2 className="size-4 animate-spin" />}
+                Lưu
+              </button>
+            </div>
+          </div>
+
+          {updateMutation.isError && (
+            <p className="text-sm text-red-500 mt-1">{updateMutation.error.message}</p>
+          )}
+          {deleteMutation.isError && (
+            <p className="text-sm text-red-500 mt-1">{deleteMutation.error.message}</p>
           )}
         </form>
       </div>
@@ -399,6 +603,7 @@ function GoalDetailPanel({ goalId, onClose }: { goalId: number; onClose: () => v
 
 export default function Goals({ month: _month }: { month: string }) {
   const [showCreate, setShowCreate] = useState(false);
+  const [editGoal, setEditGoal] = useState<Goal | null>(null);
   const [selectedGoalId, setSelectedGoalId] = useState<number | null>(null);
   const [contributeGoalId, setContributeGoalId] = useState<number | null>(null);
   const [expandedGoalId, setExpandedGoalId] = useState<number | null>(null);
@@ -551,6 +756,13 @@ export default function Goals({ month: _month }: { month: string }) {
                     </button>
                   )}
                   <button
+                    onClick={(e) => { e.stopPropagation(); setEditGoal(goal); }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-amber-600 bg-amber-50 hover:bg-amber-100 transition-colors"
+                  >
+                    <Pencil className="size-3.5" />
+                    Sửa
+                  </button>
+                  <button
                     onClick={(e) => { e.stopPropagation(); setSelectedGoalId(goal.id); }}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 bg-slate-50 hover:bg-slate-100 transition-colors"
                   >
@@ -594,6 +806,9 @@ export default function Goals({ month: _month }: { month: string }) {
 
       {/* Create form modal */}
       {showCreate && <CreateGoalForm onClose={() => setShowCreate(false)} />}
+
+      {/* Edit form modal */}
+      {editGoal !== null && <EditGoalForm goal={editGoal} onClose={() => setEditGoal(null)} />}
 
       {/* Detail drawer */}
       {selectedGoalId !== null && (

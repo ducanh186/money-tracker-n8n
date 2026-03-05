@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Search, ChevronLeft, ChevronRight, Loader2, AlertCircle, ArrowUpRight, ArrowDownLeft, ArrowLeftRight } from 'lucide-react';
-import { formatCurrency } from '../lib/utils';
+import { formatCurrency, formatSignedAmount } from '../lib/utils';
 import { useTransactions } from '../lib/hooks';
 import type { Transaction, TransactionsQuery } from '../lib/types';
 import TransactionDetails from '../components/TransactionDetails';
@@ -43,13 +43,13 @@ function flowLabel(flow: string | null) {
 function flowColor(flow: string | null) {
   switch (flow) {
     case 'income':
-      return 'bg-green-100 text-green-700';
+      return 'bg-green-100 text-green-700 dark:bg-green-100 dark:text-green-400';
     case 'expense':
-      return 'bg-red-100 text-red-700';
+      return 'bg-red-100 text-red-700 dark:bg-red-100 dark:text-red-400';
     case 'transfer':
-      return 'bg-blue-100 text-blue-700';
+      return 'bg-blue-100 text-blue-700 dark:bg-blue-100 dark:text-blue-400';
     default:
-      return 'bg-slate-100 text-slate-700';
+      return 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300';
   }
 }
 
@@ -111,7 +111,7 @@ export default function Transactions({ month }: { month: string }) {
           <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
             <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">Net</p>
             <p className={`text-xl font-bold ${meta.totals.net_vnd >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {meta.totals.net_vnd >= 0 ? '+' : ''}{formatCurrency(meta.totals.net_vnd)}
+              {formatSignedAmount(meta.totals.net_vnd)}
             </p>
           </div>
           <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
@@ -225,8 +225,7 @@ export default function Transactions({ month }: { month: string }) {
                             tx.flow === 'expense' ? 'text-red-600' :
                             'text-blue-600'
                           }`}>
-                            {tx.flow === 'income' ? '+' : tx.flow === 'expense' ? '-' : ''}
-                            {formatCurrency(tx.amount_vnd)}
+                            {formatSignedAmount(tx.amount_vnd, tx.flow)}
                           </span>
                         </td>
                         <td className="px-5 py-3.5">
@@ -270,8 +269,7 @@ export default function Transactions({ month }: { month: string }) {
                         tx.flow === 'income' ? 'text-green-600' :
                         tx.flow === 'expense' ? 'text-red-600' : 'text-blue-600'
                       }`}>
-                        {tx.flow === 'income' ? '+' : tx.flow === 'expense' ? '-' : ''}
-                        {formatCurrency(tx.amount_vnd)}
+                        {formatSignedAmount(tx.amount_vnd, tx.flow)}
                       </p>
                       <p className="text-xs text-slate-400">{tx.jar ?? ''}</p>
                     </div>
