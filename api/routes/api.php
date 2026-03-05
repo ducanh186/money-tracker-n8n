@@ -1,7 +1,16 @@
 <?php
 
+use App\Http\Controllers\Api\AccountController;
+use App\Http\Controllers\Api\BudgetLineController;
+use App\Http\Controllers\Api\BudgetPeriodController;
 use App\Http\Controllers\Api\BudgetPlanController;
+use App\Http\Controllers\Api\DebtController;
+use App\Http\Controllers\Api\GoalController;
+use App\Http\Controllers\Api\JarController;
+use App\Http\Controllers\Api\RecurringBillController;
+use App\Http\Controllers\Api\ScenarioController;
 use App\Http\Controllers\Api\TransactionsController;
+use App\Http\Controllers\Api\TransferController;
 use Illuminate\Support\Facades\Route;
 
 // Health check endpoint (simple)
@@ -112,3 +121,86 @@ Route::prefix('transactions')->group(function () {
 });
 
 Route::get('/budget-plan', BudgetPlanController::class);
+
+// ══════════════════════════════════════════════════════════════════════
+// ZBB + 6 Jars Budgeting System
+// ══════════════════════════════════════════════════════════════════════
+
+// Jars (6 hũ)
+Route::prefix('jars')->group(function () {
+    Route::get('/', [JarController::class, 'index']);
+    Route::get('/{jar}', [JarController::class, 'show']);
+    Route::put('/{jar}', [JarController::class, 'update']);
+});
+
+// Accounts (multi-bank)
+Route::prefix('accounts')->group(function () {
+    Route::get('/net-worth', [AccountController::class, 'netWorth']);
+    Route::get('/', [AccountController::class, 'index']);
+    Route::post('/', [AccountController::class, 'store']);
+    Route::get('/{account}', [AccountController::class, 'show']);
+    Route::put('/{account}', [AccountController::class, 'update']);
+    Route::delete('/{account}', [AccountController::class, 'destroy']);
+});
+
+// Budget Periods (monthly workspace)
+Route::prefix('budget-periods')->group(function () {
+    Route::get('/', [BudgetPeriodController::class, 'index']);
+    Route::post('/', [BudgetPeriodController::class, 'store']);
+    Route::get('/{budgetPeriod}', [BudgetPeriodController::class, 'show']);
+    Route::put('/{budgetPeriod}', [BudgetPeriodController::class, 'update']);
+    Route::post('/{budgetPeriod}/allocate', [BudgetPeriodController::class, 'allocate']);
+    Route::post('/{budgetPeriod}/bonus', [BudgetPeriodController::class, 'bonus']);
+    Route::put('/{budgetPeriod}/jar-override/{jarId}', [BudgetPeriodController::class, 'jarOverride']);
+    Route::get('/{budgetPeriod}/lines', [BudgetLineController::class, 'index']);
+});
+
+// Budget Lines (ZBB detail lines within jars)
+Route::prefix('budget-lines')->group(function () {
+    Route::post('/', [BudgetLineController::class, 'store']);
+    Route::put('/{budgetLine}', [BudgetLineController::class, 'update']);
+    Route::delete('/{budgetLine}', [BudgetLineController::class, 'destroy']);
+});
+
+// Goals & Sinking Funds
+Route::prefix('goals')->group(function () {
+    Route::get('/', [GoalController::class, 'index']);
+    Route::post('/', [GoalController::class, 'store']);
+    Route::get('/{goal}', [GoalController::class, 'show']);
+    Route::put('/{goal}', [GoalController::class, 'update']);
+    Route::delete('/{goal}', [GoalController::class, 'destroy']);
+    Route::post('/{goal}/contribute', [GoalController::class, 'contribute']);
+});
+
+// Debts
+Route::prefix('debts')->group(function () {
+    Route::get('/', [DebtController::class, 'index']);
+    Route::post('/', [DebtController::class, 'store']);
+    Route::get('/{debt}', [DebtController::class, 'show']);
+    Route::put('/{debt}', [DebtController::class, 'update']);
+    Route::delete('/{debt}', [DebtController::class, 'destroy']);
+    Route::post('/{debt}/pay', [DebtController::class, 'pay']);
+});
+
+// Recurring Bills
+Route::prefix('recurring-bills')->group(function () {
+    Route::get('/due-soon', [RecurringBillController::class, 'dueSoon']);
+    Route::get('/', [RecurringBillController::class, 'index']);
+    Route::post('/', [RecurringBillController::class, 'store']);
+    Route::get('/{recurringBill}', [RecurringBillController::class, 'show']);
+    Route::put('/{recurringBill}', [RecurringBillController::class, 'update']);
+    Route::delete('/{recurringBill}', [RecurringBillController::class, 'destroy']);
+});
+
+// Transfers (between accounts)
+Route::prefix('transfers')->group(function () {
+    Route::get('/', [TransferController::class, 'index']);
+    Route::post('/', [TransferController::class, 'store']);
+});
+
+// Scenarios (what-if simulation)
+Route::prefix('scenarios')->group(function () {
+    Route::post('/simulate', [ScenarioController::class, 'simulate']);
+    Route::get('/', [ScenarioController::class, 'index']);
+    Route::get('/{scenario}', [ScenarioController::class, 'show']);
+});

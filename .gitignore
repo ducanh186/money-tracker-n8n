@@ -3,6 +3,8 @@ build/
 dist/
 coverage/
 .DS_Store
+.claude/
+.claudeignore
 *.log
 .env*
 !.env.example
@@ -21,6 +23,7 @@ token_tunel.txt
 tunel.bat
 rule_deploy.md
 al-admin_accessKeys.csv
+tracking_money*.json
 
 # EC2 scheduler temp files
 deploy/ec2-scheduler/ec2-policy.json
@@ -39,3 +42,4 @@ api/storage/logs/*
 .vscode/
 al-admin_credentials.csv
 al-admin_accessKeys.csv
+CLAUDE.md
