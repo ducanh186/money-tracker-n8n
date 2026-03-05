@@ -30,13 +30,12 @@ export default function TopBar({ currentView, setCurrentView, selectedMonth, onM
       <div className="max-w-7xl mx-auto px-4 md:px-6">
         <div className="flex items-center justify-between h-14">
           {/* Left: Logo + Desktop Nav */}
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-3">
             {/* Logo */}
             <div className="flex items-center gap-2.5 shrink-0">
               <div className="bg-blue-600 text-white rounded-lg size-8 flex items-center justify-center font-bold text-sm">
-                F
+                💰
               </div>
-              <span className="text-slate-900 dark:text-white font-bold text-base hidden sm:inline">FinancePro</span>
             </div>
 
             {/* Desktop Nav */}
@@ -49,13 +48,13 @@ export default function TopBar({ currentView, setCurrentView, selectedMonth, onM
                     key={item.id}
                     onClick={() => setCurrentView(item.id)}
                     className={cn(
-                      "flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer",
+                      "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer whitespace-nowrap",
                       isActive
                         ? "bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400"
                         : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/60 hover:text-blue-600 dark:hover:text-blue-400"
                     )}
                   >
-                    <Icon className="size-4" />
+                    <Icon className="size-4 shrink-0" />
                     <span>{item.label}</span>
                   </button>
                 );

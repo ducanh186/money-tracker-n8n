@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Contracts\TransactionsRepositoryInterface;
-use App\Http\Resources\TransactionResource;
+use App\Models\Jar;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -16,9 +16,12 @@ class BudgetPlanController extends Controller
     ) {}
 
     /**
-     * GET /api/budget-plan?month=Feb-2026
+     * GET /api/budget-plan?month=Feb-2026[&base_income=15000000]
      *
      * Returns the budget plan vs actual spending for each jar.
+     * base_income defaults to total income from the sheet for the given month.
+     * If ?base_income=... is provided it overrides the computed income.
+     * Jar percentages come from the jars DB table (editable via PUT /api/jars/{id}).
      */
     public function __invoke(Request $request): JsonResponse
     {
@@ -31,15 +34,15 @@ class BudgetPlanController extends Controller
             ], 400);
         }
 
-        $cacheKey = 'budget_plan_' . md5($month);
+        $overrideIncome = $request->query('base_income');
+
+        $cacheKey = 'budget_plan_' . md5($month . '|' . ($overrideIncome ?? ''));
         $cached = Cache::get($cacheKey);
         if ($cached !== null) {
             return response()->json($cached);
         }
 
-        // Load config
-        $baseIncome = config('budget_plan.base_income', 13_600_000);
-        $jarsConfig = config('budget_plan.jars', []);
+        // Load thresholds from config
         $thresholds = config('budget_plan.thresholds', ['ok_max' => 80, 'warn_max' => 100]);
 
         // Fetch all transactions for the month
@@ -52,27 +55,39 @@ class BudgetPlanController extends Controller
             ], 500);
         }
 
-        // Aggregate actual expense by jar label (Vietnamese)
+        // Compute actual income from sheet transactions
+        $sheetIncome = 0;
         $actualByJar = [];
         foreach ($rows as $row) {
             $flow = mb_strtolower(trim($row['flow'] ?? ''));
-            if ($flow !== 'expense') {
-                continue;
+            if ($flow === 'income') {
+                $amountK   = $this->parseNumeric($row['amount'] ?? null);
+                $sheetIncome += $amountK * 1000;
             }
-            $jarLabel = trim($row['jar'] ?? '');
-            if ($jarLabel === '') {
-                $jarLabel = 'Không phân loại';
+            if ($flow === 'expense') {
+                $jarLabel = trim($row['jar'] ?? '');
+                if ($jarLabel === '') {
+                    $jarLabel = 'Không phân loại';
+                }
+                $amountK   = $this->parseNumeric($row['amount'] ?? null);
+                $amountVnd = $amountK * 1000;
+                $actualByJar[$jarLabel] = ($actualByJar[$jarLabel] ?? 0) + $amountVnd;
             }
-            $amountK   = $this->parseNumeric($row['amount'] ?? null);
-            $amountVnd = $amountK * 1000;
-            $actualByJar[$jarLabel] = ($actualByJar[$jarLabel] ?? 0) + $amountVnd;
         }
 
-        // Build response for each jar in the plan
+        // base_income: override > sheet income > config fallback
+        $baseIncome = $overrideIncome !== null
+            ? (int) $overrideIncome
+            : ($sheetIncome > 0 ? $sheetIncome : (int) config('budget_plan.base_income', 13_600_000));
+
+        // Get jar percentages from DB (editable)
+        $dbJars = Jar::where('is_active', true)->orderBy('sort_order')->get();
+
+        // Build response for each jar
         $jars = [];
-        foreach ($jarsConfig as $key => $cfg) {
-            $label    = $cfg['label'];
-            $percent  = $cfg['percent'];
+        foreach ($dbJars as $jar) {
+            $label    = $jar->label;
+            $percent  = (float) $jar->percent;
             $planned  = (int) round($baseIncome * $percent / 100);
             $actual   = $actualByJar[$label] ?? 0;
             $remaining = $planned - $actual;
@@ -87,7 +102,7 @@ class BudgetPlanController extends Controller
             }
 
             $jars[] = [
-                'key'            => $key,
+                'key'            => $jar->key,
                 'label'          => $label,
                 'percent'        => $percent,
                 'planned_amount' => $planned,
@@ -104,10 +119,11 @@ class BudgetPlanController extends Controller
 
         $payload = [
             'data' => [
-                'month'        => $month,
-                'base_income'  => $baseIncome,
-                'jars'         => $jars,
-                'summary'      => [
+                'month'         => $month,
+                'base_income'   => $baseIncome,
+                'sheet_income'  => $sheetIncome,
+                'jars'          => $jars,
+                'summary'       => [
                     'total_planned'   => $totalPlanned,
                     'total_actual'    => $totalActual,
                     'total_remaining' => $totalPlanned - $totalActual,
@@ -115,7 +131,7 @@ class BudgetPlanController extends Controller
                         ? round(($totalActual / $totalPlanned) * 100, 1)
                         : 0,
                 ],
-                'thresholds'   => $thresholds,
+                'thresholds'    => $thresholds,
             ],
         ];
 

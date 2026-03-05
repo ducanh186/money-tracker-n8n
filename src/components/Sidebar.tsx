@@ -16,10 +16,10 @@ export default function Sidebar({ currentView, setCurrentView }: { currentView: 
       <div className="flex flex-col gap-4 p-4">
         <div className="flex gap-3 items-center mb-4 px-2">
           <div className="bg-blue-600 text-white rounded-xl size-10 flex items-center justify-center font-bold text-xl">
-            F
+            💰
           </div>
           <div className="flex flex-col">
-            <h1 className="text-slate-900 text-base font-bold leading-normal">FinancePro</h1>
+            <h1 className="text-slate-900 text-base font-bold leading-normal">Money Tracker</h1>
             <p className="text-slate-500 text-sm font-normal leading-normal">Quản lý tài chính</p>
           </div>
         </div>

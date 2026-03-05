@@ -17,7 +17,7 @@ import type {
   CreateTransferPayload,
   JarsResponse,
 } from './types';
-import type { Goal, Account, Transfer } from './types';
+import type { Goal, Account, Transfer, Jar } from './types';
 
 // Base URL — in dev the Vite proxy forwards /api → Laravel at :8000
 const BASE = '/api';
@@ -261,4 +261,8 @@ export async function createTransfer(payload: CreateTransferPayload): Promise<{ 
 
 export async function fetchJars(): Promise<JarsResponse> {
   return smartFetch(`${BASE}/jars`);
+}
+
+export async function updateJar(id: number, payload: { percent?: number; label?: string }): Promise<{ data: Jar; message: string }> {
+  return apiWrite(`${BASE}/jars/${id}`, 'PUT', payload);
 }

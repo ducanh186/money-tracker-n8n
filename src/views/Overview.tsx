@@ -1,6 +1,8 @@
 import { TrendingUp, TrendingDown, Wallet, ArrowUpCircle, ArrowDownCircle, ArrowRightLeft, Loader2, RefreshCw } from 'lucide-react';
 import { formatCurrency } from '../lib/utils';
 import { useDashboardSummary, useSyncStatus, useTriggerSync } from '../lib/hooks';
+import { IncomeExpenseChart } from '../components/IncomeExpenseChart';
+import { ExpenseStructureChart } from '../components/ExpenseStructureChart';
 
 const flowIcon = (flow: string | null) => {
   if (flow === 'income') return ArrowUpCircle;
@@ -88,11 +90,11 @@ export default function Overview({ month }: { month: string }) {
         {summaryCards.map((card, i) => {
           const Icon = card.icon;
           return (
-            <div key={i} className="relative overflow-hidden rounded-xl bg-white p-6 shadow-sm border border-slate-100">
+            <div key={i} className="relative overflow-hidden rounded-xl bg-white dark:bg-slate-800 p-6 shadow-sm border border-slate-100 dark:border-slate-700">
               <div className={`absolute right-0 top-0 h-24 w-24 translate-x-8 -translate-y-8 rounded-full ${card.bg}`}></div>
               <div className="relative z-10 flex flex-col gap-1">
-                <span className="text-sm font-medium text-slate-500">{card.title}</span>
-                <h3 className="text-2xl font-bold tracking-tight text-slate-900">{formatCurrency(card.amount)}</h3>
+                <span className="text-sm font-medium text-slate-500 dark:text-slate-400">{card.title}</span>
+                <h3 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">{formatCurrency(card.amount)}</h3>
                 <div className={`mt-2 flex items-center gap-1 text-sm font-medium ${card.color}`}>
                   <Icon className="size-4" />
                 </div>
@@ -117,13 +119,23 @@ export default function Overview({ month }: { month: string }) {
       </div>
 
       {/* Transaction count badge */}
-      <div className="text-sm text-slate-500">
+      <div className="text-sm text-slate-500 dark:text-slate-400">
         {summary?.transaction_count ?? 0} giao dịch trong tháng
+      </div>
+
+      {/* Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+        <div className="lg:col-span-3">
+          <IncomeExpenseChart currentMonth={month} />
+        </div>
+        <div className="lg:col-span-2">
+          <ExpenseStructureChart month={month} />
+        </div>
       </div>
 
       <div className="flex flex-col gap-4 mt-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-bold text-slate-900">Giao dịch gần đây</h3>
+          <h3 className="text-lg font-bold text-slate-900 dark:text-white">Giao dịch gần đây</h3>
         </div>
         
         {recentTxs.length === 0 && (
@@ -135,17 +147,17 @@ export default function Overview({ month }: { month: string }) {
             const Icon = flowIcon(tx.flow);
             const colors = flowColors(tx.flow);
             return (
-              <div key={idx} className="flex items-center justify-between rounded-xl bg-white p-4 shadow-sm border border-slate-100 hover:shadow-md transition-shadow cursor-pointer">
+              <div key={idx} className="flex items-center justify-between rounded-xl bg-white dark:bg-slate-800 p-4 shadow-sm border border-slate-100 dark:border-slate-700 hover:shadow-md transition-shadow cursor-pointer">
                 <div className="flex items-center gap-4">
                   <div className={`flex size-12 shrink-0 items-center justify-center rounded-full ${colors.bg} ${colors.color}`}>
                     <Icon className="size-6" />
                   </div>
                   <div className="flex flex-col">
-                    <span className="font-semibold text-slate-900">{tx.description ?? tx.category ?? '—'}</span>
-                    <span className="text-xs text-slate-500">{tx.time} • {tx.date}</span>
+                    <span className="font-semibold text-slate-900 dark:text-white">{tx.description ?? tx.category ?? '—'}</span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400">{tx.time} • {tx.date}</span>
                   </div>
                 </div>
-                <span className={`font-bold ${tx.flow === 'income' ? 'text-green-600' : 'text-slate-900'}`}>
+                <span className={`font-bold ${tx.flow === 'income' ? 'text-green-600' : 'text-slate-900 dark:text-white'}`}>
                   {tx.flow === 'income' ? '+' : '-'}{formatCurrency(tx.amount_vnd)}
                 </span>
               </div>

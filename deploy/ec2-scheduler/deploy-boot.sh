@@ -77,15 +77,37 @@ COMMAND_ID=$(aws ssm send-command \
     --output text)
 
 echo "  Command ID: $COMMAND_ID"
-echo "  ⏳ Đợi kết quả..."
+echo "  ⏳ Đợi kết quả (polling)..."
 
-# Wait for command to complete
-aws ssm wait command-executed \
-    --command-id "$COMMAND_ID" \
-    --instance-id "$INSTANCE_ID" \
-    --region "$REGION" 2>/dev/null || true
+# Polling loop — check command status every 10s, max 5 minutes
+MAX_POLLS=30
+POLL_INTERVAL=10
+POLL_COUNT=0
 
-sleep 5
+while [ "$POLL_COUNT" -lt "$MAX_POLLS" ]; do
+    CMD_STATUS=$(aws ssm get-command-invocation \
+        --command-id "$COMMAND_ID" \
+        --instance-id "$INSTANCE_ID" \
+        --region "$REGION" \
+        --query 'Status' \
+        --output text 2>/dev/null || echo "Pending")
+
+    case "$CMD_STATUS" in
+        Success|Failed|TimedOut|Cancelled)
+            echo "  ✅ Command finished with status: $CMD_STATUS"
+            break
+            ;;
+        *)
+            POLL_COUNT=$((POLL_COUNT + 1))
+            echo "  ⏳ [$POLL_COUNT/$MAX_POLLS] Status: $CMD_STATUS — retrying in ${POLL_INTERVAL}s..."
+            sleep "$POLL_INTERVAL"
+            ;;
+    esac
+done
+
+if [ "$POLL_COUNT" -ge "$MAX_POLLS" ]; then
+    echo "  ⚠️  Timeout sau ${MAX_POLLS}x${POLL_INTERVAL}s — command vẫn đang chạy"
+fi
 
 # Get output
 echo ""

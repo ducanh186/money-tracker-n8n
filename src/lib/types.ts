@@ -89,6 +89,7 @@ export interface BudgetPlanSummary {
 export interface BudgetPlanData {
   month: string;
   base_income: number;
+  sheet_income: number;
   jars: BudgetJar[];
   summary: BudgetPlanSummary;
   thresholds: { ok_max: number; warn_max: number };

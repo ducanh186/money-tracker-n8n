@@ -17,6 +17,7 @@ import {
   fetchTransfers,
   createTransfer,
   fetchJars,
+  updateJar,
 } from './api';
 import type { TransactionsQuery, CreateGoalPayload, ContributePayload, CreateAccountPayload, CreateTransferPayload } from './types';
 
@@ -289,6 +290,21 @@ export function useCreateTransfer() {
       queryClient.invalidateQueries({ queryKey: ['net-worth'] });
       queryClient.invalidateQueries({ queryKey: ['goals'] });
       queryClient.invalidateQueries({ queryKey: ['goal'] });
+    },
+  });
+}
+
+// ---------------------------------------------------------------
+// Jar Update Hook
+// ---------------------------------------------------------------
+export function useUpdateJar() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: { percent?: number; label?: string } }) =>
+      updateJar(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['jars'] });
+      queryClient.invalidateQueries({ queryKey: ['budget-plan'] });
     },
   });
 }
