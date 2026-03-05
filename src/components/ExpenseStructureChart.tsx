@@ -26,12 +26,13 @@ export function ExpenseStructureChart({ month }: { month: string }) {
     const expenseByJar = summaryRes?.data?.expense_by_jar ?? {};
     let tot = 0;
     const items = Object.entries(expenseByJar)
-      .filter(([, v]) => v > 0)
+      .filter(([, v]) => v !== 0)
       .map(([name, value]) => {
-        tot += value;
+        const absValue = Math.abs(value);
+        tot += absValue;
         return {
           name,
-          value,
+          value: absValue,
           color: JAR_COLORS[name] ?? '#64748b',
         };
       });
