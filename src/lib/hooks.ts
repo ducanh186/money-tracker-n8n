@@ -5,8 +5,20 @@ import {
   fetchDashboardSummary,
   fetchSyncStatus,
   triggerSync,
+  fetchGoals,
+  fetchGoal,
+  createGoal,
+  updateGoal,
+  deleteGoal,
+  contributeToGoal,
+  fetchAccounts,
+  fetchNetWorth,
+  createAccount,
+  fetchTransfers,
+  createTransfer,
+  fetchJars,
 } from './api';
-import type { TransactionsQuery } from './types';
+import type { TransactionsQuery, CreateGoalPayload, ContributePayload, CreateAccountPayload, CreateTransferPayload } from './types';
 
 // ---------------------------------------------------------------
 // Retry logic: max 2 retries
@@ -127,4 +139,156 @@ export function useInvalidateAfterWrite() {
       queryClient.invalidateQueries({ queryKey: [key] });
     },
   };
+}
+
+// ---------------------------------------------------------------
+// Jars Hook
+// ---------------------------------------------------------------
+export function useJars() {
+  return useQuery({
+    queryKey: ['jars'],
+    queryFn: fetchJars,
+    staleTime: 5 * 60_000, // Jars rarely change
+    gcTime: 10 * 60_000,
+    refetchOnWindowFocus: false,
+    retry: MAX_RETRIES,
+  });
+}
+
+// ---------------------------------------------------------------
+// Goals Hooks (Quỹ mục tiêu)
+// ---------------------------------------------------------------
+
+export function useGoals(status?: string) {
+  return useQuery({
+    queryKey: ['goals', status ?? 'all'],
+    queryFn: () => fetchGoals(status),
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+    retry: MAX_RETRIES,
+  });
+}
+
+export function useGoal(id: number | null) {
+  return useQuery({
+    queryKey: ['goal', id],
+    queryFn: () => fetchGoal(id!),
+    enabled: id !== null,
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+    retry: MAX_RETRIES,
+  });
+}
+
+export function useCreateGoal() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: CreateGoalPayload) => createGoal(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['goals'] });
+    },
+  });
+}
+
+export function useUpdateGoal() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: Partial<CreateGoalPayload> }) =>
+      updateGoal(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['goals'] });
+      queryClient.invalidateQueries({ queryKey: ['goal'] });
+    },
+  });
+}
+
+export function useDeleteGoal() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => deleteGoal(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['goals'] });
+    },
+  });
+}
+
+export function useContributeGoal() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ goalId, payload }: { goalId: number; payload: ContributePayload }) =>
+      contributeToGoal(goalId, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['goals'] });
+      queryClient.invalidateQueries({ queryKey: ['goal'] });
+      queryClient.invalidateQueries({ queryKey: ['budget-plan'] });
+    },
+  });
+}
+
+// ---------------------------------------------------------------
+// Accounts Hooks (Tài khoản)
+// ---------------------------------------------------------------
+
+export function useAccounts() {
+  return useQuery({
+    queryKey: ['accounts'],
+    queryFn: fetchAccounts,
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+    retry: MAX_RETRIES,
+  });
+}
+
+export function useNetWorth() {
+  return useQuery({
+    queryKey: ['net-worth'],
+    queryFn: fetchNetWorth,
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+    retry: MAX_RETRIES,
+  });
+}
+
+export function useCreateAccount() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: CreateAccountPayload) => createAccount(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['accounts'] });
+      queryClient.invalidateQueries({ queryKey: ['net-worth'] });
+    },
+  });
+}
+
+// ---------------------------------------------------------------
+// Transfers Hooks (Chuyển khoản)
+// ---------------------------------------------------------------
+
+export function useTransfers(budgetPeriodId?: number) {
+  return useQuery({
+    queryKey: ['transfers', budgetPeriodId ?? 'all'],
+    queryFn: () => fetchTransfers(budgetPeriodId),
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+    retry: MAX_RETRIES,
+  });
+}
+
+export function useCreateTransfer() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: CreateTransferPayload) => createTransfer(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['transfers'] });
+      queryClient.invalidateQueries({ queryKey: ['accounts'] });
+      queryClient.invalidateQueries({ queryKey: ['net-worth'] });
+      queryClient.invalidateQueries({ queryKey: ['goals'] });
+      queryClient.invalidateQueries({ queryKey: ['goal'] });
+    },
+  });
 }

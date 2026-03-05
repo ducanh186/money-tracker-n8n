@@ -5,7 +5,19 @@ import type {
   BudgetPlanResponse,
   DashboardSummaryResponse,
   SyncStatusResponse,
+  GoalsResponse,
+  GoalDetailResponse,
+  CreateGoalPayload,
+  ContributePayload,
+  ContributeResponse,
+  AccountsResponse,
+  NetWorthResponse,
+  CreateAccountPayload,
+  TransfersResponse,
+  CreateTransferPayload,
+  JarsResponse,
 } from './types';
+import type { Goal, Account, Transfer } from './types';
 
 // Base URL — in dev the Vite proxy forwards /api → Laravel at :8000
 const BASE = '/api';
@@ -151,4 +163,102 @@ export function formatMonthLabel(month: string): string {
   const idx = MONTH_NAMES.indexOf(abbr);
   if (idx === -1) return month;
   return `Tháng ${String(idx + 1).padStart(2, '0')}, ${year}`;
+}
+
+// ---------------------------------------------------------------
+// Generic write helper (POST / PUT / DELETE)
+// ---------------------------------------------------------------
+
+async function apiWrite<T>(
+  url: string,
+  method: 'POST' | 'PUT' | 'DELETE',
+  body?: unknown,
+): Promise<T> {
+  const res = await fetch(url, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+
+  if (!res.ok) {
+    const errBody = await res.json().catch(() => ({}));
+    const msg = (errBody as { message?: string }).message ?? `API error ${res.status}`;
+    throw new Error(msg);
+  }
+
+  return res.json();
+}
+
+// ---------------------------------------------------------------
+// Goals (Quỹ mục tiêu)
+// ---------------------------------------------------------------
+
+export async function fetchGoals(status?: string): Promise<GoalsResponse> {
+  const qs = status ? `?status=${encodeURIComponent(status)}` : '';
+  return smartFetch(`${BASE}/goals${qs}`);
+}
+
+export async function fetchGoal(id: number): Promise<GoalDetailResponse> {
+  return smartFetch(`${BASE}/goals/${id}`);
+}
+
+export async function createGoal(payload: CreateGoalPayload): Promise<{ data: Goal; message: string }> {
+  return apiWrite(`${BASE}/goals`, 'POST', payload);
+}
+
+export async function updateGoal(id: number, payload: Partial<CreateGoalPayload>): Promise<{ data: Goal; message: string }> {
+  return apiWrite(`${BASE}/goals/${id}`, 'PUT', payload);
+}
+
+export async function deleteGoal(id: number): Promise<{ message: string }> {
+  return apiWrite(`${BASE}/goals/${id}`, 'DELETE');
+}
+
+export async function contributeToGoal(goalId: number, payload: ContributePayload): Promise<ContributeResponse> {
+  return apiWrite(`${BASE}/goals/${goalId}/contribute`, 'POST', payload);
+}
+
+// ---------------------------------------------------------------
+// Accounts (Tài khoản)
+// ---------------------------------------------------------------
+
+export async function fetchAccounts(): Promise<AccountsResponse> {
+  return smartFetch(`${BASE}/accounts`);
+}
+
+export async function fetchNetWorth(): Promise<NetWorthResponse> {
+  return smartFetch(`${BASE}/accounts/net-worth`);
+}
+
+export async function createAccount(payload: CreateAccountPayload): Promise<{ data: Account; message: string }> {
+  return apiWrite(`${BASE}/accounts`, 'POST', payload);
+}
+
+export async function updateAccount(id: number, payload: Partial<CreateAccountPayload>): Promise<{ data: Account; message: string }> {
+  return apiWrite(`${BASE}/accounts/${id}`, 'PUT', payload);
+}
+
+export async function deleteAccount(id: number): Promise<{ message: string }> {
+  return apiWrite(`${BASE}/accounts/${id}`, 'DELETE');
+}
+
+// ---------------------------------------------------------------
+// Transfers (Chuyển khoản)
+// ---------------------------------------------------------------
+
+export async function fetchTransfers(budgetPeriodId?: number): Promise<TransfersResponse> {
+  const qs = budgetPeriodId ? `?budget_period_id=${budgetPeriodId}` : '';
+  return smartFetch(`${BASE}/transfers${qs}`);
+}
+
+export async function createTransfer(payload: CreateTransferPayload): Promise<{ data: Transfer; message: string }> {
+  return apiWrite(`${BASE}/transfers`, 'POST', payload);
+}
+
+// ---------------------------------------------------------------
+// Jars (6 hũ)
+// ---------------------------------------------------------------
+
+export async function fetchJars(): Promise<JarsResponse> {
+  return smartFetch(`${BASE}/jars`);
 }

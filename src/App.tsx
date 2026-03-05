@@ -10,6 +10,8 @@ import Overview from './views/Overview';
 import Transactions from './views/Transactions';
 import Jars from './views/Jars';
 import BudgetPlan from './views/BudgetPlan';
+import Goals from './views/Goals';
+import Accounts from './views/Accounts';
 import { getCurrentMonth } from './lib/api';
 
 export default function App() {
@@ -45,11 +47,8 @@ export default function App() {
           {currentView === 'transactions' && <Transactions month={selectedMonth} />}
           {currentView === 'jars' && <Jars month={selectedMonth} />}
           {currentView === 'budget' && <BudgetPlan month={selectedMonth} />}
-          {currentView === 'account' && (
-            <div className="flex items-center justify-center h-full">
-              <p className="text-slate-500">Trang tài khoản đang được phát triển</p>
-            </div>
-          )}
+          {currentView === 'goals' && <Goals month={selectedMonth} />}
+          {currentView === 'account' && <Accounts month={selectedMonth} />}
         </main>
       </div>
     </div>

@@ -137,3 +137,163 @@ export interface SyncStatusData {
 export interface SyncStatusResponse {
   data: SyncStatusData;
 }
+
+// ---------------------------------------------------------------
+// Goal (Quỹ mục tiêu) types — matching BE GoalController
+// ---------------------------------------------------------------
+
+export interface GoalJar {
+  key: string;
+  label: string;
+}
+
+export interface GoalContribution {
+  id: number;
+  amount: number;
+  source_jar: string | null;
+  period: string | null;
+  notes: string | null;
+  contributed_at: string;
+}
+
+export interface Goal {
+  id: number;
+  name: string;
+  target_amount: number;
+  current_amount: number;
+  shortfall: number;
+  progress_pct: number;
+  jar: GoalJar | null;
+  deadline: string | null;
+  priority: number;
+  funding_mode: 'fund_now' | 'fund_over_time';
+  status: 'active' | 'completed' | 'paused' | 'cancelled';
+  notes: string | null;
+  contributions_count?: number;
+  contributions?: GoalContribution[];
+  created_at?: string;
+}
+
+export interface GoalsResponse {
+  data: Goal[];
+}
+
+export interface GoalDetailResponse {
+  data: Goal;
+}
+
+export interface CreateGoalPayload {
+  name: string;
+  target_amount: number;
+  jar_id?: number | null;
+  deadline?: string | null;
+  priority?: number;
+  funding_mode?: 'fund_now' | 'fund_over_time';
+  notes?: string | null;
+}
+
+export interface ContributePayload {
+  amount: number;
+  source_jar_id?: number | null;
+  budget_period_id?: number | null;
+  notes?: string | null;
+}
+
+export interface ContributeResponse {
+  data: GoalContribution;
+  goal: {
+    current_amount: number;
+    progress_pct: number;
+    status: string;
+  };
+  message: string;
+}
+
+// ---------------------------------------------------------------
+// Account (Tài khoản) types — matching BE AccountController
+// ---------------------------------------------------------------
+
+export interface Account {
+  id: number;
+  name: string;
+  type: 'checking' | 'savings' | 'cash' | 'ewallet' | 'investment';
+  institution: string | null;
+  balance: number;
+  currency: string;
+  is_active: boolean;
+  sort_order: number;
+}
+
+export interface AccountsResponse {
+  data: Account[];
+}
+
+export interface NetWorthResponse {
+  net_worth: number;
+  currency: string;
+  accounts: {
+    id: number;
+    name: string;
+    type: string;
+    institution: string | null;
+    balance: number;
+  }[];
+}
+
+export interface CreateAccountPayload {
+  name: string;
+  type?: 'checking' | 'savings' | 'cash' | 'ewallet' | 'investment';
+  institution?: string | null;
+  balance?: number;
+  currency?: string;
+  is_active?: boolean;
+  sort_order?: number;
+}
+
+// ---------------------------------------------------------------
+// Transfer (Chuyển khoản) types — matching BE TransferController
+// ---------------------------------------------------------------
+
+export interface Transfer {
+  id: number;
+  from_account: { id: number; name: string } | null;
+  to_account: { id: number; name: string } | null;
+  amount: number;
+  goal: { id: number; name: string } | null;
+  jar: { key: string; label: string } | null;
+  description: string | null;
+  transferred_at: string;
+  period: string | null;
+}
+
+export interface TransfersResponse {
+  data: Transfer[];
+}
+
+export interface CreateTransferPayload {
+  from_account_id: number;
+  to_account_id: number;
+  amount: number;
+  goal_id?: number | null;
+  jar_id?: number | null;
+  description?: string | null;
+  transferred_at?: string;
+  budget_period_id?: number | null;
+}
+
+// ---------------------------------------------------------------
+// Jar (6 hũ) types — matching BE JarController
+// ---------------------------------------------------------------
+
+export interface Jar {
+  id: number;
+  key: string;
+  label: string;
+  percent: number;
+  sort_order: number;
+  is_active: boolean;
+}
+
+export interface JarsResponse {
+  data: Jar[];
+}
