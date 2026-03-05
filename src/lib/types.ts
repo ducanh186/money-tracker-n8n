@@ -97,3 +97,43 @@ export interface BudgetPlanData {
 export interface BudgetPlanResponse {
   data: BudgetPlanData;
 }
+
+// ---------------------------------------------------------------
+// Dashboard summary (lightweight) types
+// ---------------------------------------------------------------
+
+export interface DashboardSummaryData {
+  month: string;
+  transaction_count: number;
+  totals: {
+    income_vnd: number;
+    expense_vnd: number;
+    net_vnd: number;
+    ending_balance_vnd: number | null;
+  };
+  expense_by_jar: Record<string, number>;
+  recent_transactions: {
+    date: string | null;
+    time: string | null;
+    flow: string | null;
+    amount_vnd: number;
+    description: string | null;
+    category: string | null;
+    jar: string | null;
+  }[];
+}
+
+export interface DashboardSummaryResponse {
+  data: DashboardSummaryData;
+}
+
+export interface SyncStatusData {
+  last_sync_at: string | null;
+  row_count: number;
+  elapsed_ms: number;
+  months_warmed: string[];
+}
+
+export interface SyncStatusResponse {
+  data: SyncStatusData;
+}

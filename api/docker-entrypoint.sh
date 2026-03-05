@@ -47,7 +47,13 @@ else
     # Don't exit — still start PHP-FPM so we can debug via docker logs
 fi
 
-echo "[entrypoint] Warm-up complete. Starting PHP-FPM..."
+echo "[entrypoint] Warm-up complete. Starting scheduler + PHP-FPM..."
 
-# --- 6. Exec into PHP-FPM (replaces this process as PID 1) ---
+# --- 6. Start Laravel scheduler in background ---
+# schedule:work runs every minute, checks for due commands (e.g. sheets:sync)
+echo "[entrypoint] Starting Laravel scheduler (background)..."
+php artisan schedule:work >> /var/www/storage/logs/scheduler.log 2>&1 &
+echo "[entrypoint] Scheduler PID: $!"
+
+# --- 7. Exec into PHP-FPM (replaces this process as PID 1) ---
 exec "$@"

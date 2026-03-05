@@ -59,17 +59,17 @@ function StatusBadge({ status }: { status: string }) {
 // ── Drill-down panel ──────────────────────────────────────────
 
 function JarDrillDown({ jar, month }: { jar: BudgetJar; month: string }) {
-  const { data, loading } = useTransactions({
+  const { data, isPending } = useTransactions({
     month,
     flow: 'expense',
     jar: jar.label,
-    pageSize: 9999,
+    pageSize: 100,
     sort: 'datetime_desc',
   });
 
   const txs = data?.data ?? [];
 
-  if (loading) {
+  if (isPending) {
     return (
       <div className="flex items-center justify-center py-6">
         <Loader2 className="size-5 text-blue-600 animate-spin" />
@@ -103,10 +103,10 @@ function JarDrillDown({ jar, month }: { jar: BudgetJar; month: string }) {
 // ── Main component ────────────────────────────────────────────
 
 export default function BudgetPlan({ month }: { month: string }) {
-  const { data, loading, error } = useBudgetPlan(month);
+  const { data, isPending, error } = useBudgetPlan(month);
   const [expandedJar, setExpandedJar] = useState<string | null>(null);
 
-  if (loading) {
+  if (isPending) {
     return (
       <div className="flex items-center justify-center py-16">
         <Loader2 className="size-8 text-blue-600 animate-spin" />
@@ -118,7 +118,7 @@ export default function BudgetPlan({ month }: { month: string }) {
     return (
       <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center max-w-7xl mx-auto">
         <AlertCircle className="size-8 text-red-400 mx-auto mb-2" />
-        <p className="text-red-700 font-medium">{error}</p>
+        <p className="text-red-700 font-medium">{error?.message}</p>
       </div>
     );
   }

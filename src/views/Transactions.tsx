@@ -81,7 +81,7 @@ export default function Transactions({ month }: { month: string }) {
     sort: 'datetime_desc',
   }), [month, activeFlow, debouncedSearch, page]);
 
-  const { data, loading, error } = useTransactions(params);
+  const { data, isPending, error } = useTransactions(params);
 
   const transactions = data?.data ?? [];
   const meta = data?.meta;
@@ -159,19 +159,19 @@ export default function Transactions({ month }: { month: string }) {
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
           <AlertCircle className="size-8 text-red-400 mx-auto mb-2" />
-          <p className="text-red-700 font-medium">{error}</p>
+          <p className="text-red-700 font-medium">{error?.message}</p>
         </div>
       )}
 
       {/* Loading state */}
-      {loading && (
+      {isPending && (
         <div className="flex items-center justify-center py-16">
           <Loader2 className="size-8 text-blue-600 animate-spin" />
         </div>
       )}
 
       {/* Transactions table */}
-      {!loading && !error && (
+      {!isPending && !error && (
         <>
           {transactions.length === 0 ? (
             <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">

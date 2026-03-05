@@ -13,7 +13,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        // Register ETag middleware alias for route groups
+        $middleware->alias([
+            'etag' => \App\Http\Middleware\ETagMiddleware::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         // Always return JSON for API routes (never HTML error pages)

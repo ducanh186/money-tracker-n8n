@@ -70,7 +70,7 @@ export default function Jars({ month }: { month: string }) {
   const [selectedJar, setSelectedJar] = useState<JarSummary | null>(null);
 
   // Fetch ALL transactions for the month (large pageSize to get everything)
-  const { data, loading, error } = useTransactions({ month, pageSize: 9999, sort: 'datetime_desc' });
+  const { data, isPending, error } = useTransactions({ month, pageSize: 200, sort: 'datetime_desc' });
 
   const transactions = data?.data ?? [];
   const totals = data?.meta?.totals;
@@ -79,7 +79,7 @@ export default function Jars({ month }: { month: string }) {
 
   const totalExpense = totals?.expense_vnd ?? 0;
 
-  if (loading) {
+  if (isPending) {
     return (
       <div className="flex items-center justify-center py-16">
         <Loader2 className="size-8 text-blue-600 animate-spin" />
@@ -91,7 +91,7 @@ export default function Jars({ month }: { month: string }) {
     return (
       <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center max-w-7xl mx-auto">
         <AlertCircle className="size-8 text-red-400 mx-auto mb-2" />
-        <p className="text-red-700 font-medium">{error}</p>
+        <p className="text-red-700 font-medium">{error?.message}</p>
       </div>
     );
   }

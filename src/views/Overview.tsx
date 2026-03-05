@@ -1,7 +1,6 @@
-import { TrendingUp, TrendingDown, Wallet, ShoppingCart, ArrowUpCircle, ArrowDownCircle, ArrowRightLeft, Loader2 } from 'lucide-react';
+import { TrendingUp, TrendingDown, Wallet, ArrowUpCircle, ArrowDownCircle, ArrowRightLeft, Loader2, RefreshCw } from 'lucide-react';
 import { formatCurrency } from '../lib/utils';
-import { useTransactions } from '../lib/hooks';
-import type { Transaction } from '../lib/types';
+import { useDashboardSummary, useSyncStatus, useTriggerSync } from '../lib/hooks';
 
 const flowIcon = (flow: string | null) => {
   if (flow === 'income') return ArrowUpCircle;
@@ -16,9 +15,12 @@ const flowColors = (flow: string | null) => {
 };
 
 export default function Overview({ month }: { month: string }) {
-  const { data, loading, error } = useTransactions({ month, pageSize: 5, sort: 'datetime_desc' });
+  // Lightweight summary endpoint — no full transaction list
+  const { data: summaryRes, isPending, error, refetch } = useDashboardSummary(month);
+  const { data: syncRes } = useSyncStatus();
+  const syncMutation = useTriggerSync();
 
-  if (loading) {
+  if (isPending) {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="size-8 text-blue-600 animate-spin" />
@@ -29,13 +31,15 @@ export default function Overview({ month }: { month: string }) {
   if (error) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-red-500">{error}</p>
+        <p className="text-red-500">{error.message}</p>
       </div>
     );
   }
 
-  const totals = data?.meta.totals;
-  const recentTxs = data?.data ?? [];
+  const summary = summaryRes?.data;
+  const totals = summary?.totals;
+  const recentTxs = summary?.recent_transactions ?? [];
+  const syncStatus = syncRes?.data;
 
   const summaryCards = [
     {
@@ -63,6 +67,23 @@ export default function Overview({ month }: { month: string }) {
 
   return (
     <div className="flex flex-col gap-6 max-w-7xl mx-auto">
+      {/* Sync status bar */}
+      <div className="flex items-center justify-between text-xs text-slate-400">
+        <span>
+          {syncStatus?.last_sync_at
+            ? `Đồng bộ lần cuối: ${new Date(syncStatus.last_sync_at).toLocaleTimeString('vi-VN')} (${syncStatus.row_count} dòng, ${syncStatus.elapsed_ms}ms)`
+            : 'Chưa đồng bộ'}
+        </span>
+        <button
+          onClick={() => syncMutation.mutate()}
+          disabled={syncMutation.isPending}
+          className="flex items-center gap-1 text-blue-500 hover:text-blue-700 disabled:opacity-50"
+        >
+          <RefreshCw className={`size-3.5 ${syncMutation.isPending ? 'animate-spin' : ''}`} />
+          {syncMutation.isPending ? 'Đang đồng bộ...' : 'Làm mới'}
+        </button>
+      </div>
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {summaryCards.map((card, i) => {
           const Icon = card.icon;
@@ -95,6 +116,11 @@ export default function Overview({ month }: { month: string }) {
         </div>
       </div>
 
+      {/* Transaction count badge */}
+      <div className="text-sm text-slate-500">
+        {summary?.transaction_count ?? 0} giao dịch trong tháng
+      </div>
+
       <div className="flex flex-col gap-4 mt-4">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-bold text-slate-900">Giao dịch gần đây</h3>
@@ -105,11 +131,11 @@ export default function Overview({ month }: { month: string }) {
         )}
 
         <div className="flex flex-col gap-3">
-          {recentTxs.map((tx: Transaction) => {
+          {recentTxs.map((tx, idx) => {
             const Icon = flowIcon(tx.flow);
             const colors = flowColors(tx.flow);
             return (
-              <div key={tx.idempotency_key} className="flex items-center justify-between rounded-xl bg-white p-4 shadow-sm border border-slate-100 hover:shadow-md transition-shadow cursor-pointer">
+              <div key={idx} className="flex items-center justify-between rounded-xl bg-white p-4 shadow-sm border border-slate-100 hover:shadow-md transition-shadow cursor-pointer">
                 <div className="flex items-center gap-4">
                   <div className={`flex size-12 shrink-0 items-center justify-center rounded-full ${colors.bg} ${colors.color}`}>
                     <Icon className="size-6" />
@@ -119,8 +145,8 @@ export default function Overview({ month }: { month: string }) {
                     <span className="text-xs text-slate-500">{tx.time} • {tx.date}</span>
                   </div>
                 </div>
-                <span className={`font-bold ${tx.signed_amount_vnd > 0 ? 'text-green-600' : tx.signed_amount_vnd < 0 ? 'text-slate-900' : 'text-slate-500'}`}>
-                  {tx.signed_amount_vnd > 0 ? '+' : ''}{formatCurrency(tx.signed_amount_vnd)}
+                <span className={`font-bold ${tx.flow === 'income' ? 'text-green-600' : 'text-slate-900'}`}>
+                  {tx.flow === 'income' ? '+' : '-'}{formatCurrency(tx.amount_vnd)}
                 </span>
               </div>
             );

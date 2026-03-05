@@ -33,7 +33,9 @@ return [
     |--------------------------------------------------------------------------
     | Cache TTL (seconds)
     |--------------------------------------------------------------------------
+    | Since sheets:sync runs every minute, we keep data cached for 3 minutes.
+    | FE reads always hit this cache — never Google Sheets directly.
     */
-    'cache_ttl' => (int) env('GOOGLE_SHEETS_CACHE_TTL', 60),
+    'cache_ttl' => (int) env('GOOGLE_SHEETS_CACHE_TTL', 180),
 
 ];
