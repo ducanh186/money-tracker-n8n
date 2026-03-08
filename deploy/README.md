@@ -1,5 +1,7 @@
 # Deployment Guide - Money Tracker
 
+> Security policy: Production access uses AWS SSM Session Manager only (port 22 closed). Do not use direct SSH in normal operations.
+
 ## Prerequisites
 
 - EC2 instance with Docker installed
@@ -10,8 +12,8 @@
 ## Quick Deploy
 
 ```bash
-# 1. SSH into EC2
-ssh -i your-key.pem ubuntu@YOUR_EC2_IP
+# 1. Start SSM session (no SSH key / no port 22)
+aws ssm start-session --target <INSTANCE_ID> --region us-east-1
 
 # 2. Clone repo
 sudo mkdir -p /opt/almoney && sudo chown $USER:$USER /opt/almoney
@@ -145,3 +147,4 @@ docker compose run --rm api php artisan key:generate
 - Check Laravel logs: `docker compose exec api cat storage/logs/laravel.log`
 - Verify .env is correct
 - Check Google credentials path
+

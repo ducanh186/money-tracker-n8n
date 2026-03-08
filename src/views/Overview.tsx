@@ -90,7 +90,7 @@ export default function Overview({ month }: { month: string }) {
         {summaryCards.map((card, i) => {
           const Icon = card.icon;
           return (
-            <div key={i} className="relative overflow-hidden rounded-xl bg-white dark:bg-slate-800 p-6 shadow-sm border border-slate-100 dark:border-slate-700">
+            <div key={i} className="relative overflow-hidden rounded-xl bg-white dark:bg-[#1a2433] p-6 shadow-sm border border-slate-100 dark:border-slate-700">
               <div className={`absolute right-0 top-0 h-24 w-24 translate-x-8 -translate-y-8 rounded-full ${card.bg}`}></div>
               <div className="relative z-10 flex flex-col gap-1">
                 <span className="text-sm font-medium text-slate-500 dark:text-slate-400">{card.title}</span>
@@ -147,7 +147,7 @@ export default function Overview({ month }: { month: string }) {
             const Icon = flowIcon(tx.flow);
             const colors = flowColors(tx.flow);
             return (
-              <div key={idx} className="flex items-center justify-between rounded-xl bg-white dark:bg-slate-800 p-4 shadow-sm border border-slate-100 dark:border-slate-700 hover:shadow-md transition-shadow cursor-pointer">
+              <div key={idx} className="flex items-center justify-between rounded-xl bg-white dark:bg-[#1a2433] p-4 shadow-sm border border-slate-100 dark:border-slate-700 hover:shadow-md transition-shadow cursor-pointer">
                 <div className="flex items-center gap-4">
                   <div className={`flex size-12 shrink-0 items-center justify-center rounded-full ${colors.bg} ${colors.color}`}>
                     <Icon className="size-6" />

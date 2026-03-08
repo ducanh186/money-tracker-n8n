@@ -26,7 +26,7 @@ export default function TopBar({ currentView, setCurrentView, selectedMonth, onM
   ];
 
   return (
-    <nav className="bg-white dark:bg-[#1e293b] border-b border-slate-200 dark:border-slate-700 sticky top-0 z-50 transition-colors duration-200">
+    <nav className="bg-white dark:bg-[#1a2433] border-b border-slate-200 dark:border-slate-700 sticky top-0 z-50 transition-colors duration-200">
       <div className="max-w-7xl mx-auto px-4 md:px-6">
         <div className="flex items-center justify-between h-14">
           {/* Left: Logo + Desktop Nav */}
@@ -69,7 +69,7 @@ export default function TopBar({ currentView, setCurrentView, selectedMonth, onM
               <select
                 value={selectedMonth}
                 onChange={(e) => onMonthChange(e.target.value)}
-                className="appearance-none bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-600 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 pl-3 pr-7 py-1.5 focus:ring-2 focus:ring-blue-500/20 focus:outline-none cursor-pointer transition-colors"
+                className="appearance-none bg-slate-50 dark:bg-[#0c1222] border border-slate-200 dark:border-slate-600 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 pl-3 pr-7 py-1.5 focus:ring-2 focus:ring-blue-500/20 focus:outline-none cursor-pointer transition-colors"
               >
                 {months.map((m) => (
                   <option key={m} value={m}>{formatMonthLabel(m)}</option>
@@ -86,7 +86,7 @@ export default function TopBar({ currentView, setCurrentView, selectedMonth, onM
               <input
                 type="text"
                 placeholder="Tìm kiếm..."
-                className="pl-9 pr-4 py-1.5 bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-600 rounded-lg text-sm text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500/20 focus:outline-none w-48 lg:w-56 transition-colors"
+                className="pl-9 pr-4 py-1.5 bg-slate-50 dark:bg-[#0c1222] border border-slate-200 dark:border-slate-600 rounded-lg text-sm text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500/20 focus:outline-none w-48 lg:w-56 transition-colors"
               />
             </div>
 

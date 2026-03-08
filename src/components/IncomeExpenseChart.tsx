@@ -222,14 +222,14 @@ export function IncomeExpenseChart({ currentMonth }: { currentMonth: string }) {
   }, [isMonthly, months, range, ...monthQueries.map(q => q.data), ...txQueries.map(q => q.data)]);
 
   return (
-    <div className="bg-white dark:bg-[#1e293b] rounded-xl p-6 border border-slate-100 dark:border-slate-800 shadow-sm h-[400px] flex flex-col">
+    <div className="bg-white dark:bg-[#1a2433] rounded-xl p-6 border border-slate-100 dark:border-slate-800 shadow-sm h-[400px] flex flex-col">
       <div className="flex items-center justify-between mb-4 gap-2 flex-wrap">
         <h3 className="text-slate-900 dark:text-white font-semibold text-lg whitespace-nowrap">
           Thu nhập vs Chi tiêu
         </h3>
         <div className="flex items-center gap-2">
           {/* Scale controls */}
-          <div className="flex items-center bg-slate-100 dark:bg-[#0f172a] rounded-lg px-1 py-0.5">
+          <div className="flex items-center bg-slate-100 dark:bg-[#0c1222] rounded-lg px-1 py-0.5">
             <button
               onClick={() => setScaleIdx(i => Math.max(i - 1, 0))}
               disabled={scaleIdx === 0}
@@ -254,7 +254,7 @@ export function IncomeExpenseChart({ currentMonth }: { currentMonth: string }) {
           <select
             value={range}
             onChange={e => setRange(e.target.value as RangeKey)}
-            className="bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:border-blue-500 cursor-pointer"
+            className="bg-slate-50 dark:bg-[#0c1222] border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:border-blue-500 cursor-pointer"
           >
             {RANGE_OPTIONS.map(o => (
               <option key={o.key} value={o.key}>{o.label}</option>

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Contracts\TransactionsRepositoryInterface;
 use App\Http\Resources\TransactionResource;
+use App\Models\Jar;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -11,6 +12,8 @@ use Illuminate\Support\Facades\Cache;
 
 class TransactionsController extends Controller
 {
+    private ?array $jarAliasMap = null;
+
     public function __construct(
         private readonly TransactionsRepositoryInterface $repository,
     ) {}
@@ -147,7 +150,7 @@ class TransactionsController extends Controller
                 return false;
             }
 
-            if ($jar !== null && mb_strtolower($row['jar'] ?? '') !== mb_strtolower($jar)) {
+            if ($jar !== null && ! $this->matchesJarFilter($row['jar'] ?? null, $jar)) {
                 return false;
             }
 
@@ -227,6 +230,72 @@ class TransactionsController extends Controller
     }
 
     /**
+     * Match jar filter by key OR label to support both FE and sheet values.
+     */
+    private function matchesJarFilter(?string $rowJar, string $filter): bool
+    {
+        $rowJarNorm = $this->normalizeToken($rowJar);
+        $filterNorm = $this->normalizeToken($filter);
+
+        if ($filterNorm === '') {
+            return true;
+        }
+
+        if ($rowJarNorm === $filterNorm) {
+            return true;
+        }
+
+        if ($rowJarNorm === '') {
+            return false;
+        }
+
+        $aliases = $this->jarAliases();
+
+        if (! isset($aliases[$filterNorm])) {
+            return false;
+        }
+
+        return in_array($rowJarNorm, $aliases[$filterNorm], true);
+    }
+
+    private function jarAliases(): array
+    {
+        if ($this->jarAliasMap !== null) {
+            return $this->jarAliasMap;
+        }
+
+        $map = [];
+
+        foreach (Jar::query()->select(['key', 'label'])->get() as $jar) {
+            $tokens = array_values(array_filter([
+                $this->normalizeToken($jar->key),
+                $this->normalizeToken($jar->label),
+            ]));
+
+            if ($tokens === []) {
+                continue;
+            }
+
+            $tokens = array_values(array_unique($tokens));
+
+            foreach ($tokens as $token) {
+                $map[$token] = isset($map[$token])
+                    ? array_values(array_unique(array_merge($map[$token], $tokens)))
+                    : $tokens;
+            }
+        }
+
+        $this->jarAliasMap = $map;
+
+        return $this->jarAliasMap;
+    }
+
+    private function normalizeToken(?string $value): string
+    {
+        return mb_strtolower(trim((string) $value));
+    }
+
+    /**
      * Scan all sheet rows for a row matching the given idempotency_key.
      */
     private function findByIdempotencyKey(string $key): ?array
@@ -235,7 +304,7 @@ class TransactionsController extends Controller
         // We'll fetch all rows via the underlying cache (sheets_all_rows) which is
         // already populated after any getByMonth call. For a direct lookup we
         // trigger a month fetch with a wildcard-like approach.
-        // 
+        //
         // Better approach: allow repository to expose all rows.
         // For now, leverage reflection / known cache key.
         $allRows = Cache::get('sheets_all_rows');

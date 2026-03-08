@@ -23,22 +23,11 @@ class GoalController extends Controller
             $query->where('status', $request->query('status'));
         }
 
-        $goals = $query->orderByDesc('priority')->orderBy('deadline')->get()->map(fn (Goal $g) => [
-            'id'              => $g->id,
-            'name'            => $g->name,
-            'target_amount'   => $g->target_amount,
-            'current_amount'  => $g->current_amount,
-            'shortfall'       => $g->shortfall,
-            'progress_pct'    => $g->progress_percent,
-            'jar'             => $g->jar ? ['key' => $g->jar->key, 'label' => $g->jar->label] : null,
-            'deadline'        => $g->deadline?->format('Y-m-d'),
-            'priority'        => $g->priority,
-            'funding_mode'    => $g->funding_mode,
-            'status'          => $g->status,
-            'notes'           => $g->notes,
-            'contributions_count' => $g->contributions->count(),
-            'created_at'      => $g->created_at,
-        ]);
+        $goals = $query
+            ->orderByDesc('priority')
+            ->orderBy('deadline')
+            ->get()
+            ->map(fn (Goal $goal) => $this->serializeGoal($goal));
 
         return response()->json([
             'data' => $goals,
@@ -50,10 +39,10 @@ class GoalController extends Controller
      */
     public function store(StoreGoalRequest $request): JsonResponse
     {
-        $goal = Goal::create($request->validated());
+        $goal = Goal::create($request->validated())->load('jar', 'contributions');
 
         return response()->json([
-            'data'    => $goal->load('jar'),
+            'data'    => $this->serializeGoal($goal),
             'message' => 'Goal created.',
         ], 201);
     }
@@ -66,28 +55,7 @@ class GoalController extends Controller
         $goal->load(['jar', 'contributions.sourceJar', 'contributions.budgetPeriod']);
 
         return response()->json([
-            'data' => [
-                'id'              => $goal->id,
-                'name'            => $goal->name,
-                'target_amount'   => $goal->target_amount,
-                'current_amount'  => $goal->current_amount,
-                'shortfall'       => $goal->shortfall,
-                'progress_pct'    => $goal->progress_percent,
-                'jar'             => $goal->jar ? ['key' => $goal->jar->key, 'label' => $goal->jar->label] : null,
-                'deadline'        => $goal->deadline?->format('Y-m-d'),
-                'priority'        => $goal->priority,
-                'funding_mode'    => $goal->funding_mode,
-                'status'          => $goal->status,
-                'notes'           => $goal->notes,
-                'contributions'   => $goal->contributions->map(fn ($c) => [
-                    'id'            => $c->id,
-                    'amount'        => $c->amount,
-                    'source_jar'    => $c->sourceJar ? $c->sourceJar->key : null,
-                    'period'        => $c->budgetPeriod?->month,
-                    'notes'         => $c->notes,
-                    'contributed_at' => $c->contributed_at,
-                ]),
-            ],
+            'data' => $this->serializeGoal($goal, includeContributions: true),
         ]);
     }
 
@@ -110,7 +78,7 @@ class GoalController extends Controller
         $goal->update($validated);
 
         return response()->json([
-            'data'    => $goal->fresh()->load('jar'),
+            'data'    => $this->serializeGoal($goal->fresh()->load('jar', 'contributions')),
             'message' => 'Goal updated.',
         ]);
     }
@@ -149,24 +117,71 @@ class GoalController extends Controller
                 'source_jar_id'    => $validated['source_jar_id'] ?? null,
                 'notes'            => $validated['notes'] ?? null,
                 'contributed_at'   => now(),
-            ]);
+            ])->load(['sourceJar', 'budgetPeriod']);
 
             $goal->increment('current_amount', $validated['amount']);
+            $goal = $goal->fresh();
 
             // Auto-complete if target reached
-            if ($goal->fresh()->current_amount >= $goal->target_amount) {
+            if ($goal->current_amount >= $goal->target_amount && $goal->status !== 'completed') {
                 $goal->update(['status' => 'completed']);
+                $goal = $goal->fresh();
             }
 
             return response()->json([
-                'data'    => $contribution->load('sourceJar'),
+                'data'    => $this->serializeContribution($contribution),
                 'goal'    => [
-                    'current_amount' => $goal->fresh()->current_amount,
-                    'progress_pct'   => $goal->fresh()->progress_percent,
-                    'status'         => $goal->fresh()->status,
+                    'current_amount' => $goal->current_amount,
+                    'progress_pct'   => $goal->progress_percent,
+                    'status'         => $goal->status,
                 ],
                 'message' => 'Contribution recorded.',
             ], 201);
         });
+    }
+
+    private function serializeGoal(Goal $goal, bool $includeContributions = false): array
+    {
+        $goal->loadMissing('jar', 'contributions');
+
+        $data = [
+            'id'                  => $goal->id,
+            'name'                => $goal->name,
+            'target_amount'       => $goal->target_amount,
+            'current_amount'      => $goal->current_amount,
+            'shortfall'           => $goal->shortfall,
+            'progress_pct'        => $goal->progress_percent,
+            'jar'                 => $goal->jar ? ['key' => $goal->jar->key, 'label' => $goal->jar->label] : null,
+            'deadline'            => $goal->deadline?->format('Y-m-d'),
+            'priority'            => $goal->priority,
+            'funding_mode'        => $goal->funding_mode,
+            'status'              => $goal->status,
+            'notes'               => $goal->notes,
+            'contributions_count' => $goal->contributions->count(),
+            'created_at'          => $goal->created_at,
+        ];
+
+        if ($includeContributions) {
+            $goal->loadMissing('contributions.sourceJar', 'contributions.budgetPeriod');
+            $data['contributions'] = $goal->contributions
+                ->map(fn (GoalContribution $contribution) => $this->serializeContribution($contribution))
+                ->values();
+        }
+
+        return $data;
+    }
+
+    private function serializeContribution(GoalContribution $contribution): array
+    {
+        $contribution->loadMissing('sourceJar', 'budgetPeriod');
+
+        return [
+            'id'             => $contribution->id,
+            'amount'         => $contribution->amount,
+            'source_jar'     => $contribution->sourceJar?->key,
+            'period'         => $contribution->budgetPeriod?->month,
+            'notes'          => $contribution->notes,
+            'contributed_at' => $contribution->contributed_at,
+        ];
     }
 }

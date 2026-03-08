@@ -40,7 +40,7 @@ export function ExpenseStructureChart({ month }: { month: string }) {
   }, [summaryRes]);
 
   return (
-    <div className="bg-white dark:bg-[#1e293b] rounded-xl p-6 border border-slate-100 dark:border-slate-800 shadow-sm h-[400px] flex flex-col">
+    <div className="bg-white dark:bg-[#1a2433] rounded-xl p-6 border border-slate-100 dark:border-slate-800 shadow-sm h-[400px] flex flex-col">
       <div className="flex items-center justify-between mb-2">
         <h3 className="text-slate-900 dark:text-white font-semibold text-lg">Cơ cấu chi tiêu - 6 Hũ</h3>
       </div>

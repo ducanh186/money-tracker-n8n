@@ -43,3 +43,6 @@ api/storage/logs/*
 al-admin_credentials.csv
 al-admin_accessKeys.csv
 CLAUDE.md
+/deploy/claude/
+/deploy.ps1
+

@@ -60,9 +60,9 @@ class DashboardController extends Controller
         $txCount = count($rows);
         $recentTxs = [];
 
-        foreach ($rows as $i => $row) {
+        foreach ($rows as $row) {
             $amountK = $this->parseNumeric($row['amount'] ?? null);
-            $amountVnd = $amountK * 1000;
+            $amountVnd = abs($amountK) * 1000;
             $flow = mb_strtolower(trim($row['flow'] ?? ''));
 
             if ($flow === 'income') {
@@ -94,7 +94,7 @@ class DashboardController extends Controller
                 'date' => $row['date'] ?? null,
                 'time' => $row['time'] ?? null,
                 'flow' => $row['flow'] ?? null,
-                'amount_vnd' => $amountK * 1000,
+                'amount_vnd' => abs($amountK) * 1000,
                 'description' => $row['description'] ?? null,
                 'category' => $row['category'] ?? null,
                 'jar' => $row['jar'] ?? null,

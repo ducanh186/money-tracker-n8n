@@ -107,7 +107,7 @@ function EditablePercent({
         step={0.5}
         value={value}
         onChange={e => setValue(e.target.value)}
-        className="w-14 text-xs px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-[#0f172a] text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+        className="w-14 text-xs px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-[#0c1222] text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
         autoFocus
         onKeyDown={e => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') setEditing(false); }}
       />
@@ -128,7 +128,7 @@ function JarDrillDown({ jar, month }: { jar: BudgetJar; month: string }) {
   const { data, isPending } = useTransactions({
     month,
     flow: 'expense',
-    jar: jar.label,
+    jar: jar.key,
     pageSize: 100,
     sort: 'datetime_desc',
   });
@@ -169,15 +169,16 @@ function JarDrillDown({ jar, month }: { jar: BudgetJar; month: string }) {
 // ── Main component ────────────────────────────────────────────
 
 export default function BudgetPlan({ month }: { month: string }) {
-  const { data, isPending, error } = useBudgetPlan(month, planOverride);
-  const { data: jarsRes } = useJars();
-  const updateJarMutation = useUpdateJar();
   const [expandedJar, setExpandedJar] = useState<string | null>(null);
 
   // Editable total plan (base_income override) state
   const [editingPlan, setEditingPlan] = useState(false);
   const [planValue, setPlanValue] = useState('');
   const [planOverride, setPlanOverride] = useState<number | null>(null);
+
+  const { data, isPending, error } = useBudgetPlan(month, planOverride);
+  const { data: jarsRes } = useJars();
+  const updateJarMutation = useUpdateJar();
 
   useEffect(() => {
     if (data?.data?.base_income) {
@@ -232,7 +233,7 @@ export default function BudgetPlan({ month }: { month: string }) {
       {/* Summary cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* BASE INCOME — read-only from Sheet */}
-        <div className="relative overflow-hidden rounded-xl bg-white dark:bg-[#1e293b] p-6 shadow-sm border border-slate-100 dark:border-slate-700">
+        <div className="relative overflow-hidden rounded-xl bg-white dark:bg-[#1a2433] p-6 shadow-sm border border-slate-100 dark:border-slate-700">
           <div className="absolute right-0 top-0 h-24 w-24 translate-x-8 -translate-y-8 rounded-full bg-blue-50 dark:bg-blue-500/10" />
           <div className="relative z-10 flex flex-col gap-1">
             <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Thu nhập gốc</span>
@@ -247,7 +248,7 @@ export default function BudgetPlan({ month }: { month: string }) {
         </div>
 
         {/* TOTAL PLANNED — editable */}
-        <div className="relative overflow-hidden rounded-xl bg-white dark:bg-[#1e293b] p-6 shadow-sm border border-slate-100 dark:border-slate-700">
+        <div className="relative overflow-hidden rounded-xl bg-white dark:bg-[#1a2433] p-6 shadow-sm border border-slate-100 dark:border-slate-700">
           <div className="absolute right-0 top-0 h-24 w-24 translate-x-8 -translate-y-8 rounded-full bg-green-50 dark:bg-green-500/10" />
           <div className="relative z-10 flex flex-col gap-1">
             <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Tổng kế hoạch</span>
@@ -261,7 +262,7 @@ export default function BudgetPlan({ month }: { month: string }) {
                     const raw = e.target.value.replace(/\D/g, '');
                     setPlanValue(raw);
                   }}
-                  className="w-36 text-lg font-bold px-2 py-1 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-[#0f172a] text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-36 text-lg font-bold px-2 py-1 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-[#0c1222] text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
                   autoFocus
                   onKeyDown={e => {
                     if (e.key === 'Enter') {
@@ -325,7 +326,7 @@ export default function BudgetPlan({ month }: { month: string }) {
           </div>
         </div>
 
-        <div className="relative overflow-hidden rounded-xl bg-white dark:bg-[#1e293b] p-6 shadow-sm border border-slate-100 dark:border-slate-700">
+        <div className="relative overflow-hidden rounded-xl bg-white dark:bg-[#1a2433] p-6 shadow-sm border border-slate-100 dark:border-slate-700">
           <div className="absolute right-0 top-0 h-24 w-24 translate-x-8 -translate-y-8 rounded-full bg-red-50 dark:bg-red-500/10" />
           <div className="relative z-10 flex flex-col gap-1">
             <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Đã chi thực tế</span>
@@ -365,7 +366,7 @@ export default function BudgetPlan({ month }: { month: string }) {
           return (
             <div
               key={jar.key}
-              className="bg-white dark:bg-[#1e293b] rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden transition-shadow hover:shadow-md"
+              className="bg-white dark:bg-[#1a2433] rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden transition-shadow hover:shadow-md"
             >
               {/* Card header */}
               <div className="p-5">
@@ -431,7 +432,7 @@ export default function BudgetPlan({ month }: { month: string }) {
               {/* Drill-down toggle */}
               <button
                 onClick={() => toggleJar(jar.key)}
-                className="w-full flex items-center justify-center gap-1.5 py-2.5 text-xs font-medium text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-[#0f172a] hover:bg-slate-100 dark:hover:bg-slate-800 border-t border-slate-100 dark:border-slate-700 transition-colors cursor-pointer"
+                className="w-full flex items-center justify-center gap-1.5 py-2.5 text-xs font-medium text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-[#0c1222] hover:bg-slate-100 dark:hover:bg-slate-800 border-t border-slate-100 dark:border-slate-700 transition-colors cursor-pointer"
               >
                 {isExpanded ? (
                   <>
@@ -446,7 +447,7 @@ export default function BudgetPlan({ month }: { month: string }) {
 
               {/* Drill-down transactions */}
               {isExpanded && (
-                <div className="border-t border-slate-100 dark:border-slate-700 px-5 py-3 bg-slate-50/50 dark:bg-[#0f172a]/50">
+                <div className="border-t border-slate-100 dark:border-slate-700 px-5 py-3 bg-slate-50/50 dark:bg-[#0c1222]/50">
                   <JarDrillDown jar={jar} month={month} />
                 </div>
               )}
@@ -457,3 +458,4 @@ export default function BudgetPlan({ month }: { month: string }) {
     </div>
   );
 }
+

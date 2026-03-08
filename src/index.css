@@ -39,30 +39,30 @@
 }
 
 .dark {
-  /* Desaturated pastel tones — eye-friendly on dark backgrounds */
-  --color-income:          #86efac; /* pastel green */
-  --color-income-muted:    #6ee7a0;
-  --color-income-bg:       rgba(134, 239, 172, 0.15);
-  --color-expense:         #fda4af; /* pastel rose */
-  --color-expense-muted:   #fb8a97;
-  --color-expense-bg:      rgba(253, 164, 175, 0.15);
-  --color-transfer:        #93c5fd; /* pastel blue */
-  --color-transfer-muted:  #7cb8fd;
-  --color-transfer-bg:     rgba(147, 197, 253, 0.15);
+  /* Vivid accent tones — clear on dark backgrounds */
+  --color-income:          #4ade80; /* bright green */
+  --color-income-muted:    #22c55e;
+  --color-income-bg:       rgba(74, 222, 128, 0.14);
+  --color-expense:         #fb7185; /* bright rose */
+  --color-expense-muted:   #f43f5e;
+  --color-expense-bg:      rgba(251, 113, 133, 0.14);
+  --color-transfer:        #60a5fa; /* bright blue */
+  --color-transfer-muted:  #3b82f6;
+  --color-transfer-bg:     rgba(96, 165, 250, 0.14);
 
-  /* Surface & Layout */
-  --color-surface:         #1e293b;
-  --color-surface-alt:     #162236;
-  --color-surface-raised:  #1e293b;
-  --color-border:          #334155;
-  --color-border-light:    #1e293b;
+  /* Surface & Layout — increased layer separation */
+  --color-surface:         #1a2433;
+  --color-surface-alt:     #131b28;
+  --color-surface-raised:  #1e2b3a;
+  --color-border:          #2d3d50;
+  --color-border-light:    #1e2b3a;
 
-  /* Text hierarchy — brighter for contrast on dark */
-  --color-text-primary:    #f1f5f9;
-  --color-text-secondary:  #cbd5e1;
-  --color-text-muted:      #94a3b8;
-  --color-text-header:     #94a3b8;
-  --color-text-faint:      #64748b;
+  /* Text hierarchy — high contrast, clear stepping */
+  --color-text-primary:    #eaeef3;
+  --color-text-secondary:  #b8c4d1;
+  --color-text-muted:      #8d9bae;
+  --color-text-header:     #8d9bae;
+  --color-text-faint:      #5f7186;
 }
 
 
@@ -74,179 +74,181 @@
 
 /* --- Surface / Background colors --- */
 .dark .bg-white {
-  background-color: #1e293b;
+  background-color: #1a2433;
 }
 .dark .bg-slate-50 {
-  background-color: #162236;
+  background-color: #131b28;
+}
+.dark .bg-slate-50\/50 {
+  background-color: #131b28;
 }
 .dark .bg-slate-100 {
-  background-color: #1e293b;
+  background-color: #161e2c;
 }
 .dark .bg-slate-200 {
-  background-color: #334155;
+  background-color: #2d3d50;
 }
 
-/* --- Text colors --- */
+/* --- Text colors — clear hierarchy with good contrast --- */
 .dark .text-slate-900 {
-  color: #f1f5f9;
+  color: #eaeef3;
 }
 .dark .text-slate-800 {
-  color: #e2e8f0;
+  color: #d6dce5;
 }
 .dark .text-slate-700 {
-  color: #cbd5e1;
+  color: #bfc8d4;
 }
 .dark .text-slate-600 {
-  color: #94a3b8;
+  color: #a5b1c1;
 }
-/* Increase contrast for table headers & muted text */
 .dark .text-slate-500 {
-  color: #94a3b8;
+  color: #8d9bae;
 }
 .dark .text-slate-400 {
-  color: #cbd5e1;
+  color: #697a8e;
 }
 
-/* --- Desaturated accent text colors for dark mode --- */
+/* --- Vivid accent text colors for dark mode --- */
 .dark .text-green-600 {
-  color: var(--color-income);       /* #86efac pastel green */
+  color: var(--color-income);       /* #4ade80 */
 }
 .dark .text-green-700 {
-  color: var(--color-income-muted);  /* #6ee7a0 */
+  color: var(--color-income-muted);  /* #22c55e */
 }
 .dark .text-green-500 {
-  color: #86efac;
+  color: #4ade80;
 }
 .dark .text-red-600 {
-  color: var(--color-expense);       /* #fda4af pastel rose */
+  color: var(--color-expense);       /* #fb7185 */
 }
 .dark .text-red-700 {
-  color: var(--color-expense-muted); /* #fb8a97 */
+  color: var(--color-expense-muted); /* #f43f5e */
 }
 .dark .text-red-500 {
-  color: #fda4af;
+  color: #fb7185;
 }
 .dark .text-blue-600 {
-  color: var(--color-transfer);      /* #93c5fd pastel blue */
+  color: var(--color-transfer);      /* #60a5fa */
 }
 .dark .text-blue-700 {
-  color: var(--color-transfer-muted); /* #7cb8fd */
+  color: var(--color-transfer-muted); /* #3b82f6 */
 }
 .dark .text-emerald-600 {
-  color: #6ee7b7;
+  color: #34d399;
 }
 .dark .text-emerald-700 {
-  color: #6ee7b7;
+  color: #34d399;
 }
 .dark .text-rose-600 {
-  color: #fda4af;
+  color: #fb7185;
 }
 .dark .text-rose-700 {
-  color: #fda4af;
+  color: #fb7185;
 }
 .dark .text-amber-600 {
-  color: #fcd34d;
+  color: #fbbf24;
 }
 .dark .text-amber-500 {
-  color: #fcd34d;
+  color: #fbbf24;
 }
 .dark .text-orange-600 {
-  color: #fdba74;
+  color: #fb923c;
 }
 
 /* --- Border colors --- */
 .dark .border-slate-200 {
-  border-color: #334155;
+  border-color: #2d3d50;
 }
 .dark .border-slate-100 {
-  border-color: #1e293b;
+  border-color: #1e2b3a;
 }
 .dark .border-slate-300 {
-  border-color: #475569;
+  border-color: #3d4f63;
 }
 .dark .border-slate-50 {
-  border-color: #1e293b;
+  border-color: #1a2433;
 }
 .dark .divide-slate-100 > :not(:last-child) {
-  border-color: #1e293b;
+  border-color: #243040;
 }
 .dark .divide-slate-200 > :not(:last-child) {
-  border-color: #334155;
+  border-color: #2d3d50;
 }
 .dark .divide-slate-50 > :not(:last-child) {
-  border-color: #162236;
+  border-color: #1e2b3a;
 }
 
 /* --- Accent-50 backgrounds (badges, highlights) --- */
 .dark .bg-blue-50 {
-  background-color: rgba(147, 197, 253, 0.1);
+  background-color: rgba(96, 165, 250, 0.12);
 }
 .dark .bg-green-50 {
-  background-color: rgba(134, 239, 172, 0.1);
+  background-color: rgba(74, 222, 128, 0.12);
 }
 .dark .bg-red-50 {
-  background-color: rgba(253, 164, 175, 0.1);
+  background-color: rgba(251, 113, 133, 0.12);
 }
 .dark .bg-emerald-50 {
-  background-color: rgba(110, 231, 183, 0.1);
+  background-color: rgba(52, 211, 153, 0.12);
 }
 .dark .bg-amber-50 {
-  background-color: rgba(252, 211, 77, 0.1);
+  background-color: rgba(251, 191, 36, 0.12);
 }
 .dark .bg-purple-50 {
-  background-color: rgba(196, 167, 255, 0.1);
+  background-color: rgba(168, 85, 247, 0.12);
 }
 .dark .bg-teal-50 {
-  background-color: rgba(94, 234, 212, 0.1);
+  background-color: rgba(45, 212, 191, 0.12);
 }
 .dark .bg-pink-50 {
-  background-color: rgba(249, 168, 212, 0.1);
+  background-color: rgba(236, 72, 153, 0.12);
 }
 
-/* --- Accent-100 backgrounds (tags, badges) — semi-transparent 15-20% --- */
+/* --- Accent-100 backgrounds (tags, badges) — semi-transparent 18-22% --- */
 .dark .bg-blue-100 {
-  background-color: rgba(147, 197, 253, 0.18);
+  background-color: rgba(96, 165, 250, 0.20);
 }
 .dark .bg-green-100 {
-  background-color: rgba(134, 239, 172, 0.18);
+  background-color: rgba(74, 222, 128, 0.20);
 }
 .dark .bg-red-100 {
-  background-color: rgba(253, 164, 175, 0.18);
+  background-color: rgba(251, 113, 133, 0.20);
 }
 .dark .bg-orange-100 {
-  background-color: rgba(253, 186, 116, 0.18);
+  background-color: rgba(251, 146, 60, 0.20);
 }
 .dark .bg-emerald-100 {
-  background-color: rgba(110, 231, 183, 0.18);
+  background-color: rgba(52, 211, 153, 0.20);
 }
 .dark .bg-amber-100 {
-  background-color: rgba(252, 211, 77, 0.18);
+  background-color: rgba(251, 191, 36, 0.20);
 }
 .dark .bg-purple-100 {
-  background-color: rgba(196, 167, 255, 0.18);
+  background-color: rgba(168, 85, 247, 0.20);
 }
 .dark .bg-teal-100 {
-  background-color: rgba(94, 234, 212, 0.18);
+  background-color: rgba(45, 212, 191, 0.20);
 }
 .dark .bg-pink-100 {
-  background-color: rgba(249, 168, 212, 0.18);
+  background-color: rgba(236, 72, 153, 0.20);
 }
 .dark .bg-cyan-100 {
-  background-color: rgba(103, 232, 249, 0.18);
+  background-color: rgba(34, 211, 238, 0.20);
 }
 .dark .bg-rose-100 {
-  background-color: rgba(253, 164, 175, 0.18);
+  background-color: rgba(251, 113, 133, 0.20);
 }
 
 /* --- Status dot/bg colors for dark mode --- */
 .dark .bg-green-500 {
-  background-color: #86efac;
+  background-color: #4ade80;
 }
 .dark .bg-red-500 {
-  background-color: #fda4af;
+  background-color: #fb7185;
 }
 .dark .bg-amber-500 {
-  background-color: #fcd34d;
+  background-color: #fbbf24;
 }
 
 /* --- Form elements --- */
@@ -266,15 +268,15 @@
 
 /* --- Hover state overrides --- */
 .dark .hover\:bg-slate-50:hover {
-  background-color: #1e293b;
+  background-color: #1e2b3a;
 }
 .dark .hover\:bg-slate-100:hover {
-  background-color: #283548;
+  background-color: #243040;
 }
 
 /* --- Ring overrides --- */
 .dark .ring-white {
-  --tw-ring-color: #1e293b;
+  --tw-ring-color: #1a2433;
 }
 
 /* --- Scrollbar styling for dark mode --- */
@@ -283,13 +285,13 @@
   height: 8px;
 }
 .dark ::-webkit-scrollbar-track {
-  background: #0f172a;
+  background: #0c1222;
 }
 .dark ::-webkit-scrollbar-thumb {
-  background: #334155;
+  background: #2d3d50;
   border-radius: 4px;
 }
 .dark ::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+  background: #3d4f63;
 }
 
