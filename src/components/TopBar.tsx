@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { PieChart, List, Wallet, Target, Crosshair, User, Search, Sun, Moon, Menu, X, ChevronDown } from 'lucide-react';
-import { cn } from '../lib/utils';
+import { PieChart, List, Wallet, Target, Crosshair, User, Search, Sun, Moon, Menu, X, ChevronDown, AlertTriangle } from 'lucide-react';
+import { cn, formatCurrency } from '../lib/utils';
 import { getRecentMonths, formatMonthLabel } from '../lib/api';
+import { useBudgetStatus } from '../lib/hooks';
 
 interface TopBarProps {
   currentView: string;
@@ -15,13 +16,14 @@ interface TopBarProps {
 export default function TopBar({ currentView, setCurrentView, selectedMonth, onMonthChange, darkMode, toggleDarkMode }: TopBarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const months = getRecentMonths(12);
+  const { data: budgetStatus } = useBudgetStatus(selectedMonth);
 
   const navItems = [
     { id: 'overview', label: 'Tổng quan', icon: PieChart },
     { id: 'transactions', label: 'Giao dịch', icon: List },
     { id: 'jars', label: 'Quản lý Hũ', icon: Wallet },
     { id: 'budget', label: 'Chi tiêu', icon: Target },
-    { id: 'goals', label: 'Mục tiêu', icon: Crosshair },
+    { id: 'goals', label: 'Quỹ & Mục tiêu', icon: Crosshair },
     { id: 'account', label: 'Tài khoản', icon: User },
   ];
 
@@ -139,6 +141,50 @@ export default function TopBar({ currentView, setCurrentView, selectedMonth, onM
           </div>
         )}
       </div>
+
+      {/* Budget Status Strip */}
+      {budgetStatus && (
+        <div className="border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-[#0c1222]">
+          <div className="max-w-7xl mx-auto px-4 md:px-6 py-1.5 flex items-center gap-4 md:gap-6 text-xs overflow-x-auto">
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="text-slate-500 dark:text-slate-400">Thu nhập:</span>
+              <span className="font-semibold text-slate-700 dark:text-slate-200">{formatCurrency(budgetStatus.income)}</span>
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="text-slate-500 dark:text-slate-400">Đã phân bổ:</span>
+              <span className="font-semibold text-blue-600 dark:text-blue-400">{formatCurrency(budgetStatus.assigned)}</span>
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="text-slate-500 dark:text-slate-400">Chưa phân bổ:</span>
+              <span className={cn(
+                "font-semibold",
+                budgetStatus.unassigned === 0
+                  ? "text-green-600 dark:text-green-400"
+                  : "text-red-600 dark:text-red-400"
+              )}>
+                {formatCurrency(budgetStatus.unassigned)}
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="text-slate-500 dark:text-slate-400">Được phép chi:</span>
+              <span className="font-semibold text-emerald-600 dark:text-emerald-400">{formatCurrency(budgetStatus.available_to_spend)}</span>
+            </div>
+            {budgetStatus.overspent_jars && budgetStatus.overspent_jars.length > 0 && (
+              <div className="flex items-center gap-1.5 shrink-0 text-amber-600 dark:text-amber-400">
+                <AlertTriangle className="size-3.5" />
+                <span className="font-medium">
+                  {budgetStatus.overspent_jars.length} hũ vượt mức
+                </span>
+              </div>
+            )}
+            {budgetStatus.period_status === 'open' && (
+              <div className="flex items-center gap-1.5 shrink-0 text-slate-400 dark:text-slate-500">
+                <span>Tháng đang mở</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </nav>
   );
 }

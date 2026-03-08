@@ -39,6 +39,11 @@ class Jar extends Model
         return $this->hasMany(Goal::class);
     }
 
+    public function funds(): HasMany
+    {
+        return $this->hasMany(Fund::class);
+    }
+
     public function recurringBills(): HasMany
     {
         return $this->hasMany(RecurringBill::class);

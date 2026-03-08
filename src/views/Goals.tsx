@@ -13,10 +13,11 @@ import {
   ArrowUpCircle,
   Pencil,
   Trash2,
+  PiggyBank,
 } from 'lucide-react';
 import { formatCurrency } from '../lib/utils';
-import { useGoals, useGoal, useCreateGoal, useContributeGoal, useUpdateGoal, useDeleteGoal, useJars } from '../lib/hooks';
-import type { Goal, CreateGoalPayload, ContributePayload } from '../lib/types';
+import { useGoals, useGoal, useCreateGoal, useContributeGoal, useUpdateGoal, useDeleteGoal, useJars, useFunds } from '../lib/hooks';
+import type { Goal, CreateGoalPayload, ContributePayload, Fund } from '../lib/types';
 
 // ── Status helpers ─────────────────────────────
 
@@ -608,9 +609,12 @@ export default function Goals({ month: _month }: { month: string }) {
   const [contributeGoalId, setContributeGoalId] = useState<number | null>(null);
   const [expandedGoalId, setExpandedGoalId] = useState<number | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('active');
+  const [activeTab, setActiveTab] = useState<'goals' | 'funds'>('goals');
 
   const { data: goalsRes, isPending, error } = useGoals(filterStatus || undefined);
+  const { data: fundsRes, isPending: fundsLoading } = useFunds();
   const goals = goalsRes?.data ?? [];
+  const funds = fundsRes?.data ?? [];
 
   if (isPending) {
     return (
@@ -642,32 +646,59 @@ export default function Goals({ month: _month }: { month: string }) {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900">Quỹ mục tiêu</h2>
-          <p className="text-sm text-slate-500">{goals.length} quỹ • Tổng tiến độ {overallPct}%</p>
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Quỹ & Mục tiêu</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            {activeTab === 'goals'
+              ? `${goals.length} quỹ mục tiêu • Tổng tiến độ ${overallPct}%`
+              : `${funds.length} quỹ con (sub-funds)`
+            }
+          </p>
         </div>
         <div className="flex items-center gap-3">
-          <select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">Tất cả</option>
-            <option value="active">Đang thực hiện</option>
-            <option value="completed">Hoàn thành</option>
-            <option value="paused">Tạm dừng</option>
-          </select>
-          <button
-            onClick={() => setShowCreate(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 transition-colors"
-          >
-            <Plus className="size-4" />
-            Tạo quỹ
-          </button>
+          {/* Tab switch */}
+          <div className="flex bg-slate-100 dark:bg-[#0c1222] p-1 rounded-lg">
+            <button
+              onClick={() => setActiveTab('goals')}
+              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${activeTab === 'goals' ? 'bg-white dark:bg-[#1a2433] text-slate-900 dark:text-white shadow-sm' : 'text-slate-600 dark:text-slate-400'}`}
+            >
+              <Target className="size-4 inline mr-1" />
+              Mục tiêu
+            </button>
+            <button
+              onClick={() => setActiveTab('funds')}
+              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${activeTab === 'funds' ? 'bg-white dark:bg-[#1a2433] text-slate-900 dark:text-white shadow-sm' : 'text-slate-600 dark:text-slate-400'}`}
+            >
+              <PiggyBank className="size-4 inline mr-1" />
+              Quỹ con
+            </button>
+          </div>
+          {activeTab === 'goals' && (
+            <>
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-[#1a2433] text-slate-700 dark:text-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Tất cả</option>
+                <option value="active">Đang thực hiện</option>
+                <option value="completed">Hoàn thành</option>
+                <option value="paused">Tạm dừng</option>
+              </select>
+              <button
+                onClick={() => setShowCreate(true)}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 transition-colors"
+              >
+                <Plus className="size-4" />
+                Tạo quỹ
+              </button>
+            </>
+          )}
         </div>
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {activeTab === 'goals' && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <SummaryCard title="Tổng mục tiêu" amount={totalTarget} icon={Target} color="text-blue-600" bg="bg-blue-50" />
         <SummaryCard title="Đã góp" amount={totalCurrent} icon={ArrowUpCircle} color="text-emerald-600" bg="bg-emerald-50" />
         <SummaryCard title="Còn thiếu" amount={totalShortfall} icon={DollarSign} color="text-amber-600" bg="bg-amber-50" />
@@ -680,9 +711,10 @@ export default function Goals({ month: _month }: { month: string }) {
           </div>
         </div>
       </div>
+      )}
 
       {/* Empty state */}
-      {goals.length === 0 && (
+      {activeTab === 'goals' && goals.length === 0 && (
         <div className="flex flex-col items-center justify-center py-16">
           <Target className="size-16 text-slate-300 mb-3" />
           <p className="text-slate-500 font-medium">Chưa có quỹ nào</p>
@@ -698,9 +730,10 @@ export default function Goals({ month: _month }: { month: string }) {
       )}
 
       {/* Goals list */}
+      {activeTab === 'goals' && (
       <div className="flex flex-col gap-4">
         {goals.map((goal) => (
-          <div key={goal.id} className="rounded-xl bg-white border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+          <div key={goal.id} className="rounded-xl bg-white dark:bg-[#1a2433] border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow">
             {/* Goal card header */}
             <div
               className="p-5 cursor-pointer"
@@ -803,6 +836,87 @@ export default function Goals({ month: _month }: { month: string }) {
           </div>
         ))}
       </div>
+      )}
+
+      {/* Funds Tab */}
+      {activeTab === 'funds' && (
+        <div className="flex flex-col gap-4">
+          {fundsLoading ? (
+            <div className="flex items-center justify-center py-16">
+              <Loader2 className="size-8 text-blue-600 animate-spin" />
+            </div>
+          ) : funds.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16">
+              <PiggyBank className="size-16 text-slate-300 mb-3" />
+              <p className="text-slate-500 dark:text-slate-400 font-medium">Chưa có quỹ con nào</p>
+              <p className="text-sm text-slate-400 dark:text-slate-500">Quỹ con được tạo từ trang Quản lý Hũ hoặc API</p>
+            </div>
+          ) : (
+            <>
+              {/* Grouped by jar */}
+              {(() => {
+                const grouped = new Map<string, Fund[]>();
+                for (const f of funds) {
+                  const jk = f.jar?.label ?? 'Không thuộc hũ';
+                  if (!grouped.has(jk)) grouped.set(jk, []);
+                  grouped.get(jk)!.push(f);
+                }
+                return Array.from(grouped.entries()).map(([jarLabel, jarFunds]) => (
+                  <div key={jarLabel} className="flex flex-col gap-2">
+                    <h3 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{jarLabel}</h3>
+                    {jarFunds.map((fund) => (
+                      <div key={fund.id} className="rounded-xl bg-white dark:bg-[#1a2433] border border-slate-100 dark:border-slate-700 shadow-sm p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h4 className="font-bold text-slate-900 dark:text-white">{fund.name}</h4>
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${
+                                fund.status === 'active' ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400'
+                                : fund.status === 'completed' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400'
+                                : 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400'
+                              }`}>
+                                {fund.status === 'active' ? 'Hoạt động' : fund.status === 'completed' ? 'Hoàn thành' : 'Tạm dừng'}
+                              </span>
+                            </div>
+                            {fund.goal && (
+                              <p className="text-xs text-slate-400 dark:text-slate-500 mb-2">Gắn mục tiêu: {fund.goal.name}</p>
+                            )}
+                            <ProgressBar pct={fund.progress_pct} />
+                            <div className="flex items-center justify-between mt-2 text-xs text-slate-500 dark:text-slate-400">
+                              <span>Đã giữ: {formatCurrency(fund.reserved_amount)}</span>
+                              <span>Mục tiêu: {formatCurrency(fund.target_amount)}</span>
+                            </div>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <span className="text-lg font-bold text-slate-900 dark:text-white">{fund.progress_pct}%</span>
+                            {fund.monthly_reserve > 0 && (
+                              <p className="text-xs text-slate-400 dark:text-slate-500">+{formatCurrency(fund.monthly_reserve)}/tháng</p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-3 mt-3 text-xs">
+                          <div className="bg-slate-50 dark:bg-[#0c1222] rounded-lg p-2">
+                            <div className="text-slate-400 dark:text-slate-500">Đã giữ</div>
+                            <div className="font-semibold text-blue-600 dark:text-blue-400">{formatCurrency(fund.reserved_amount)}</div>
+                          </div>
+                          <div className="bg-slate-50 dark:bg-[#0c1222] rounded-lg p-2">
+                            <div className="text-slate-400 dark:text-slate-500">Đã chi</div>
+                            <div className="font-semibold text-red-600 dark:text-red-400">{formatCurrency(fund.spent_amount)}</div>
+                          </div>
+                          <div className="bg-slate-50 dark:bg-[#0c1222] rounded-lg p-2">
+                            <div className="text-slate-400 dark:text-slate-500">Còn lại</div>
+                            <div className={`font-semibold ${fund.available >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>{formatCurrency(fund.available)}</div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ));
+              })()}
+            </>
+          )}
+        </div>
+      )}
 
       {/* Create form modal */}
       {showCreate && <CreateGoalForm onClose={() => setShowCreate(false)} />}

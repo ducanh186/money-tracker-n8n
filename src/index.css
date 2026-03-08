@@ -257,6 +257,19 @@
 .dark input[type="number"],
 .dark textarea {
   color-scheme: dark;
+  background-color: #1a2433;
+  color: #eaeef3;
+  border-color: #3d4f63;
+}
+
+.dark select option {
+  background-color: #1a2433;
+  color: #eaeef3;
+}
+
+.dark select option:checked,
+.dark select option:hover {
+  background-color: #243040;
 }
 
 /* --- Shadow adjustments --- */

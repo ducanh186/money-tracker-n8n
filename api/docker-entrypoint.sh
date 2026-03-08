@@ -20,6 +20,19 @@ done
 chown -R www-data:www-data /var/www/storage 2>/dev/null || true
 chmod -R 775 /var/www/storage 2>/dev/null || true
 
+# --- 1b. Ensure SQLite persistent volume is ready ---
+mkdir -p /data 2>/dev/null || true
+if [ ! -f /data/app.sqlite ]; then
+    echo "[entrypoint] Creating new SQLite database at /data/app.sqlite"
+    touch /data/app.sqlite
+else
+    echo "[entrypoint] Existing SQLite database found at /data/app.sqlite"
+fi
+chown www-data:www-data /data/app.sqlite 2>/dev/null || true
+chmod 664 /data/app.sqlite 2>/dev/null || true
+chown www-data:www-data /data 2>/dev/null || true
+chmod 775 /data 2>/dev/null || true
+
 # --- 2. Clear ALL stale caches (idempotent) ---
 # After EC2 stop/start, cached config may reference stale state
 echo "[entrypoint] Clearing stale caches..."

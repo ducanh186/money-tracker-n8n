@@ -16,8 +16,19 @@ import type {
   TransfersResponse,
   CreateTransferPayload,
   JarsResponse,
+  BudgetStatusResponse,
+  BudgetStatusData,
+  FundsResponse,
+  CreateFundPayload,
+  BudgetPeriodsResponse,
+  CreateBudgetPeriodPayload,
+  Goal,
+  Account,
+  Transfer,
+  Jar,
+  Fund,
+  BudgetWorkspace,
 } from './types';
-import type { Goal, Account, Transfer, Jar } from './types';
 
 // Base URL — in dev the Vite proxy forwards /api → Laravel at :8000
 const BASE = '/api';
@@ -270,4 +281,74 @@ export async function fetchJars(): Promise<JarsResponse> {
 
 export async function updateJar(id: number, payload: { percent?: number; label?: string }): Promise<{ data: Jar; message: string }> {
   return apiWrite(`${BASE}/jars/${id}`, 'PUT', payload);
+}
+
+// ---------------------------------------------------------------
+// Budget Status (TopBar / global state)
+// ---------------------------------------------------------------
+
+export async function fetchBudgetStatus(month: string): Promise<BudgetStatusData> {
+  const res = await smartFetch<BudgetStatusResponse>(`${BASE}/budget-status?month=${encodeURIComponent(month)}`);
+  return res.data;
+}
+
+// ---------------------------------------------------------------
+// Funds (Quỹ con)
+// ---------------------------------------------------------------
+
+export async function fetchFunds(jarId?: number): Promise<FundsResponse> {
+  const qs = jarId ? `?jar_id=${jarId}` : '';
+  return smartFetch(`${BASE}/funds${qs}`);
+}
+
+export async function createFund(payload: CreateFundPayload): Promise<{ data: Fund; message: string }> {
+  return apiWrite(`${BASE}/funds`, 'POST', payload);
+}
+
+export async function updateFund(id: number, payload: Partial<CreateFundPayload>): Promise<{ data: Fund; message: string }> {
+  return apiWrite(`${BASE}/funds/${id}`, 'PUT', payload);
+}
+
+export async function deleteFund(id: number): Promise<{ message: string }> {
+  return apiWrite(`${BASE}/funds/${id}`, 'DELETE');
+}
+
+export async function reserveFund(id: number, amount: number): Promise<{ data: Fund; message: string }> {
+  return apiWrite(`${BASE}/funds/${id}/reserve`, 'POST', { amount });
+}
+
+export async function spendFund(id: number, amount: number, description?: string): Promise<{ data: Fund; message: string }> {
+  return apiWrite(`${BASE}/funds/${id}/spend`, 'POST', { amount, description });
+}
+
+// ---------------------------------------------------------------
+// Budget Periods (Kỳ ngân sách)
+// ---------------------------------------------------------------
+
+export async function fetchBudgetPeriods(): Promise<BudgetPeriodsResponse> {
+  return smartFetch(`${BASE}/budget-periods`);
+}
+
+export async function fetchBudgetPeriod(id: number): Promise<{ data: BudgetWorkspace }> {
+  return smartFetch(`${BASE}/budget-periods/${id}`);
+}
+
+export async function createBudgetPeriod(payload: CreateBudgetPeriodPayload): Promise<{ data: BudgetWorkspace; message: string }> {
+  return apiWrite(`${BASE}/budget-periods`, 'POST', payload);
+}
+
+export async function updateBudgetPeriod(id: number, payload: Partial<CreateBudgetPeriodPayload>): Promise<{ data: BudgetWorkspace; message: string }> {
+  return apiWrite(`${BASE}/budget-periods/${id}`, 'PUT', payload);
+}
+
+export async function allocateBudgetPeriod(id: number, totalIncome?: number): Promise<{ data: BudgetWorkspace; message: string }> {
+  return apiWrite(`${BASE}/budget-periods/${id}/allocate`, 'POST', totalIncome ? { total_income: totalIncome } : {});
+}
+
+export async function overrideJarPercent(periodId: number, jarId: number, percent: number): Promise<{ data: unknown; message: string }> {
+  return apiWrite(`${BASE}/budget-periods/${periodId}/jar-override/${jarId}`, 'PUT', { percent });
+}
+
+export async function closeBudgetPeriod(id: number): Promise<{ data: BudgetWorkspace; message: string }> {
+  return apiWrite(`${BASE}/budget-periods/${id}/close`, 'POST');
 }

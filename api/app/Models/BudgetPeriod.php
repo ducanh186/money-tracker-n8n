@@ -17,6 +17,7 @@ class BudgetPeriod extends Model
         'total_income',
         'to_be_budgeted',
         'status',
+        'rollover_policy',
         'notes',
     ];
 

@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\BudgetPeriodController;
 use App\Http\Controllers\Api\BudgetPlanController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DebtController;
+use App\Http\Controllers\Api\FundController;
 use App\Http\Controllers\Api\GoalController;
 use App\Http\Controllers\Api\JarController;
 use App\Http\Controllers\Api\RecurringBillController;
@@ -171,9 +172,16 @@ Route::middleware(['etag'])->group(function () {
     // Transfers (read)
     Route::get('/transfers', [TransferController::class, 'index']);
 
+    // Funds (read)
+    Route::get('/funds', [FundController::class, 'index']);
+    Route::get('/funds/{fund}', [FundController::class, 'show']);
+
     // Scenarios (read)
     Route::get('/scenarios', [ScenarioController::class, 'index']);
     Route::get('/scenarios/{scenario}', [ScenarioController::class, 'show']);
+
+    // Budget Status (aggregated for TopBar)
+    Route::get('/budget-status', [DashboardController::class, 'budgetStatus']);
 });
 
 // ── Write endpoints with rate limiting ────────────────────────────
@@ -217,6 +225,16 @@ Route::middleware(['throttle:write'])->group(function () {
 
     // Transfers (write)
     Route::post('/transfers', [TransferController::class, 'store']);
+
+    // Funds (write)
+    Route::post('/funds', [FundController::class, 'store']);
+    Route::put('/funds/{fund}', [FundController::class, 'update']);
+    Route::delete('/funds/{fund}', [FundController::class, 'destroy']);
+    Route::post('/funds/{fund}/reserve', [FundController::class, 'reserve']);
+    Route::post('/funds/{fund}/spend', [FundController::class, 'spend']);
+
+    // Budget Period close
+    Route::post('/budget-periods/{budgetPeriod}/close', [BudgetPeriodController::class, 'close']);
 
     // Scenarios (write)
     Route::post('/scenarios/simulate', [ScenarioController::class, 'simulate']);

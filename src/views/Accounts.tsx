@@ -368,8 +368,8 @@ export default function Accounts({ month: _month }: { month: string }) {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900">Tài khoản</h2>
-          <p className="text-sm text-slate-500">{accounts.length} tài khoản đang hoạt động</p>
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Tài khoản</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400">{accounts.length} tài khoản đang hoạt động</p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -399,18 +399,23 @@ export default function Accounts({ month: _month }: { month: string }) {
         </div>
       </div>
 
+      {/* Budget reminder */}
+      <div className="bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/30 rounded-lg p-3 text-xs text-blue-700 dark:text-blue-400">
+        <strong>Lưu ý:</strong> Chuyển khoản giữa các tài khoản không ảnh hưởng ngân sách (budget). Tổng tài sản ròng không thay đổi khi chuyển nội bộ.
+      </div>
+
       {/* Tabs */}
-      <div className="flex gap-1 bg-slate-100 p-1 rounded-lg w-fit">
+      <div className="flex gap-1 bg-slate-100 dark:bg-[#0c1222] p-1 rounded-lg w-fit">
         <button
           onClick={() => setActiveTab('accounts')}
-          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'accounts' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'accounts' ? 'bg-white dark:bg-[#1a2433] text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
         >
           <Wallet className="size-4 inline mr-1.5" />
           Tài khoản
         </button>
         <button
           onClick={() => setActiveTab('transfers')}
-          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'transfers' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'transfers' ? 'bg-white dark:bg-[#1a2433] text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
         >
           <ArrowRightLeft className="size-4 inline mr-1.5" />
           Lịch sử chuyển khoản

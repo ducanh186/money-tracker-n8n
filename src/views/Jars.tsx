@@ -1,8 +1,8 @@
 import { useState, useMemo } from 'react';
-import { Wallet, Loader2, AlertCircle } from 'lucide-react';
+import { Wallet, Loader2, AlertCircle, ChevronDown, ChevronUp, PiggyBank } from 'lucide-react';
 import { formatCurrency, formatSignedAmount } from '../lib/utils';
-import { useTransactions } from '../lib/hooks';
-import type { Transaction } from '../lib/types';
+import { useTransactions, useBudgetStatus, useFunds } from '../lib/hooks';
+import type { Transaction, BudgetStatusJarMetric, Fund } from '../lib/types';
 import JarStats from './JarStats';
 
 /** Aggregate amounts per jar from a list of transactions. */
@@ -68,14 +68,40 @@ function getJarIconBg(jar: string, selected: boolean): string {
 export default function Jars({ month }: { month: string }) {
   const [activeTab, setActiveTab] = useState('list');
   const [selectedJar, setSelectedJar] = useState<JarSummary | null>(null);
+  const [expandedFundsJar, setExpandedFundsJar] = useState<string | null>(null);
 
   // Fetch ALL transactions for the month (large pageSize to get everything)
   const { data, isPending, error } = useTransactions({ month, pageSize: 200, sort: 'datetime_desc' });
+  const { data: budgetStatus } = useBudgetStatus(month);
+  const { data: fundsRes } = useFunds();
 
   const transactions = data?.data ?? [];
   const totals = data?.meta?.totals;
+  const funds = fundsRes?.data ?? [];
 
   const jarSummaries = useMemo(() => aggregateByJar(transactions), [transactions]);
+
+  // Map jarKey → budget metrics
+  const jarMetrics = useMemo(() => {
+    const m = new Map<string, BudgetStatusJarMetric>();
+    if (budgetStatus?.jars) {
+      for (const j of budgetStatus.jars) m.set(j.key, j);
+    }
+    return m;
+  }, [budgetStatus]);
+
+  // Map jarKey → funds
+  const fundsByJar = useMemo(() => {
+    const m = new Map<string, Fund[]>();
+    for (const f of funds) {
+      const jk = f.jar?.key;
+      if (jk) {
+        if (!m.has(jk)) m.set(jk, []);
+        m.get(jk)!.push(f);
+      }
+    }
+    return m;
+  }, [funds]);
 
   const totalExpense = totals?.expense_vnd ?? 0;
 
@@ -123,29 +149,42 @@ export default function Jars({ month }: { month: string }) {
       </div>
 
       {/* Summary cards */}
-      {activeTab === 'list' && totals && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm flex flex-col gap-2">
-            <div className="flex items-center gap-2 text-slate-500">
-              <Wallet className="size-4 text-green-500" />
-              <p className="text-sm font-medium uppercase tracking-wider">Tổng thu</p>
+      {activeTab === 'list' && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-white dark:bg-[#1a2433] rounded-xl p-5 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col gap-2">
+            <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
+              <Wallet className="size-4 text-blue-500" />
+              <p className="text-sm font-medium uppercase tracking-wider">Kế hoạch</p>
             </div>
-            <p className="text-green-600 text-2xl font-bold leading-tight">{formatCurrency(totals.income_vnd)}</p>
+            <p className="text-blue-600 dark:text-blue-400 text-xl font-bold leading-tight">
+              {formatCurrency(budgetStatus?.assigned ?? totals?.income_vnd ?? 0)}
+            </p>
           </div>
-          <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm flex flex-col gap-2">
-            <div className="flex items-center gap-2 text-slate-500">
+          <div className="bg-white dark:bg-[#1a2433] rounded-xl p-5 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col gap-2">
+            <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
+              <PiggyBank className="size-4 text-purple-500" />
+              <p className="text-sm font-medium uppercase tracking-wider">Cam kết</p>
+            </div>
+            <p className="text-purple-600 dark:text-purple-400 text-xl font-bold leading-tight">
+              {formatCurrency(budgetStatus?.committed ?? 0)}
+            </p>
+          </div>
+          <div className="bg-white dark:bg-[#1a2433] rounded-xl p-5 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col gap-2">
+            <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
               <Wallet className="size-4 text-red-500" />
-              <p className="text-sm font-medium uppercase tracking-wider">Tổng chi</p>
+              <p className="text-sm font-medium uppercase tracking-wider">Đã chi</p>
             </div>
-            <p className="text-red-600 text-2xl font-bold leading-tight">{formatCurrency(totals.expense_vnd)}</p>
+            <p className="text-red-600 dark:text-red-400 text-xl font-bold leading-tight">
+              {formatCurrency(budgetStatus?.total_spent ?? totals?.expense_vnd ?? 0)}
+            </p>
           </div>
-          <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm flex flex-col gap-2">
-            <div className="flex items-center gap-2 text-slate-500">
-              <Wallet className="size-4 text-blue-600" />
-              <p className="text-sm font-medium uppercase tracking-wider">Net</p>
+          <div className="bg-white dark:bg-[#1a2433] rounded-xl p-5 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col gap-2">
+            <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
+              <Wallet className="size-4 text-emerald-500" />
+              <p className="text-sm font-medium uppercase tracking-wider">Còn lại</p>
             </div>
-            <p className={`text-2xl font-bold leading-tight ${totals.net_vnd >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {formatSignedAmount(totals.net_vnd)}
+            <p className={`text-xl font-bold leading-tight ${(budgetStatus?.available_to_spend ?? (totals?.net_vnd ?? 0)) >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+              {formatCurrency(budgetStatus?.available_to_spend ?? totals?.net_vnd ?? 0)}
             </p>
           </div>
         </div>
@@ -164,39 +203,96 @@ export default function Jars({ month }: { month: string }) {
               jarSummaries.map((jar) => {
                 const percent = totalExpense > 0 ? Math.round((jar.expense / totalExpense) * 100) : 0;
                 const isSelected = selectedJar?.jar === jar.jar;
+                const metrics = jarMetrics.get(jar.jar);
+                const jarFunds = fundsByJar.get(jar.jar) ?? [];
+                const isExpandedFunds = expandedFundsJar === jar.jar;
                 
                 return (
-                  <div 
-                    key={jar.jar}
-                    onClick={() => setSelectedJar(jar)}
-                    className={`group relative flex items-center gap-4 bg-white p-4 rounded-xl border cursor-pointer transition-all ${
-                      isSelected ? 'border-blue-500 shadow-sm' : 'border-slate-200 hover:border-slate-300 hover:shadow-sm'
-                    }`}
-                  >
-                    {isSelected && <div className="absolute right-0 top-0 h-full w-1.5 bg-blue-500 rounded-l-sm rounded-r-xl"></div>}
-                    
-                    <div className="flex items-center gap-4 flex-1">
-                      <div className={`flex items-center justify-center rounded-lg shrink-0 size-12 ${getJarIconBg(jar.jar, isSelected)}`}>
-                        <Wallet className="size-6" />
-                      </div>
-                      <div className="flex flex-col justify-center">
-                        <p className="text-slate-900 text-base font-semibold leading-normal">{jar.jar}</p>
-                        <p className="text-sm text-slate-500 leading-normal mt-0.5">
-                          Chi: {formatCurrency(jar.expense)} · Thu: {formatCurrency(jar.income)} · {jar.count} GD
-                        </p>
-                      </div>
-                    </div>
-                    
-                    <div className="shrink-0 flex items-center gap-4">
-                      <div className="flex flex-col items-end gap-1">
-                        <div className="w-24 h-2 bg-slate-100 rounded-full overflow-hidden">
-                          <div className={`h-full rounded-full ${getJarColor(jar.jar)}`} style={{ width: `${percent}%` }}></div>
+                  <div key={jar.jar} className="flex flex-col">
+                    <div 
+                      onClick={() => setSelectedJar(jar)}
+                      className={`group relative flex items-center gap-4 bg-white dark:bg-[#1a2433] p-4 rounded-xl border cursor-pointer transition-all ${
+                        isSelected ? 'border-blue-500 shadow-sm' : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 hover:shadow-sm'
+                      }`}
+                    >
+                      {isSelected && <div className="absolute right-0 top-0 h-full w-1.5 bg-blue-500 rounded-l-sm rounded-r-xl"></div>}
+                      
+                      <div className="flex items-center gap-4 flex-1">
+                        <div className={`flex items-center justify-center rounded-lg shrink-0 size-12 ${getJarIconBg(jar.jar, isSelected)}`}>
+                          <Wallet className="size-6" />
                         </div>
-                        <span className={`text-xs font-medium ${isSelected ? 'text-blue-600' : 'text-slate-500'}`}>
-                          {percent}% chi
-                        </span>
+                        <div className="flex flex-col justify-center flex-1">
+                          <p className="text-slate-900 dark:text-white text-base font-semibold leading-normal">{jar.jar}</p>
+                          {metrics ? (
+                            <div className="grid grid-cols-4 gap-2 mt-1.5 text-xs">
+                              <div>
+                                <span className="text-slate-400 dark:text-slate-500 block">Kế hoạch</span>
+                                <span className="font-semibold text-blue-600 dark:text-blue-400">{formatCurrency(metrics.planned)}</span>
+                              </div>
+                              <div>
+                                <span className="text-slate-400 dark:text-slate-500 block">Cam kết</span>
+                                <span className="font-semibold text-purple-600 dark:text-purple-400">{formatCurrency(metrics.committed)}</span>
+                              </div>
+                              <div>
+                                <span className="text-slate-400 dark:text-slate-500 block">Đã chi</span>
+                                <span className="font-semibold text-red-600 dark:text-red-400">{formatCurrency(metrics.spent)}</span>
+                              </div>
+                              <div>
+                                <span className="text-slate-400 dark:text-slate-500 block">Còn lại</span>
+                                <span className={`font-semibold ${metrics.available >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>{formatCurrency(metrics.available)}</span>
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="text-sm text-slate-500 dark:text-slate-400 leading-normal mt-0.5">
+                              Chi: {formatCurrency(jar.expense)} · Thu: {formatCurrency(jar.income)} · {jar.count} GD
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div className="shrink-0 flex flex-col items-end gap-1">
+                        <div className="flex flex-col items-end gap-1">
+                          <div className="w-24 h-2 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                            <div className={`h-full rounded-full ${
+                              metrics && metrics.available < 0 ? 'bg-red-500' : getJarColor(jar.jar)
+                            }`} style={{ width: `${percent}%` }}></div>
+                          </div>
+                          <span className={`text-xs font-medium ${isSelected ? 'text-blue-600' : 'text-slate-500 dark:text-slate-400'}`}>
+                            {percent}% chi
+                          </span>
+                        </div>
+                        {jarFunds.length > 0 && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setExpandedFundsJar(isExpandedFunds ? null : jar.jar); }}
+                            className="flex items-center gap-1 text-xs text-blue-500 hover:text-blue-600 mt-1"
+                          >
+                            <PiggyBank className="size-3" />
+                            {jarFunds.length} quỹ con
+                            {isExpandedFunds ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
+                          </button>
+                        )}
                       </div>
                     </div>
+                    
+                    {/* Funds expansion */}
+                    {isExpandedFunds && jarFunds.length > 0 && (
+                      <div className="ml-16 mt-1 mb-2 flex flex-col gap-1.5">
+                        {jarFunds.map((fund) => (
+                          <div key={fund.id} className="flex items-center justify-between bg-slate-50 dark:bg-[#0c1222] rounded-lg px-3 py-2 border border-slate-100 dark:border-slate-700 text-xs">
+                            <div className="flex flex-col">
+                              <span className="font-medium text-slate-700 dark:text-slate-200">{fund.name}</span>
+                              <span className="text-slate-400 dark:text-slate-500">
+                                {fund.status === 'active' ? 'Đang hoạt động' : fund.status === 'completed' ? 'Hoàn thành' : 'Tạm dừng'}
+                              </span>
+                            </div>
+                            <div className="flex flex-col items-end">
+                              <span className="font-bold text-slate-700 dark:text-slate-200">{formatCurrency(fund.reserved_amount)}</span>
+                              <span className="text-slate-400">/ {formatCurrency(fund.target_amount)}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 );
               })
@@ -204,33 +300,72 @@ export default function Jars({ month }: { month: string }) {
           </div>
           
           {selectedJar && (
-            <div className="w-full lg:w-[400px] bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col p-6 h-fit sticky top-6">
+            <div className="w-full lg:w-[400px] bg-white dark:bg-[#1a2433] rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col p-6 h-fit sticky top-6">
               <div className="flex items-center gap-3 mb-6">
                 <div className={`size-10 rounded-full flex items-center justify-center ${getJarIconBg(selectedJar.jar, true)}`}>
                   <Wallet className="size-5" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-slate-900">{selectedJar.jar}</h2>
-                  <p className="text-sm text-slate-500">{selectedJar.count} giao dịch</p>
+                  <h2 className="text-xl font-bold text-slate-900 dark:text-white">{selectedJar.jar}</h2>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">{selectedJar.count} giao dịch</p>
                 </div>
               </div>
               
-              <div className="bg-slate-50 p-5 rounded-xl border border-slate-100 mb-6 space-y-4">
-                <div className="flex justify-between items-baseline">
-                  <span className="text-sm font-medium text-slate-500">Thu nhập</span>
-                  <span className="text-lg font-bold text-green-600">{formatCurrency(selectedJar.income)}</span>
-                </div>
-                <div className="flex justify-between items-baseline">
-                  <span className="text-sm font-medium text-slate-500">Chi tiêu</span>
-                  <span className="text-lg font-bold text-red-600">{formatCurrency(selectedJar.expense)}</span>
-                </div>
-                <div className="border-t border-slate-200 pt-4 flex justify-between items-baseline">
-                  <span className="text-sm font-semibold text-slate-700">Net</span>
-                  <span className={`text-xl font-bold ${selectedJar.net >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {formatSignedAmount(selectedJar.net)}
-                  </span>
-                </div>
-              </div>
+              {/* Budget-aware metrics */}
+              {(() => {
+                const metrics = jarMetrics.get(selectedJar.jar);
+                if (metrics) {
+                  return (
+                    <div className="bg-slate-50 dark:bg-[#0c1222] p-5 rounded-xl border border-slate-100 dark:border-slate-700 mb-6 space-y-3">
+                      <div className="flex justify-between items-baseline">
+                        <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Kế hoạch</span>
+                        <span className="text-lg font-bold text-blue-600 dark:text-blue-400">{formatCurrency(metrics.planned)}</span>
+                      </div>
+                      <div className="flex justify-between items-baseline">
+                        <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Cam kết</span>
+                        <span className="text-lg font-bold text-purple-600 dark:text-purple-400">{formatCurrency(metrics.committed)}</span>
+                      </div>
+                      <div className="flex justify-between items-baseline">
+                        <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Đã chi</span>
+                        <span className="text-lg font-bold text-red-600 dark:text-red-400">{formatCurrency(metrics.spent)}</span>
+                      </div>
+                      {metrics.rollover > 0 && (
+                        <div className="flex justify-between items-baseline">
+                          <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Dư kỳ trước</span>
+                          <span className="text-lg font-bold text-teal-600 dark:text-teal-400">{formatCurrency(metrics.rollover)}</span>
+                        </div>
+                      )}
+                      <div className="border-t border-slate-200 dark:border-slate-600 pt-3 flex justify-between items-baseline">
+                        <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Còn lại</span>
+                        <span className={`text-xl font-bold ${metrics.available >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                          {formatCurrency(metrics.available)}
+                        </span>
+                      </div>
+                      {metrics.funds_count > 0 && (
+                        <p className="text-xs text-slate-400 dark:text-slate-500">{metrics.funds_count} quỹ con gắn với hũ này</p>
+                      )}
+                    </div>
+                  );
+                }
+                return (
+                  <div className="bg-slate-50 dark:bg-[#0c1222] p-5 rounded-xl border border-slate-100 dark:border-slate-700 mb-6 space-y-4">
+                    <div className="flex justify-between items-baseline">
+                      <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Thu nhập</span>
+                      <span className="text-lg font-bold text-green-600">{formatCurrency(selectedJar.income)}</span>
+                    </div>
+                    <div className="flex justify-between items-baseline">
+                      <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Chi tiêu</span>
+                      <span className="text-lg font-bold text-red-600">{formatCurrency(selectedJar.expense)}</span>
+                    </div>
+                    <div className="border-t border-slate-200 dark:border-slate-600 pt-4 flex justify-between items-baseline">
+                      <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Net</span>
+                      <span className={`text-xl font-bold ${selectedJar.net >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {formatSignedAmount(selectedJar.net)}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {totalExpense > 0 && (
                 <div className="mb-4">

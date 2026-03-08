@@ -298,3 +298,135 @@ export interface Jar {
 export interface JarsResponse {
   data: Jar[];
 }
+
+// ---------------------------------------------------------------
+// Budget Status (TopBar / global state) — GET /api/budget-status
+// ---------------------------------------------------------------
+
+export interface BudgetStatusJarMetric {
+  key: string;
+  label: string;
+  planned: number;
+  committed: number;
+  spent: number;
+  available: number;
+  rollover: number;
+  funds_count: number;
+}
+
+export interface OverspentJar {
+  key: string;
+  label: string;
+  over: number;
+}
+
+export interface BudgetStatusData {
+  month: string;
+  income: number;
+  sheet_income: number;
+  assigned: number;
+  unassigned: number;
+  committed: number;
+  total_spent: number;
+  available_to_spend: number;
+  overspent_jars: OverspentJar[];
+  period_status: string;
+  has_period: boolean;
+  jars: BudgetStatusJarMetric[];
+}
+
+export interface BudgetStatusResponse {
+  data: BudgetStatusData;
+}
+
+// ---------------------------------------------------------------
+// Fund (Quỹ con) types — matching BE FundController
+// ---------------------------------------------------------------
+
+export interface FundJar {
+  id: number;
+  key: string;
+  label: string;
+}
+
+export interface FundGoal {
+  id: number;
+  name: string;
+}
+
+export interface Fund {
+  id: number;
+  name: string;
+  jar: FundJar | null;
+  goal: FundGoal | null;
+  target_amount: number;
+  reserved_amount: number;
+  spent_amount: number;
+  available: number;
+  monthly_reserve: number;
+  progress_pct: number;
+  status: 'active' | 'completed' | 'paused';
+  notes: string | null;
+  sort_order: number;
+}
+
+export interface FundsResponse {
+  data: Fund[];
+}
+
+export interface CreateFundPayload {
+  name: string;
+  jar_id: number;
+  goal_id?: number | null;
+  target_amount?: number;
+  monthly_reserve?: number;
+  notes?: string | null;
+  sort_order?: number;
+}
+
+// ---------------------------------------------------------------
+// Budget Period types — matching BE BudgetPeriodController
+// ---------------------------------------------------------------
+
+export interface BudgetPeriod {
+  id: number;
+  month: string;
+  year: number;
+  month_num: number;
+  total_income: number;
+  to_be_budgeted: number;
+  status: string;
+  rollover_policy: string;
+  notes: string | null;
+}
+
+export interface BudgetPeriodsResponse {
+  data: BudgetPeriod[];
+}
+
+export interface BudgetWorkspaceJar {
+  allocation_id: number;
+  jar_key: string;
+  jar_label: string;
+  percent: number;
+  planned_amount: number;
+  funded_amount: number;
+  lines_planned: number;
+  lines_actual: number;
+  unassigned: number;
+  budget_lines: unknown[];
+}
+
+export interface BudgetWorkspace {
+  period: BudgetPeriod;
+  jars: BudgetWorkspaceJar[];
+}
+
+export interface CreateBudgetPeriodPayload {
+  month: string;
+  total_income: number;
+  year?: number;
+  month_num?: number;
+  rollover_policy?: string;
+  notes?: string | null;
+}

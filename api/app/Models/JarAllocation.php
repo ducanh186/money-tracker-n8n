@@ -17,14 +17,20 @@ class JarAllocation extends Model
         'percent_override',
         'planned_amount',
         'funded_amount',
+        'committed_amount',
+        'spent_amount',
+        'rollover_amount',
     ];
 
     protected function casts(): array
     {
         return [
-            'percent_override' => 'decimal:2',
-            'planned_amount'   => 'integer',
-            'funded_amount'    => 'integer',
+            'percent_override'  => 'decimal:2',
+            'planned_amount'    => 'integer',
+            'funded_amount'     => 'integer',
+            'committed_amount'  => 'integer',
+            'spent_amount'      => 'integer',
+            'rollover_amount'   => 'integer',
         ];
     }
 
@@ -61,5 +67,13 @@ class JarAllocation extends Model
     public function getRemainingAttribute(): int
     {
         return $this->planned_amount - (int) $this->budgetLines()->sum('planned_amount');
+    }
+
+    /**
+     * Available = Planned + Rollover - Committed - Spent
+     */
+    public function getAvailableAttribute(): int
+    {
+        return $this->planned_amount + $this->rollover_amount - $this->committed_amount - $this->spent_amount;
     }
 }

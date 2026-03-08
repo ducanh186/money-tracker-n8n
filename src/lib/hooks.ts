@@ -18,8 +18,22 @@ import {
   createTransfer,
   fetchJars,
   updateJar,
+  fetchBudgetStatus,
+  fetchFunds,
+  createFund,
+  updateFund,
+  deleteFund,
+  reserveFund,
+  spendFund,
+  fetchBudgetPeriods,
+  fetchBudgetPeriod,
+  createBudgetPeriod,
+  updateBudgetPeriod,
+  allocateBudgetPeriod,
+  overrideJarPercent,
+  closeBudgetPeriod,
 } from './api';
-import type { TransactionsQuery, CreateGoalPayload, ContributePayload, CreateAccountPayload, CreateTransferPayload } from './types';
+import type { TransactionsQuery, CreateGoalPayload, ContributePayload, CreateAccountPayload, CreateTransferPayload, CreateFundPayload, CreateBudgetPeriodPayload } from './types';
 
 // ---------------------------------------------------------------
 // Retry logic: max 2 retries
@@ -305,6 +319,174 @@ export function useUpdateJar() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['jars'] });
       queryClient.invalidateQueries({ queryKey: ['budget-plan'] });
+      queryClient.invalidateQueries({ queryKey: ['budget-status'] });
+    },
+  });
+}
+
+// ---------------------------------------------------------------
+// Budget Status Hook (TopBar / global state)
+// ---------------------------------------------------------------
+export function useBudgetStatus(month: string) {
+  return useQuery({
+    queryKey: ['budget-status', month],
+    queryFn: () => fetchBudgetStatus(month),
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+    refetchInterval: 60_000,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: false,
+    retry: MAX_RETRIES,
+  });
+}
+
+// ---------------------------------------------------------------
+// Funds Hooks (Quỹ con)
+// ---------------------------------------------------------------
+
+export function useFunds(jarId?: number) {
+  return useQuery({
+    queryKey: ['funds', jarId ?? 'all'],
+    queryFn: () => fetchFunds(jarId),
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+    retry: MAX_RETRIES,
+  });
+}
+
+export function useCreateFund() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: CreateFundPayload) => createFund(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['funds'] });
+      queryClient.invalidateQueries({ queryKey: ['budget-status'] });
+    },
+  });
+}
+
+export function useUpdateFund() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: Partial<CreateFundPayload> }) =>
+      updateFund(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['funds'] });
+      queryClient.invalidateQueries({ queryKey: ['budget-status'] });
+    },
+  });
+}
+
+export function useDeleteFund() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => deleteFund(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['funds'] });
+      queryClient.invalidateQueries({ queryKey: ['budget-status'] });
+    },
+  });
+}
+
+export function useReserveFund() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, amount }: { id: number; amount: number }) => reserveFund(id, amount),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['funds'] });
+      queryClient.invalidateQueries({ queryKey: ['budget-status'] });
+    },
+  });
+}
+
+export function useSpendFund() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, amount, description }: { id: number; amount: number; description?: string }) =>
+      spendFund(id, amount, description),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['funds'] });
+      queryClient.invalidateQueries({ queryKey: ['budget-status'] });
+    },
+  });
+}
+
+// ---------------------------------------------------------------
+// Budget Period Hooks (Kỳ ngân sách)
+// ---------------------------------------------------------------
+
+export function useBudgetPeriods() {
+  return useQuery({
+    queryKey: ['budget-periods'],
+    queryFn: fetchBudgetPeriods,
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+    retry: MAX_RETRIES,
+  });
+}
+
+export function useBudgetPeriod(id: number | null) {
+  return useQuery({
+    queryKey: ['budget-period', id],
+    queryFn: () => fetchBudgetPeriod(id!),
+    enabled: id !== null,
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+    retry: MAX_RETRIES,
+  });
+}
+
+export function useCreateBudgetPeriod() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: CreateBudgetPeriodPayload) => createBudgetPeriod(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['budget-periods'] });
+      queryClient.invalidateQueries({ queryKey: ['budget-status'] });
+      queryClient.invalidateQueries({ queryKey: ['budget-plan'] });
+    },
+  });
+}
+
+export function useAllocateBudgetPeriod() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, totalIncome }: { id: number; totalIncome?: number }) =>
+      allocateBudgetPeriod(id, totalIncome),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['budget-periods'] });
+      queryClient.invalidateQueries({ queryKey: ['budget-period'] });
+      queryClient.invalidateQueries({ queryKey: ['budget-status'] });
+      queryClient.invalidateQueries({ queryKey: ['budget-plan'] });
+    },
+  });
+}
+
+export function useOverrideJarPercent() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ periodId, jarId, percent }: { periodId: number; jarId: number; percent: number }) =>
+      overrideJarPercent(periodId, jarId, percent),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['budget-periods'] });
+      queryClient.invalidateQueries({ queryKey: ['budget-period'] });
+      queryClient.invalidateQueries({ queryKey: ['budget-status'] });
+      queryClient.invalidateQueries({ queryKey: ['budget-plan'] });
+    },
+  });
+}
+
+export function useCloseBudgetPeriod() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => closeBudgetPeriod(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['budget-periods'] });
+      queryClient.invalidateQueries({ queryKey: ['budget-period'] });
+      queryClient.invalidateQueries({ queryKey: ['budget-status'] });
     },
   });
 }

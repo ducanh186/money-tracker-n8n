@@ -13,9 +13,20 @@ import {
   Pencil,
   Check,
   X,
+  Lock,
+  Plus,
 } from 'lucide-react';
 import { formatCurrency } from '../lib/utils';
-import { useBudgetPlan, useTransactions, useJars, useUpdateJar } from '../lib/hooks';
+import { cn } from '../lib/utils';
+import {
+  useBudgetPlan,
+  useTransactions,
+  useJars,
+  useUpdateJar,
+  useBudgetStatus,
+  useCreateBudgetPeriod,
+  useCloseBudgetPeriod,
+} from '../lib/hooks';
 import type { BudgetJar, Transaction, Jar } from '../lib/types';
 
 // ── Jar styling ──────────────────────────────────────────────
@@ -179,6 +190,9 @@ export default function BudgetPlan({ month }: { month: string }) {
   const { data, isPending, error } = useBudgetPlan(month, planOverride);
   const { data: jarsRes } = useJars();
   const updateJarMutation = useUpdateJar();
+  const { data: budgetStatus } = useBudgetStatus(month);
+  const createPeriodMutation = useCreateBudgetPeriod();
+  const closePeriodMutation = useCloseBudgetPeriod();
 
   useEffect(() => {
     if (data?.data?.base_income) {
@@ -221,14 +235,98 @@ export default function BudgetPlan({ month }: { month: string }) {
   return (
     <div className="flex flex-col gap-6 max-w-7xl mx-auto">
       {/* Page header */}
-      <div className="flex flex-col gap-1">
-        <h2 className="text-slate-900 dark:text-white text-3xl font-bold tracking-tight">
-          Đối chiếu Kế hoạch Chi tiêu
-        </h2>
-        <p className="text-slate-500 dark:text-slate-400 text-base">
-          So sánh kế hoạch ngân sách với thực tế chi tiêu theo hũ
-        </p>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+        <div className="flex flex-col gap-1">
+          <h2 className="text-slate-900 dark:text-white text-3xl font-bold tracking-tight">
+            Phân bổ Ngân sách tháng
+          </h2>
+          <p className="text-slate-500 dark:text-slate-400 text-base">
+            6 Jars + Zero-Based Budgeting — phân bổ đến khi Chưa phân bổ = 0
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {budgetStatus && !budgetStatus.has_period && (
+            <button
+              onClick={() => createPeriodMutation.mutate({ month, total_income: budgetStatus.income })}
+              disabled={createPeriodMutation.isPending}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 disabled:opacity-50"
+            >
+              {createPeriodMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
+              Tạo kỳ ngân sách
+            </button>
+          )}
+          {budgetStatus && budgetStatus.has_period && budgetStatus.period_status === 'open' && (
+            <button
+              onClick={() => {
+                if (budgetStatus.unassigned !== 0) {
+                  alert(`Chưa phân bổ hết: ${formatCurrency(budgetStatus.unassigned)} còn dư. Hãy phân bổ hết trước khi đóng tháng.`);
+                  return;
+                }
+                const periodId = (budgetStatus as any).period_id;
+                if (periodId) closePeriodMutation.mutate(periodId);
+              }}
+              disabled={closePeriodMutation.isPending}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 disabled:opacity-50"
+            >
+              {closePeriodMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Lock className="size-4" />}
+              Đóng tháng
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* Allocation Status Bar */}
+      {budgetStatus && (
+        <div className="bg-white dark:bg-[#1a2433] rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-4">
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between text-sm">
+              <span className="font-medium text-slate-700 dark:text-slate-200">Trạng thái phân bổ</span>
+              <span className={cn(
+                "font-bold text-sm",
+                budgetStatus.unassigned === 0
+                  ? "text-green-600 dark:text-green-400"
+                  : "text-red-600 dark:text-red-400"
+              )}>
+                {budgetStatus.unassigned === 0 ? '✓ Đã cân bằng' : `Còn ${formatCurrency(budgetStatus.unassigned)} chưa phân bổ`}
+              </span>
+            </div>
+            <div className="flex items-center gap-1 h-4 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-700">
+              {budgetStatus.income > 0 && (
+                <>
+                  <div
+                    className="h-full bg-blue-500 rounded-l-full"
+                    style={{ width: `${Math.min(100, (budgetStatus.assigned / budgetStatus.income) * 100)}%` }}
+                    title={`Đã phân bổ: ${formatCurrency(budgetStatus.assigned)}`}
+                  />
+                  {budgetStatus.unassigned > 0 && (
+                    <div
+                      className="h-full bg-red-400 rounded-r-full"
+                      style={{ width: `${(budgetStatus.unassigned / budgetStatus.income) * 100}%` }}
+                      title={`Chưa phân bổ: ${formatCurrency(budgetStatus.unassigned)}`}
+                    />
+                  )}
+                </>
+              )}
+            </div>
+            <div className="grid grid-cols-3 gap-4 text-xs">
+              <div>
+                <span className="text-slate-400 dark:text-slate-500">Thu nhập</span>
+                <p className="font-bold text-slate-800 dark:text-slate-200">{formatCurrency(budgetStatus.income)}</p>
+              </div>
+              <div>
+                <span className="text-slate-400 dark:text-slate-500">Đã phân bổ</span>
+                <p className="font-bold text-blue-600 dark:text-blue-400">{formatCurrency(budgetStatus.assigned)}</p>
+              </div>
+              <div>
+                <span className="text-slate-400 dark:text-slate-500">Chưa phân bổ</span>
+                <p className={cn("font-bold", budgetStatus.unassigned === 0 ? "text-green-600" : "text-red-600")}>
+                  {formatCurrency(budgetStatus.unassigned)}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Summary cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

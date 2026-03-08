@@ -80,6 +80,10 @@ docker run --rm \
 # 7. Ensure n8n local-files dir exists (mounted volume)
 mkdir -p $REPO_DIR/n8n/local-files
 
+# 7b. Ensure persistent data volume for SQLite
+echo "💾 Ensuring persistent data volume..."
+docker volume create almoney_app_data 2>/dev/null || true
+
 # 8. Stop old containers if running
 echo "🛑 Stopping old containers..."
 cd $REPO_DIR/deploy
@@ -99,6 +103,9 @@ sleep 10
 
 echo "🔍 Checking service status..."
 docker compose ps
+
+echo "💾 Verifying SQLite database..."
+docker exec almoney_api sh -c 'test -f /data/app.sqlite && echo "  ✅ SQLite DB exists" || echo "  ❌ SQLite DB missing"'
 
 echo ""
 echo "✅ Deployment complete!"

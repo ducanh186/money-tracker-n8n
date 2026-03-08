@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
-import { Search, ChevronLeft, ChevronRight, Loader2, AlertCircle, ArrowUpRight, ArrowDownLeft, ArrowLeftRight } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, Loader2, AlertCircle, ArrowUpRight, ArrowDownLeft, ArrowLeftRight, CircleDot } from 'lucide-react';
 import { formatCurrency, formatSignedAmount } from '../lib/utils';
-import { useTransactions } from '../lib/hooks';
+import { useTransactions, useBudgetStatus } from '../lib/hooks';
 import type { Transaction, TransactionsQuery } from '../lib/types';
 import TransactionDetails from '../components/TransactionDetails';
 
@@ -59,6 +59,18 @@ export default function Transactions({ month }: { month: string }) {
   const [activeFlow, setActiveFlow] = useState<TransactionsQuery['flow'] | undefined>(undefined);
   const [page, setPage] = useState(1);
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
+  const { data: budgetStatus } = useBudgetStatus(month);
+
+  // Map of jar_key → planned amounts for badge coloring
+  const jarBudgetMap = useMemo(() => {
+    const m = new Map<string, { planned: number; spent: number; available: number }>();
+    if (budgetStatus?.jars) {
+      for (const j of budgetStatus.jars) {
+        m.set(j.key, { planned: j.planned, spent: j.spent, available: j.available });
+      }
+    }
+    return m;
+  }, [budgetStatus]);
 
   // Simple debounce for search
   const [timer, setTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
@@ -100,23 +112,23 @@ export default function Transactions({ month }: { month: string }) {
       {/* Summary cards */}
       {meta && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
-            <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">Tổng thu</p>
-            <p className="text-xl font-bold text-green-600">{formatCurrency(meta.totals.income_vnd)}</p>
+          <div className="bg-white dark:bg-[#1a2433] rounded-xl p-5 border border-slate-200 dark:border-slate-700 shadow-sm">
+            <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Tổng thu</p>
+            <p className="text-xl font-bold text-green-600 dark:text-green-400">{formatCurrency(meta.totals.income_vnd)}</p>
           </div>
-          <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
-            <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">Tổng chi</p>
-            <p className="text-xl font-bold text-red-600">{formatCurrency(meta.totals.expense_vnd)}</p>
+          <div className="bg-white dark:bg-[#1a2433] rounded-xl p-5 border border-slate-200 dark:border-slate-700 shadow-sm">
+            <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Tổng chi</p>
+            <p className="text-xl font-bold text-red-600 dark:text-red-400">{formatCurrency(meta.totals.expense_vnd)}</p>
           </div>
-          <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
-            <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">Net</p>
-            <p className={`text-xl font-bold ${meta.totals.net_vnd >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {formatSignedAmount(meta.totals.net_vnd)}
+          <div className="bg-white dark:bg-[#1a2433] rounded-xl p-5 border border-slate-200 dark:border-slate-700 shadow-sm">
+            <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Được phép chi</p>
+            <p className={`text-xl font-bold ${(budgetStatus?.available_to_spend ?? meta.totals.net_vnd) >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+              {formatCurrency(budgetStatus?.available_to_spend ?? meta.totals.net_vnd)}
             </p>
           </div>
-          <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
-            <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">Số dư cuối kỳ</p>
-            <p className="text-xl font-bold text-slate-900">
+          <div className="bg-white dark:bg-[#1a2433] rounded-xl p-5 border border-slate-200 dark:border-slate-700 shadow-sm">
+            <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Số dư cuối kỳ</p>
+            <p className="text-xl font-bold text-slate-900 dark:text-white">
               {meta.totals.ending_balance_vnd != null ? formatCurrency(meta.totals.ending_balance_vnd) : '—'}
             </p>
           </div>
@@ -133,20 +145,20 @@ export default function Transactions({ month }: { month: string }) {
             value={search}
             onChange={(e) => handleSearch(e.target.value)}
             placeholder="Tìm kiếm giao dịch..."
-            className="w-full pl-10 pr-4 py-2.5 text-sm rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-slate-400"
+            className="w-full pl-10 pr-4 py-2.5 text-sm rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-[#1a2433] text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-slate-400"
           />
         </div>
 
         {/* Flow tabs */}
-        <div className="flex bg-slate-100 p-1 rounded-lg self-start">
+        <div className="flex bg-slate-100 dark:bg-[#0c1222] p-1 rounded-lg self-start">
           {FLOW_TABS.map((tab) => (
             <button
               key={tab.label}
               onClick={() => { setActiveFlow(tab.value); setPage(1); }}
               className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
                 activeFlow === tab.value
-                  ? 'bg-white text-slate-900 shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-white dark:bg-[#1a2433] text-slate-900 dark:text-white shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               {tab.label}
@@ -178,7 +190,7 @@ export default function Transactions({ month }: { month: string }) {
               <p className="text-slate-400 text-lg">Không tìm thấy giao dịch nào</p>
             </div>
           ) : (
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="bg-white dark:bg-[#1a2433] rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
               {/* Desktop table */}
               <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-sm">
@@ -211,7 +223,22 @@ export default function Transactions({ month }: { month: string }) {
                           <span className="text-slate-600">{tx.category ?? '—'}</span>
                         </td>
                         <td className="px-5 py-3.5">
-                          <span className="text-slate-600">{tx.jar ?? '—'}</span>
+                          {tx.jar ? (
+                            <span className="inline-flex items-center gap-1 text-slate-600 dark:text-slate-300">
+                              {(() => {
+                                const jb = jarBudgetMap.get(tx.jar);
+                                if (!jb) return <CircleDot className="size-3 text-slate-400" />;
+                                if (jb.available < 0) return <CircleDot className="size-3 text-red-500" />;
+                                return <CircleDot className="size-3 text-green-500" />;
+                              })()}
+                              {tx.jar}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-slate-400 italic">
+                              <CircleDot className="size-3 text-slate-300" />
+                              Chưa gán
+                            </span>
+                          )}
                         </td>
                         <td className="px-5 py-3.5">
                           <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${flowColor(tx.flow)}`}>

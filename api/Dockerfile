@@ -33,10 +33,9 @@ RUN composer dump-autoload --optimize
 RUN mkdir -p /var/www/storage/framework/cache/data \
     && mkdir -p /var/www/storage/framework/sessions \
     && mkdir -p /var/www/storage/framework/views \
-    && mkdir -p /var/www/database \
-    && touch /var/www/database/database.sqlite \
-    && chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache /var/www/database \
-    && chmod -R 775 /var/www/storage /var/www/bootstrap/cache /var/www/database
+    && mkdir -p /data \
+    && chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache /data \
+    && chmod -R 775 /var/www/storage /var/www/bootstrap/cache /data
 
 # PHP-FPM config (tuning + ping endpoint for healthcheck)
 RUN echo "pm = dynamic" >> /usr/local/etc/php-fpm.d/www.conf \

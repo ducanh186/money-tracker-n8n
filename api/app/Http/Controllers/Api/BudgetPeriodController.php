@@ -141,4 +141,31 @@ class BudgetPeriodController extends Controller
             'message' => 'Jar percent overridden for this period.',
         ]);
     }
+
+    /**
+     * POST /api/budget-periods/{id}/close
+     *
+     * Close a budget month. Validates unassigned = 0.
+     */
+    public function close(Request $request, BudgetPeriod $budgetPeriod): JsonResponse
+    {
+        // Check unassigned
+        $allocated = (int) $budgetPeriod->jarAllocations()->sum('planned_amount');
+        $unassigned = $budgetPeriod->total_income - $allocated;
+
+        if ($unassigned !== 0) {
+            return response()->json([
+                'error'   => 'unassigned_not_zero',
+                'message' => 'Không thể đóng tháng khi còn ' . number_format(abs($unassigned)) . ' VND chưa phân bổ.',
+                'unassigned' => $unassigned,
+            ], 422);
+        }
+
+        $budgetPeriod->update(['status' => 'closed']);
+
+        return response()->json([
+            'data'    => $this->allocationService->getWorkspace($budgetPeriod),
+            'message' => 'Tháng ngân sách đã được đóng.',
+        ]);
+    }
 }
