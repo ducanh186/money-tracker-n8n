@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Contracts\TransactionsRepositoryInterface;
+use App\Models\BudgetSetting;
 use App\Models\Jar;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -36,7 +37,9 @@ class BudgetPlanController extends Controller
 
         $overrideIncome = $request->query('base_income');
 
-        $cacheKey = 'budget_plan_' . md5($month . '|' . ($overrideIncome ?? ''));
+        // Include jar percentages in cache key so changes auto-invalidate
+        $jarHash = md5(Jar::where('is_active', true)->orderBy('sort_order')->pluck('percent')->implode(','));
+        $cacheKey = 'budget_plan_' . md5($month . '|' . ($overrideIncome ?? '') . '|' . $jarHash);
         $cached = Cache::get($cacheKey);
         if ($cached !== null) {
             return response()->json($cached);
@@ -75,10 +78,19 @@ class BudgetPlanController extends Controller
             }
         }
 
-        // base_income: override > sheet income > config fallback
-        $baseIncome = $overrideIncome !== null
-            ? (int) $overrideIncome
-            : ($sheetIncome > 0 ? $sheetIncome : (int) config('budget_plan.base_income', 13_600_000));
+        // base_income: query param > DB setting > sheet income > config fallback
+        if ($overrideIncome !== null) {
+            $baseIncome = (int) $overrideIncome;
+        } else {
+            $dbSetting = BudgetSetting::where('month', $month)->first();
+            if ($dbSetting && $dbSetting->base_income_override !== null) {
+                $baseIncome = (int) $dbSetting->base_income_override;
+            } elseif ($sheetIncome > 0) {
+                $baseIncome = $sheetIncome;
+            } else {
+                $baseIncome = (int) config('budget_plan.base_income', 13_600_000);
+            }
+        }
 
         // Get jar percentages from DB (editable)
         $dbJars = Jar::where('is_active', true)->orderBy('sort_order')->get();
@@ -92,7 +104,7 @@ class BudgetPlanController extends Controller
             // Match by jar key first (sheet uses keys like NEC, LTSS), fallback to label
             $actual   = $actualByJar[$jar->key] ?? ($actualByJar[$label] ?? 0);
             $remaining = $planned - $actual;
-            $usagePct = $planned > 0 ? round(($actual / $planned) * 100, 1) : 0;
+            $usagePct = $planned > 0 ? round(($actual / $planned) * 100, 2) : 0;
 
             if ($usagePct <= $thresholds['ok_max']) {
                 $status = 'OK';
@@ -129,7 +141,7 @@ class BudgetPlanController extends Controller
                     'total_actual'    => $totalActual,
                     'total_remaining' => $totalPlanned - $totalActual,
                     'usage_pct'       => $totalPlanned > 0
-                        ? round(($totalActual / $totalPlanned) * 100, 1)
+                        ? round(($totalActual / $totalPlanned) * 100, 2)
                         : 0,
                 ],
                 'thresholds'    => $thresholds,

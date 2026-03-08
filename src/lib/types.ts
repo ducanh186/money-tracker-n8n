@@ -99,6 +99,15 @@ export interface BudgetPlanResponse {
   data: BudgetPlanData;
 }
 
+export interface BudgetSettingData {
+  month: string;
+  base_income_override: number | null;
+}
+
+export interface BudgetSettingResponse {
+  data: BudgetSettingData;
+}
+
 // ---------------------------------------------------------------
 // Dashboard summary (lightweight) types
 // ---------------------------------------------------------------

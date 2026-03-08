@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AccountController;
 use App\Http\Controllers\Api\BudgetLineController;
 use App\Http\Controllers\Api\BudgetPeriodController;
 use App\Http\Controllers\Api\BudgetPlanController;
+use App\Http\Controllers\Api\BudgetSettingController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DebtController;
 use App\Http\Controllers\Api\FundController;
@@ -182,6 +183,9 @@ Route::middleware(['etag'])->group(function () {
 
     // Budget Status (aggregated for TopBar)
     Route::get('/budget-status', [DashboardController::class, 'budgetStatus']);
+
+    // Budget Settings (per-month overrides)
+    Route::get('/budget-settings/{month}', [BudgetSettingController::class, 'show']);
 });
 
 // ── Write endpoints with rate limiting ────────────────────────────
@@ -232,6 +236,9 @@ Route::middleware(['throttle:write'])->group(function () {
     Route::delete('/funds/{fund}', [FundController::class, 'destroy']);
     Route::post('/funds/{fund}/reserve', [FundController::class, 'reserve']);
     Route::post('/funds/{fund}/spend', [FundController::class, 'spend']);
+
+    // Budget Settings (write)
+    Route::put('/budget-settings/{month}', [BudgetSettingController::class, 'update']);
 
     // Budget Period close
     Route::post('/budget-periods/{budgetPeriod}/close', [BudgetPeriodController::class, 'close']);

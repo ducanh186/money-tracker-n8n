@@ -3,6 +3,7 @@ import type {
   TransactionDetailResponse,
   TransactionsQuery,
   BudgetPlanResponse,
+  BudgetSettingResponse,
   DashboardSummaryResponse,
   SyncStatusResponse,
   GoalsResponse,
@@ -145,6 +146,21 @@ export async function fetchBudgetPlan(
     url += `&base_income=${baseIncome}`;
   }
   return smartFetch(url);
+}
+
+// ---------------------------------------------------------------
+// Budget Settings (per-month overrides)
+// ---------------------------------------------------------------
+
+export async function fetchBudgetSetting(month: string): Promise<BudgetSettingResponse> {
+  return smartFetch(`${BASE}/budget-settings/${encodeURIComponent(month)}`);
+}
+
+export async function updateBudgetSetting(
+  month: string,
+  payload: { base_income_override: number | null },
+): Promise<{ data: { month: string; base_income_override: number | null }; message: string }> {
+  return apiWrite(`${BASE}/budget-settings/${encodeURIComponent(month)}`, 'PUT', payload);
 }
 
 // ---------------------------------------------------------------

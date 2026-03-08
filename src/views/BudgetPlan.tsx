@@ -26,6 +26,8 @@ import {
   useBudgetStatus,
   useCreateBudgetPeriod,
   useCloseBudgetPeriod,
+  useBudgetSetting,
+  useUpdateBudgetSetting,
 } from '../lib/hooks';
 import type { BudgetJar, Transaction, Jar } from '../lib/types';
 
@@ -182,10 +184,13 @@ function JarDrillDown({ jar, month }: { jar: BudgetJar; month: string }) {
 export default function BudgetPlan({ month }: { month: string }) {
   const [expandedJar, setExpandedJar] = useState<string | null>(null);
 
-  // Editable total plan (base_income override) state
+  // Editable total plan (base_income override) — persisted to DB
   const [editingPlan, setEditingPlan] = useState(false);
   const [planValue, setPlanValue] = useState('');
-  const [planOverride, setPlanOverride] = useState<number | null>(null);
+
+  const { data: settingRes } = useBudgetSetting(month);
+  const updateSettingMutation = useUpdateBudgetSetting();
+  const planOverride = settingRes?.data?.base_income_override ?? null;
 
   const { data, isPending, error } = useBudgetPlan(month, planOverride);
   const { data: jarsRes } = useJars();
@@ -240,9 +245,6 @@ export default function BudgetPlan({ month }: { month: string }) {
           <h2 className="text-slate-900 dark:text-white text-3xl font-bold tracking-tight">
             Phân bổ Ngân sách tháng
           </h2>
-          <p className="text-slate-500 dark:text-slate-400 text-base">
-            6 Jars + Zero-Based Budgeting — phân bổ đến khi Chưa phân bổ = 0
-          </p>
         </div>
         <div className="flex items-center gap-2">
           {budgetStatus && !budgetStatus.has_period && (
@@ -366,13 +368,12 @@ export default function BudgetPlan({ month }: { month: string }) {
                     if (e.key === 'Enter') {
                       const num = Number(planValue);
                       if (num > 0) {
-                        setPlanOverride(num);
+                        updateSettingMutation.mutate({ month, baseIncomeOverride: num });
                       }
                       setEditingPlan(false);
                     }
                     if (e.key === 'Escape') {
                       setPlanValue(String(plan.base_income));
-                      setPlanOverride(null);
                       setEditingPlan(false);
                     }
                   }}
@@ -381,7 +382,7 @@ export default function BudgetPlan({ month }: { month: string }) {
                   onClick={() => {
                     const num = Number(planValue);
                     if (num > 0) {
-                      setPlanOverride(num);
+                      updateSettingMutation.mutate({ month, baseIncomeOverride: num });
                     }
                     setEditingPlan(false);
                   }}
@@ -392,7 +393,7 @@ export default function BudgetPlan({ month }: { month: string }) {
                 <button
                   onClick={() => {
                     setPlanValue(String(plan.base_income));
-                    setPlanOverride(null);
+                    updateSettingMutation.mutate({ month, baseIncomeOverride: null });
                     setEditingPlan(false);
                   }}
                   className="text-slate-400 hover:text-slate-600 cursor-pointer"
@@ -419,7 +420,7 @@ export default function BudgetPlan({ month }: { month: string }) {
             )}
             <div className="mt-2 flex items-center gap-1 text-sm font-medium text-green-600 dark:text-green-400">
               <TrendingUp className="size-4" />
-              <span>{planOverride ? 'Đã tuỳ chỉnh' : '100%'}</span>
+              <span>{planOverride ? 'Đã tuỳ chỉnh' : `~${Math.round((summary.total_planned / (plan.sheet_income || plan.base_income)) * 100)}%`}</span>
             </div>
           </div>
         </div>
@@ -433,7 +434,7 @@ export default function BudgetPlan({ month }: { month: string }) {
             </h3>
             <div className="mt-2 flex items-center gap-1 text-sm font-medium text-red-600 dark:text-red-400">
               <TrendingDown className="size-4" />
-              <span>{summary.usage_pct}%</span>
+              <span>{Math.round(summary.usage_pct * 100) / 100}%</span>
             </div>
           </div>
         </div>
@@ -447,7 +448,7 @@ export default function BudgetPlan({ month }: { month: string }) {
             </h3>
             <div className="mt-2 flex items-center gap-1 text-sm font-medium text-white/90">
               <Wallet className="size-4" />
-              <span>{100 - summary.usage_pct}%</span>
+              <span>{Math.round((100 - summary.usage_pct) * 100) / 100}%</span>
             </div>
           </div>
         </div>
@@ -489,7 +490,7 @@ export default function BudgetPlan({ month }: { month: string }) {
                 {/* Progress bar */}
                 <div className="mb-4">
                   <div className="flex justify-between text-xs mb-1.5">
-                    <span className="text-slate-500 dark:text-slate-400 font-medium">Đã dùng {jar.usage_pct}%</span>
+                    <span className="text-slate-500 dark:text-slate-400 font-medium">Đã dùng {Math.round(jar.usage_pct * 100) / 100}%</span>
                     <span className="text-slate-500 dark:text-slate-400 font-medium">
                       {formatCurrency(jar.actual_amount)} / {formatCurrency(jar.planned_amount)}
                     </span>

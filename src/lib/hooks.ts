@@ -33,6 +33,8 @@ import {
   allocateBudgetPeriod,
   overrideJarPercent,
   closeBudgetPeriod,
+  fetchBudgetSetting,
+  updateBudgetSetting,
 } from './api';
 import type { TransactionsQuery, CreateGoalPayload, ContributePayload, CreateAccountPayload, CreateTransferPayload, CreateFundPayload, CreateBudgetPeriodPayload } from './types';
 
@@ -101,6 +103,33 @@ export function useBudgetPlan(month: string, baseIncome?: number | null) {
     gcTime: 5 * 60_000,
     refetchOnWindowFocus: false,
     retry: MAX_RETRIES,
+  });
+}
+
+// ---------------------------------------------------------------
+// Budget Setting Hook (per-month base_income override)
+// ---------------------------------------------------------------
+export function useBudgetSetting(month: string) {
+  return useQuery({
+    queryKey: ['budget-setting', month],
+    queryFn: () => fetchBudgetSetting(month),
+    staleTime: 5 * 60_000,
+    gcTime: 10 * 60_000,
+    refetchOnWindowFocus: false,
+    retry: MAX_RETRIES,
+  });
+}
+
+export function useUpdateBudgetSetting() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ month, baseIncomeOverride }: { month: string; baseIncomeOverride: number | null }) =>
+      updateBudgetSetting(month, { base_income_override: baseIncomeOverride }),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['budget-setting', variables.month] });
+      queryClient.invalidateQueries({ queryKey: ['budget-plan'] });
+      queryClient.invalidateQueries({ queryKey: ['budget-status'] });
+    },
   });
 }
 
