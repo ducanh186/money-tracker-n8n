@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import {
   fetchTransactions,
@@ -489,4 +490,21 @@ export function useCloseBudgetPeriod() {
       queryClient.invalidateQueries({ queryKey: ['budget-status'] });
     },
   });
+}
+
+// ---------------------------------------------------------------
+// Dark Mode Hook — reactive, watches documentElement class changes
+// ---------------------------------------------------------------
+export function useDarkMode(): boolean {
+  const [isDark, setIsDark] = useState(() =>
+    document.documentElement.classList.contains('dark')
+  );
+  useEffect(() => {
+    const obs = new MutationObserver(() =>
+      setIsDark(document.documentElement.classList.contains('dark'))
+    );
+    obs.observe(document.documentElement, { attributeFilter: ['class'] });
+    return () => obs.disconnect();
+  }, []);
+  return isDark;
 }

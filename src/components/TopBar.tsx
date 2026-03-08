@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { PieChart, List, Wallet, Target, Crosshair, User, Search, Sun, Moon, Menu, X, ChevronDown, AlertTriangle } from 'lucide-react';
+import { PieChart, List, Wallet, Target, Crosshair, Search, Sun, Moon, Menu, X, ChevronDown, AlertTriangle } from 'lucide-react';
 import { cn, formatCurrency } from '../lib/utils';
 import { getRecentMonths, formatMonthLabel } from '../lib/api';
 import { useBudgetStatus } from '../lib/hooks';
@@ -24,7 +24,6 @@ export default function TopBar({ currentView, setCurrentView, selectedMonth, onM
     { id: 'jars', label: 'Quản lý Hũ', icon: Wallet },
     { id: 'budget', label: 'Chi tiêu', icon: Target },
     { id: 'goals', label: 'Quỹ & Mục tiêu', icon: Crosshair },
-    { id: 'account', label: 'Tài khoản', icon: User },
   ];
 
   return (

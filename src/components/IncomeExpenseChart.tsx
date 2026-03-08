@@ -11,6 +11,7 @@ import {
 } from 'recharts';
 import { useQueries } from '@tanstack/react-query';
 import { getRecentMonths, fetchDashboardSummary, fetchTransactions } from '../lib/api';
+import { useDarkMode } from '../lib/hooks';
 import type { Transaction } from '../lib/types';
 import { Loader2, ZoomIn, ZoomOut } from 'lucide-react';
 
@@ -138,6 +139,7 @@ function txDateKey(tx: Transaction): string | null {
 export function IncomeExpenseChart({ currentMonth }: { currentMonth: string }) {
   const [range, setRange] = useState<RangeKey>('6m');
   const [scaleIdx, setScaleIdx] = useState(0);
+  const isDark = useDarkMode();
 
   const isMonthly = MONTH_RANGES.has(range);
   const scale = SCALE_PRESETS[scaleIdx];
@@ -271,34 +273,34 @@ export function IncomeExpenseChart({ currentMonth }: { currentMonth: string }) {
         <div className="flex-1 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#334155' : '#e2e8f0'} vertical={false} />
               <XAxis
                 dataKey="name"
                 axisLine={false}
                 tickLine={false}
-                tick={{ fill: '#94a3b8', fontSize: 12 }}
+                tick={{ fill: isDark ? '#94a3b8' : '#64748b', fontSize: 12 }}
                 dy={10}
               />
               <YAxis
                 axisLine={false}
                 tickLine={false}
-                tick={{ fill: '#94a3b8', fontSize: 11 }}
+                tick={{ fill: isDark ? '#94a3b8' : '#64748b', fontSize: 11 }}
                 tickFormatter={formatAxis}
                 {...(scale.domain
                   ? { domain: scale.domain, ticks: scale.ticks, allowDataOverflow: true }
                   : {})}
               />
               <Tooltip
-                cursor={{ fill: '#334155', opacity: 0.4 }}
+                cursor={{ fill: isDark ? '#334155' : '#f1f5f9', opacity: 0.5 }}
                 contentStyle={{
-                  backgroundColor: '#0f172a',
-                  borderColor: '#334155',
-                  color: '#f8fafc',
+                  backgroundColor: isDark ? '#0f172a' : '#ffffff',
+                  borderColor: isDark ? '#334155' : '#e2e8f0',
+                  color: isDark ? '#f8fafc' : '#0f172a',
                   borderRadius: '8px',
                 }}
                 formatter={(value: number) => [`${value.toLocaleString('vi-VN')} ₫`, undefined]}
               />
-              <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }} />
+              <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px', color: isDark ? '#94a3b8' : '#475569' }} />
               <Bar dataKey="income" name="Thu nhập" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={40} />
               <Bar dataKey="expense" name="Chi tiêu" fill="#f43f5e" radius={[4, 4, 0, 0]} maxBarSize={40} />
             </BarChart>
