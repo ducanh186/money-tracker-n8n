@@ -7,15 +7,16 @@ import JarStats from './JarStats';
 
 /** Aggregate amounts per jar from a list of transactions. */
 interface JarSummary {
-  jar: string;
+  jar: string;    // short key: NEC, PLAY, …
+  label: string;  // Vietnamese display name
   income: number;
   expense: number;
   net: number;
   count: number;
 }
 
-function aggregateByJar(transactions: Transaction[]): JarSummary[] {
-  const map = new Map<string, JarSummary>();
+function aggregateByJar(transactions: Transaction[]): Map<string, Omit<JarSummary, 'label'>> {
+  const map = new Map<string, Omit<JarSummary, 'label'>>();
 
   for (const tx of transactions) {
     const key = tx.jar ?? 'Không phân loại';
@@ -32,37 +33,35 @@ function aggregateByJar(transactions: Transaction[]): JarSummary[] {
     entry.net += tx.signed_amount_vnd;
   }
 
-  return Array.from(map.values()).sort((a, b) => b.expense - a.expense);
+  return map;
 }
 
+// Keyed by jar short-code (NEC, PLAY, etc.)
 const JAR_COLORS: Record<string, string> = {
-  'Thiết yếu': 'bg-blue-500',
-  'Giáo dục': 'bg-purple-500',
-  'Tiết kiệm': 'bg-teal-500',
-  'Hưởng thụ': 'bg-pink-500',
-  'Cho đi': 'bg-amber-500',
-  'Đầu tư': 'bg-green-500',
-  'Du lịch': 'bg-cyan-500',
-  'Giải trí': 'bg-red-500',
+  NEC:  'bg-sky-500',
+  EDU:  'bg-violet-500',
+  LTSS: 'bg-emerald-500',
+  PLAY: 'bg-orange-500',
+  FFA:  'bg-amber-500',
+  GIVE: 'bg-pink-500',
 };
 
-function getJarColor(jar: string): string {
-  return JAR_COLORS[jar] ?? 'bg-slate-500';
+const JAR_ICON_BG: Record<string, string> = {
+  NEC:  'bg-sky-100 text-sky-600 dark:bg-sky-900/30 dark:text-sky-400',
+  EDU:  'bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400',
+  LTSS: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400',
+  PLAY: 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400',
+  FFA:  'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400',
+  GIVE: 'bg-pink-100 text-pink-600 dark:bg-pink-900/30 dark:text-pink-400',
+};
+
+function getJarColor(key: string): string {
+  return JAR_COLORS[key] ?? 'bg-slate-500';
 }
 
-function getJarIconBg(jar: string, selected: boolean): string {
-  if (selected) return 'bg-blue-100 text-blue-600';
-  const map: Record<string, string> = {
-    'Thiết yếu': 'bg-blue-100 text-blue-600',
-    'Giáo dục': 'bg-purple-100 text-purple-600',
-    'Tiết kiệm': 'bg-teal-100 text-teal-600',
-    'Hưởng thụ': 'bg-pink-100 text-pink-600',
-    'Cho đi': 'bg-amber-100 text-amber-600',
-    'Đầu tư': 'bg-green-100 text-green-600',
-    'Du lịch': 'bg-cyan-100 text-cyan-600',
-    'Giải trí': 'bg-red-100 text-red-600',
-  };
-  return map[jar] ?? 'bg-slate-100 text-slate-600';
+function getJarIconBg(key: string, selected: boolean): string {
+  if (selected) return 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400';
+  return JAR_ICON_BG[key] ?? 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400';
 }
 
 export default function Jars({ month }: { month: string }) {
@@ -79,7 +78,7 @@ export default function Jars({ month }: { month: string }) {
   const totals = data?.meta?.totals;
   const funds = fundsRes?.data ?? [];
 
-  const jarSummaries = useMemo(() => aggregateByJar(transactions), [transactions]);
+  const txByJar = useMemo(() => aggregateByJar(transactions), [transactions]);
 
   // Map jarKey → budget metrics
   const jarMetrics = useMemo(() => {
@@ -89,6 +88,37 @@ export default function Jars({ month }: { month: string }) {
     }
     return m;
   }, [budgetStatus]);
+
+  // Merged list: start from all budget jars (preserves order, shows empty jars),
+  // then append any transaction jars not in budget (e.g. INCOME, uncategorized)
+  const jarSummaries = useMemo((): JarSummary[] => {
+    const result: JarSummary[] = [];
+    const seen = new Set<string>();
+
+    if (budgetStatus?.jars?.length) {
+      for (const metric of budgetStatus.jars) {
+        seen.add(metric.key);
+        const tx = txByJar.get(metric.key);
+        result.push({
+          jar: metric.key,
+          label: metric.label,
+          income: tx?.income ?? 0,
+          expense: tx?.expense ?? 0,
+          net: tx?.net ?? 0,
+          count: tx?.count ?? 0,
+        });
+      }
+    }
+
+    // Jars that have transactions but no budget config (e.g. INCOME row)
+    for (const [key, tx] of txByJar) {
+      if (!seen.has(key)) {
+        result.push({ jar: key, label: key, ...tx });
+      }
+    }
+
+    return result;
+  }, [budgetStatus, txByJar]);
 
   // Map jarKey → funds
   const fundsByJar = useMemo(() => {
@@ -222,7 +252,10 @@ export default function Jars({ month }: { month: string }) {
                           <Wallet className="size-6" />
                         </div>
                         <div className="flex flex-col justify-center flex-1">
-                          <p className="text-slate-900 dark:text-white text-base font-semibold leading-normal">{jar.jar}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-slate-900 dark:text-white text-base font-semibold leading-normal">{jar.label}</p>
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 leading-none">{jar.jar}</span>
+                          </div>
                           {metrics ? (
                             <div className="grid grid-cols-4 gap-2 mt-1.5 text-xs">
                               <div>
@@ -255,7 +288,7 @@ export default function Jars({ month }: { month: string }) {
                           <div className="w-24 h-2 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
                             <div className={`h-full rounded-full ${
                               metrics && metrics.available < 0 ? 'bg-red-500' : getJarColor(jar.jar)
-                            }`} style={{ width: `${percent}%` }}></div>
+                            }`} style={{ width: `${Math.min(100, percent)}%` }}></div>
                           </div>
                           <span className={`text-xs font-medium ${isSelected ? 'text-blue-600' : 'text-slate-500 dark:text-slate-400'}`}>
                             {percent}% chi
@@ -306,7 +339,10 @@ export default function Jars({ month }: { month: string }) {
                   <Wallet className="size-5" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-slate-900 dark:text-white">{selectedJar.jar}</h2>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-xl font-bold text-slate-900 dark:text-white">{selectedJar.label}</h2>
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500">{selectedJar.jar}</span>
+                  </div>
                   <p className="text-sm text-slate-500 dark:text-slate-400">{selectedJar.count} giao dịch</p>
                 </div>
               </div>
