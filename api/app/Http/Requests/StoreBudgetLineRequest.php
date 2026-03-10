@@ -16,12 +16,13 @@ class StoreBudgetLineRequest extends FormRequest
         return [
             'jar_allocation_id' => ['required', 'exists:jar_allocations,id'],
             'name'              => ['required', 'string', 'max:255'],
-            'type'              => ['sometimes', 'in:general,goal,bill,debt,sinking_fund'],
+            'type'              => ['sometimes', 'in:general,goal,bill,debt,sinking_fund,investment'],
             'planned_amount'    => ['required', 'integer', 'min:0'],
             'actual_amount'     => ['sometimes', 'integer', 'min:0'],
             'goal_id'           => ['sometimes', 'nullable', 'exists:goals,id'],
             'debt_id'           => ['sometimes', 'nullable', 'exists:debts,id'],
             'recurring_bill_id' => ['sometimes', 'nullable', 'exists:recurring_bills,id'],
+            'fund_id'           => ['sometimes', 'nullable', 'exists:funds,id'],
             'notes'             => ['sometimes', 'nullable', 'string'],
         ];
     }

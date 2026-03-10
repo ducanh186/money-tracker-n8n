@@ -177,6 +177,9 @@ Route::middleware(['etag'])->group(function () {
     Route::get('/funds', [FundController::class, 'index']);
     Route::get('/funds/{fund}', [FundController::class, 'show']);
 
+    // Investment summary (read)
+    Route::get('/investment-summary', [FundController::class, 'investmentSummary']);
+
     // Scenarios (read)
     Route::get('/scenarios', [ScenarioController::class, 'index']);
     Route::get('/scenarios/{scenario}', [ScenarioController::class, 'show']);

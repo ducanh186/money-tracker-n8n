@@ -19,6 +19,7 @@ class BudgetLine extends Model
         'goal_id',
         'debt_id',
         'recurring_bill_id',
+        'fund_id',
         'notes',
     ];
 
@@ -50,6 +51,11 @@ class BudgetLine extends Model
     public function recurringBill(): BelongsTo
     {
         return $this->belongsTo(RecurringBill::class);
+    }
+
+    public function fund(): BelongsTo
+    {
+        return $this->belongsTo(Fund::class);
     }
 
     // ── Computed ────────────────────────────────────────────────────

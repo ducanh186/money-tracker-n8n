@@ -19,7 +19,7 @@ class BudgetLineController extends Controller
         $lines = BudgetLine::whereHas('jarAllocation', function ($q) use ($budgetPeriod) {
             $q->where('budget_period_id', $budgetPeriod->id);
         })
-            ->with(['jarAllocation.jar', 'goal', 'debt', 'recurringBill'])
+            ->with(['jarAllocation.jar', 'goal', 'debt', 'recurringBill', 'fund'])
             ->get()
             ->map(fn (BudgetLine $line) => [
                 'id'                => $line->id,
@@ -34,6 +34,7 @@ class BudgetLineController extends Controller
                 'goal_id'           => $line->goal_id,
                 'debt_id'           => $line->debt_id,
                 'recurring_bill_id' => $line->recurring_bill_id,
+                'fund_id'           => $line->fund_id,
                 'notes'             => $line->notes,
             ]);
 
@@ -62,9 +63,10 @@ class BudgetLineController extends Controller
     {
         $validated = $request->validate([
             'name'           => ['sometimes', 'string', 'max:255'],
-            'type'           => ['sometimes', 'in:general,goal,bill,debt,sinking_fund'],
+            'type'           => ['sometimes', 'in:general,goal,bill,debt,sinking_fund,investment'],
             'planned_amount' => ['sometimes', 'integer', 'min:0'],
             'actual_amount'  => ['sometimes', 'integer', 'min:0'],
+            'fund_id'        => ['sometimes', 'nullable', 'exists:funds,id'],
             'notes'          => ['sometimes', 'nullable', 'string'],
         ]);
 

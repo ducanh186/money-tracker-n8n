@@ -366,6 +366,7 @@ export interface FundGoal {
 export interface Fund {
   id: number;
   name: string;
+  type: 'sinking_fund' | 'investment';
   jar: FundJar | null;
   goal: FundGoal | null;
   target_amount: number;
@@ -376,6 +377,7 @@ export interface Fund {
   progress_pct: number;
   status: 'active' | 'completed' | 'paused';
   notes: string | null;
+  last_contributed_at: string | null;
   sort_order: number;
 }
 
@@ -385,12 +387,44 @@ export interface FundsResponse {
 
 export interface CreateFundPayload {
   name: string;
+  type?: 'sinking_fund' | 'investment';
   jar_id: number;
   goal_id?: number | null;
   target_amount?: number;
   monthly_reserve?: number;
   notes?: string | null;
   sort_order?: number;
+}
+
+// ---------------------------------------------------------------
+// Investment Summary types — matching BE FundController.investmentSummary
+// ---------------------------------------------------------------
+
+export interface InvestmentFundSummary {
+  id: number;
+  name: string;
+  jar: FundJar | null;
+  monthly_planned: number;
+  monthly_actual: number;
+  variance: number;
+  cumulative_contributed: number;
+  monthly_reserve: number;
+  last_contributed_at: string | null;
+  status: 'active' | 'completed' | 'paused';
+  notes: string | null;
+}
+
+export interface InvestmentSummaryData {
+  month: string | null;
+  funds: InvestmentFundSummary[];
+  total_monthly_planned: number;
+  total_monthly_actual: number;
+  total_variance: number;
+  total_cumulative_contributed: number;
+}
+
+export interface InvestmentSummaryResponse {
+  data: InvestmentSummaryData;
 }
 
 // ---------------------------------------------------------------

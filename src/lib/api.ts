@@ -29,6 +29,7 @@ import type {
   Jar,
   Fund,
   BudgetWorkspace,
+  InvestmentSummaryResponse,
 } from './types';
 
 // Base URL — in dev the Vite proxy forwards /api → Laravel at :8000
@@ -335,6 +336,11 @@ export async function reserveFund(id: number, amount: number): Promise<{ data: F
 
 export async function spendFund(id: number, amount: number, description?: string): Promise<{ data: Fund; message: string }> {
   return apiWrite(`${BASE}/funds/${id}/spend`, 'POST', { amount, description });
+}
+
+export async function fetchInvestmentSummary(month?: string): Promise<InvestmentSummaryResponse> {
+  const qs = month ? `?month=${encodeURIComponent(month)}` : '';
+  return smartFetch(`${BASE}/investment-summary${qs}`);
 }
 
 // ---------------------------------------------------------------

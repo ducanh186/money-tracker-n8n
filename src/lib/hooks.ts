@@ -26,6 +26,7 @@ import {
   deleteFund,
   reserveFund,
   spendFund,
+  fetchInvestmentSummary,
   fetchBudgetPeriods,
   fetchBudgetPeriod,
   createBudgetPeriod,
@@ -439,6 +440,21 @@ export function useSpendFund() {
       queryClient.invalidateQueries({ queryKey: ['funds'] });
       queryClient.invalidateQueries({ queryKey: ['budget-status'] });
     },
+  });
+}
+
+// ---------------------------------------------------------------
+// Investment Summary Hook
+// ---------------------------------------------------------------
+
+export function useInvestmentSummary(month?: string) {
+  return useQuery({
+    queryKey: ['investment-summary', month ?? 'all'],
+    queryFn: () => fetchInvestmentSummary(month),
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+    retry: MAX_RETRIES,
   });
 }
 

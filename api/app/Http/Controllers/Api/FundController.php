@@ -3,6 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Models\Fund;
+use App\Models\BudgetLine;
+use App\Models\BudgetPeriod;
+use App\Models\JarAllocation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -11,7 +14,7 @@ use Illuminate\Support\Facades\DB;
 class FundController extends Controller
 {
     /**
-     * GET /api/funds?jar_id=X&status=active
+     * GET /api/funds?jar_id=X&status=active&type=investment
      */
     public function index(Request $request): JsonResponse
     {
@@ -22,6 +25,9 @@ class FundController extends Controller
         }
         if ($request->has('status')) {
             $query->where('status', $request->query('status'));
+        }
+        if ($request->has('type')) {
+            $query->where('type', $request->query('type'));
         }
 
         $funds = $query->orderBy('sort_order')->get()->map(fn (Fund $f) => $this->serialize($f));
@@ -36,6 +42,7 @@ class FundController extends Controller
     {
         $validated = $request->validate([
             'name'            => ['required', 'string', 'max:255'],
+            'type'            => ['sometimes', 'in:sinking_fund,investment'],
             'jar_id'          => ['required', 'exists:jars,id'],
             'goal_id'         => ['sometimes', 'nullable', 'exists:goals,id'],
             'target_amount'   => ['sometimes', 'integer', 'min:0'],
@@ -69,6 +76,7 @@ class FundController extends Controller
     {
         $validated = $request->validate([
             'name'            => ['sometimes', 'string', 'max:255'],
+            'type'            => ['sometimes', 'in:sinking_fund,investment'],
             'jar_id'          => ['sometimes', 'exists:jars,id'],
             'goal_id'         => ['sometimes', 'nullable', 'exists:goals,id'],
             'target_amount'   => ['sometimes', 'integer', 'min:0'],
@@ -109,6 +117,7 @@ class FundController extends Controller
 
         return DB::transaction(function () use ($fund, $validated) {
             $fund->increment('reserved_amount', $validated['amount']);
+            $fund->update(['last_contributed_at' => now()]);
 
             return response()->json([
                 'data'    => $this->serialize($fund->fresh()->load('jar', 'goal')),
@@ -149,19 +158,113 @@ class FundController extends Controller
     private function serialize(Fund $fund): array
     {
         return [
-            'id'              => $fund->id,
-            'name'            => $fund->name,
-            'jar'             => $fund->jar ? ['id' => $fund->jar->id, 'key' => $fund->jar->key, 'label' => $fund->jar->label] : null,
-            'goal'            => $fund->goal ? ['id' => $fund->goal->id, 'name' => $fund->goal->name] : null,
-            'target_amount'   => $fund->target_amount,
-            'reserved_amount' => $fund->reserved_amount,
-            'spent_amount'    => $fund->spent_amount,
-            'available'       => $fund->available,
-            'monthly_reserve' => $fund->monthly_reserve,
-            'progress_pct'    => $fund->progress_percent,
-            'status'          => $fund->status,
-            'notes'           => $fund->notes,
-            'sort_order'      => $fund->sort_order,
+            'id'                 => $fund->id,
+            'name'               => $fund->name,
+            'type'               => $fund->type,
+            'jar'                => $fund->jar ? ['id' => $fund->jar->id, 'key' => $fund->jar->key, 'label' => $fund->jar->label] : null,
+            'goal'               => $fund->goal ? ['id' => $fund->goal->id, 'name' => $fund->goal->name] : null,
+            'target_amount'      => $fund->target_amount,
+            'reserved_amount'    => $fund->reserved_amount,
+            'spent_amount'       => $fund->spent_amount,
+            'available'          => $fund->available,
+            'monthly_reserve'    => $fund->monthly_reserve,
+            'progress_pct'       => $fund->progress_percent,
+            'status'             => $fund->status,
+            'notes'              => $fund->notes,
+            'last_contributed_at' => $fund->last_contributed_at?->toISOString(),
+            'sort_order'         => $fund->sort_order,
         ];
+    }
+
+    /**
+     * GET /api/investment-summary?month=Mar-2026
+     *
+     * Returns investment allocation tracking for the given month:
+     * - each investment fund with monthly planned/actual/variance
+     * - cumulative contribution totals
+     * - overall investment summary
+     */
+    public function investmentSummary(Request $request): JsonResponse
+    {
+        $month = $request->query('month');
+
+        // Get all active investment funds
+        $investmentFunds = Fund::with('jar')
+            ->where('type', 'investment')
+            ->active()
+            ->orderBy('sort_order')
+            ->get();
+
+        if ($investmentFunds->isEmpty()) {
+            return response()->json([
+                'data' => [
+                    'month'                      => $month,
+                    'funds'                      => [],
+                    'total_monthly_planned'      => 0,
+                    'total_monthly_actual'       => 0,
+                    'total_variance'             => 0,
+                    'total_cumulative_contributed' => 0,
+                ],
+            ]);
+        }
+
+        // If month provided, look up budget lines for that period
+        $monthlyData = [];
+        if ($month) {
+            $period = BudgetPeriod::where('month', $month)->first();
+            if ($period) {
+                $investLines = BudgetLine::where('type', 'investment')
+                    ->whereNotNull('fund_id')
+                    ->whereHas('jarAllocation', fn ($q) => $q->where('budget_period_id', $period->id))
+                    ->get();
+
+                foreach ($investLines as $line) {
+                    $monthlyData[$line->fund_id] = [
+                        'planned' => $line->planned_amount,
+                        'actual'  => $line->actual_amount,
+                    ];
+                }
+            }
+        }
+
+        $funds = [];
+        $totalPlanned = 0;
+        $totalActual = 0;
+        $totalCumulative = 0;
+
+        foreach ($investmentFunds as $fund) {
+            $monthPlanned = $monthlyData[$fund->id]['planned'] ?? $fund->monthly_reserve;
+            $monthActual  = $monthlyData[$fund->id]['actual'] ?? 0;
+            $variance     = $monthPlanned - $monthActual;
+
+            $totalPlanned   += $monthPlanned;
+            $totalActual    += $monthActual;
+            $totalCumulative += $fund->reserved_amount;
+
+            $funds[] = [
+                'id'                       => $fund->id,
+                'name'                     => $fund->name,
+                'jar'                      => $fund->jar ? ['id' => $fund->jar->id, 'key' => $fund->jar->key, 'label' => $fund->jar->label] : null,
+                'monthly_planned'          => $monthPlanned,
+                'monthly_actual'           => $monthActual,
+                'variance'                 => $variance,
+                'cumulative_contributed'   => $fund->reserved_amount,
+                'monthly_reserve'          => $fund->monthly_reserve,
+                'last_contributed_at'      => $fund->last_contributed_at?->toISOString(),
+                'status'                   => $fund->status,
+                'notes'                    => $fund->notes,
+            ];
+        }
+
+        return response()->json([
+            'data' => [
+                'month'                        => $month,
+                'funds'                        => $funds,
+                'total_monthly_planned'        => $totalPlanned,
+                'total_monthly_actual'         => $totalActual,
+                'total_variance'               => $totalPlanned - $totalActual,
+                'total_cumulative_contributed'  => $totalCumulative,
+            ],
+        ]);
     }
 }

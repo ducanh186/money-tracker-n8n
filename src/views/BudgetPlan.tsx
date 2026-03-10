@@ -28,6 +28,7 @@ import {
   useCloseBudgetPeriod,
   useBudgetSetting,
   useUpdateBudgetSetting,
+  useInvestmentSummary,
 } from '../lib/hooks';
 import type { BudgetJar, Transaction, Jar } from '../lib/types';
 
@@ -198,6 +199,7 @@ export default function BudgetPlan({ month }: { month: string }) {
   const { data: budgetStatus } = useBudgetStatus(month);
   const createPeriodMutation = useCreateBudgetPeriod();
   const closePeriodMutation = useCloseBudgetPeriod();
+  const { data: investmentData } = useInvestmentSummary(month);
 
   useEffect(() => {
     if (data?.data?.base_income) {
@@ -453,6 +455,115 @@ export default function BudgetPlan({ month }: { month: string }) {
           </div>
         </div>
       </div>
+
+      {/* Investment Allocation Card */}
+      {investmentData?.data && investmentData.data.funds.length > 0 && (() => {
+        const inv = investmentData.data;
+        const varianceColor = inv.total_variance === 0
+          ? 'text-green-600 dark:text-green-400'
+          : inv.total_variance > 0
+            ? 'text-amber-600 dark:text-amber-400'
+            : 'text-red-600 dark:text-red-400';
+        const actualPct = inv.total_monthly_planned > 0
+          ? Math.round((inv.total_monthly_actual / inv.total_monthly_planned) * 100)
+          : 0;
+
+        return (
+          <div className="bg-gradient-to-r from-indigo-50 to-violet-50 dark:from-indigo-500/10 dark:to-violet-500/10 rounded-xl border border-indigo-200 dark:border-indigo-500/30 shadow-sm overflow-hidden">
+            <div className="p-5">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="size-10 rounded-lg flex items-center justify-center bg-indigo-100 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400">
+                    <TrendingUp className="size-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-slate-900 dark:text-white">Đầu tư</h3>
+                    <span className="text-xs text-slate-400 dark:text-slate-500">Investment Allocation</span>
+                  </div>
+                </div>
+                {inv.total_monthly_actual >= inv.total_monthly_planned && inv.total_monthly_planned > 0 ? (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400">
+                    <CheckCircle2 className="size-3.5" /> Đã đủ
+                  </span>
+                ) : inv.total_monthly_actual > 0 ? (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400">
+                    <AlertTriangle className="size-3.5" /> Đang tích
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-600 dark:bg-slate-500/20 dark:text-slate-400">
+                    Chưa bắt đầu
+                  </span>
+                )}
+              </div>
+
+              {/* Progress bar */}
+              <div className="mb-4">
+                <div className="flex justify-between text-xs mb-1.5">
+                  <span className="text-slate-500 dark:text-slate-400 font-medium">Tiến độ {actualPct}%</span>
+                  <span className="text-slate-500 dark:text-slate-400 font-medium">
+                    {formatCurrency(inv.total_monthly_actual)} / {formatCurrency(inv.total_monthly_planned)}
+                  </span>
+                </div>
+                <div className="h-2.5 w-full bg-white/60 dark:bg-slate-700 rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-500 bg-indigo-500"
+                    style={{ width: `${Math.min(actualPct, 100)}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Stats grid */}
+              <div className="grid grid-cols-4 gap-3">
+                <div className="flex flex-col">
+                  <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider font-semibold">Kế hoạch</span>
+                  <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">{formatCurrency(inv.total_monthly_planned)}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider font-semibold">Thực tế</span>
+                  <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{formatCurrency(inv.total_monthly_actual)}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider font-semibold">Chênh lệch</span>
+                  <span className={cn("text-sm font-bold", varianceColor)}>
+                    {inv.total_variance >= 0 ? '' : '-'}{formatCurrency(Math.abs(inv.total_variance))}
+                  </span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider font-semibold">Tích lũy</span>
+                  <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(inv.total_cumulative_contributed)}</span>
+                </div>
+              </div>
+
+              {/* Per-fund breakdown (if multiple investment funds) */}
+              {inv.funds.length > 1 && (
+                <div className="mt-4 pt-4 border-t border-indigo-200/50 dark:border-indigo-500/20 space-y-2">
+                  {inv.funds.map((fund) => {
+                    const pct = fund.monthly_planned > 0
+                      ? Math.round((fund.monthly_actual / fund.monthly_planned) * 100)
+                      : 0;
+                    return (
+                      <div key={fund.id} className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="font-medium text-slate-700 dark:text-slate-200 truncate">{fund.name}</span>
+                          {fund.jar && (
+                            <span className="text-xs text-slate-400 dark:text-slate-500">({fund.jar.label})</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3 shrink-0">
+                          <span className="text-xs text-slate-400">{pct}%</span>
+                          <span className="font-bold text-slate-700 dark:text-slate-200">
+                            {formatCurrency(fund.monthly_actual)} / {formatCurrency(fund.monthly_planned)}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Jar cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">

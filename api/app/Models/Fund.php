@@ -12,6 +12,7 @@ class Fund extends Model
 
     protected $fillable = [
         'name',
+        'type',
         'jar_id',
         'goal_id',
         'target_amount',
@@ -20,10 +21,12 @@ class Fund extends Model
         'monthly_reserve',
         'status',
         'notes',
+        'last_contributed_at',
         'sort_order',
     ];
 
     protected $attributes = [
+        'type'            => 'sinking_fund',
         'target_amount'   => 0,
         'reserved_amount' => 0,
         'spent_amount'    => 0,
@@ -35,11 +38,12 @@ class Fund extends Model
     protected function casts(): array
     {
         return [
-            'target_amount'   => 'integer',
-            'reserved_amount' => 'integer',
-            'spent_amount'    => 'integer',
-            'monthly_reserve' => 'integer',
-            'sort_order'      => 'integer',
+            'target_amount'      => 'integer',
+            'reserved_amount'    => 'integer',
+            'spent_amount'       => 'integer',
+            'monthly_reserve'    => 'integer',
+            'sort_order'         => 'integer',
+            'last_contributed_at' => 'datetime',
         ];
     }
 
@@ -53,6 +57,11 @@ class Fund extends Model
     public function goal(): BelongsTo
     {
         return $this->belongsTo(Goal::class);
+    }
+
+    public function budgetLines(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(BudgetLine::class);
     }
 
     // ── Computed ────────────────────────────────────────────────────
@@ -75,5 +84,15 @@ class Fund extends Model
     public function scopeActive($query)
     {
         return $query->where('status', 'active');
+    }
+
+    public function scopeInvestment($query)
+    {
+        return $query->where('type', 'investment');
+    }
+
+    public function scopeSinkingFund($query)
+    {
+        return $query->where('type', 'sinking_fund');
     }
 }
