@@ -22,7 +22,8 @@ class JarSeeder extends Seeder
         ];
 
         foreach ($jars as $jar) {
-            Jar::updateOrCreate(
+            // Only set defaults on first creation — never overwrite user-edited values
+            Jar::firstOrCreate(
                 ['key' => $jar['key']],
                 $jar
             );

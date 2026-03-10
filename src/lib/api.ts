@@ -28,8 +28,22 @@ import type {
   Transfer,
   Jar,
   Fund,
+  Debt,
+  RecurringBill,
+  Scenario,
+  BudgetLine,
   BudgetWorkspace,
   InvestmentSummaryResponse,
+  DebtsResponse,
+  DebtDetailResponse,
+  CreateDebtPayload,
+  PayDebtPayload,
+  RecurringBillsResponse,
+  CreateRecurringBillPayload,
+  ScenariosResponse,
+  SimulateScenarioPayload,
+  BudgetLinesResponse,
+  CreateBudgetLinePayload,
 } from './types';
 
 // Base URL — in dev the Vite proxy forwards /api → Laravel at :8000
@@ -373,4 +387,85 @@ export async function overrideJarPercent(periodId: number, jarId: number, percen
 
 export async function closeBudgetPeriod(id: number): Promise<{ data: BudgetWorkspace; message: string }> {
   return apiWrite(`${BASE}/budget-periods/${id}/close`, 'POST');
+}
+
+// ---------------------------------------------------------------
+// Debts (Nợ)
+// ---------------------------------------------------------------
+
+export async function fetchDebts(status?: string): Promise<DebtsResponse> {
+  const qs = status ? `?status=${encodeURIComponent(status)}` : '';
+  return smartFetch(`${BASE}/debts${qs}`);
+}
+
+export async function fetchDebt(id: number): Promise<DebtDetailResponse> {
+  return smartFetch(`${BASE}/debts/${id}`);
+}
+
+export async function createDebt(payload: CreateDebtPayload): Promise<{ data: Debt; message: string }> {
+  return apiWrite(`${BASE}/debts`, 'POST', payload);
+}
+
+export async function updateDebt(id: number, payload: Partial<CreateDebtPayload>): Promise<{ data: Debt; message: string }> {
+  return apiWrite(`${BASE}/debts/${id}`, 'PUT', payload);
+}
+
+export async function deleteDebt(id: number): Promise<{ message: string }> {
+  return apiWrite(`${BASE}/debts/${id}`, 'DELETE');
+}
+
+export async function payDebt(id: number, payload: PayDebtPayload): Promise<{ data: Debt; message: string }> {
+  return apiWrite(`${BASE}/debts/${id}/pay`, 'POST', payload);
+}
+
+// ---------------------------------------------------------------
+// Recurring Bills (Hoá đơn định kỳ)
+// ---------------------------------------------------------------
+
+export async function fetchRecurringBills(): Promise<RecurringBillsResponse> {
+  return smartFetch(`${BASE}/recurring-bills`);
+}
+
+export async function createRecurringBill(payload: CreateRecurringBillPayload): Promise<{ data: RecurringBill; message: string }> {
+  return apiWrite(`${BASE}/recurring-bills`, 'POST', payload);
+}
+
+export async function updateRecurringBill(id: number, payload: Partial<CreateRecurringBillPayload>): Promise<{ data: RecurringBill; message: string }> {
+  return apiWrite(`${BASE}/recurring-bills/${id}`, 'PUT', payload);
+}
+
+export async function deleteRecurringBill(id: number): Promise<{ message: string }> {
+  return apiWrite(`${BASE}/recurring-bills/${id}`, 'DELETE');
+}
+
+// ---------------------------------------------------------------
+// Scenarios (Kịch bản)
+// ---------------------------------------------------------------
+
+export async function fetchScenarios(): Promise<ScenariosResponse> {
+  return smartFetch(`${BASE}/scenarios`);
+}
+
+export async function simulateScenario(payload: SimulateScenarioPayload): Promise<{ data: Scenario; message: string }> {
+  return apiWrite(`${BASE}/scenarios/simulate`, 'POST', payload);
+}
+
+// ---------------------------------------------------------------
+// Budget Lines (Mục chi tiêu)
+// ---------------------------------------------------------------
+
+export async function fetchBudgetLines(periodId: number): Promise<BudgetLinesResponse> {
+  return smartFetch(`${BASE}/budget-periods/${periodId}/lines`);
+}
+
+export async function createBudgetLine(payload: CreateBudgetLinePayload): Promise<{ data: BudgetLine; message: string }> {
+  return apiWrite(`${BASE}/budget-lines`, 'POST', payload);
+}
+
+export async function updateBudgetLine(id: number, payload: Partial<CreateBudgetLinePayload>): Promise<{ data: BudgetLine; message: string }> {
+  return apiWrite(`${BASE}/budget-lines/${id}`, 'PUT', payload);
+}
+
+export async function deleteBudgetLine(id: number): Promise<{ message: string }> {
+  return apiWrite(`${BASE}/budget-lines/${id}`, 'DELETE');
 }

@@ -441,6 +441,8 @@ export interface BudgetPeriod {
   status: string;
   rollover_policy: string;
   notes: string | null;
+  salary_received_at: string | null;
+  allocation_locked_at: string | null;
 }
 
 export interface BudgetPeriodsResponse {
@@ -471,5 +473,171 @@ export interface CreateBudgetPeriodPayload {
   year?: number;
   month_num?: number;
   rollover_policy?: string;
+  notes?: string | null;
+  salary_received_at?: string | null;
+  allocation_locked_at?: string | null;
+}
+
+// ---------------------------------------------------------------
+// Debt types — matching BE DebtController
+// ---------------------------------------------------------------
+
+export interface DebtPayment {
+  id: number;
+  amount: number;
+  principal: number;
+  interest: number;
+  period: string | null;
+  paid_at: string;
+}
+
+export interface Debt {
+  id: number;
+  name: string;
+  creditor: string | null;
+  total_amount: number;
+  remaining_amount: number;
+  paid_amount: number;
+  progress_pct: number;
+  interest_rate: number;
+  minimum_payment: number;
+  due_day_of_month: number | null;
+  days_until_due: number | null;
+  strategy: 'snowball' | 'avalanche';
+  priority: number;
+  status: 'active' | 'paid_off' | 'defaulted';
+  notes: string | null;
+  total_paid: number;
+  total_interest_paid: number;
+  payments?: DebtPayment[];
+}
+
+export interface DebtsResponse {
+  data: Debt[];
+  summary: {
+    total_debt: number;
+    total_minimum: number;
+    count_active: number;
+  };
+}
+
+export interface DebtDetailResponse {
+  data: Debt;
+}
+
+export interface CreateDebtPayload {
+  name: string;
+  creditor?: string | null;
+  total_amount: number;
+  remaining_amount: number;
+  interest_rate?: number;
+  minimum_payment?: number;
+  due_day_of_month?: number | null;
+  strategy?: 'snowball' | 'avalanche';
+  priority?: number;
+  notes?: string | null;
+}
+
+export interface PayDebtPayload {
+  amount: number;
+  principal?: number;
+  interest?: number;
+  budget_period_id?: number | null;
+  paid_at?: string;
+  notes?: string | null;
+}
+
+// ---------------------------------------------------------------
+// Recurring Bill types — matching BE RecurringBillController
+// ---------------------------------------------------------------
+
+export interface RecurringBill {
+  id: number;
+  name: string;
+  amount: number;
+  frequency: string;
+  jar_id: number | null;
+  due_day: number | null;
+  next_due_date: string | null;
+  category: string | null;
+  is_active: boolean;
+  notes: string | null;
+}
+
+export interface RecurringBillsResponse {
+  data: RecurringBill[];
+}
+
+export interface CreateRecurringBillPayload {
+  name: string;
+  amount: number;
+  frequency: string;
+  jar_id?: number | null;
+  due_day?: number | null;
+  next_due_date?: string | null;
+  category?: string | null;
+  notes?: string | null;
+}
+
+// ---------------------------------------------------------------
+// Scenario types — matching BE ScenarioController
+// ---------------------------------------------------------------
+
+export interface Scenario {
+  id: number;
+  budget_period_id: number | null;
+  name: string;
+  description: string | null;
+  purchase_amount: number;
+  target_jar_id: number;
+  proposals: unknown;
+  impact: unknown;
+}
+
+export interface ScenariosResponse {
+  data: Scenario[];
+}
+
+export interface SimulateScenarioPayload {
+  name: string;
+  purchase_amount: number;
+  target_jar_id: number;
+  budget_period_id?: number | null;
+  description?: string | null;
+}
+
+// ---------------------------------------------------------------
+// Budget Line types — matching BE BudgetLineController
+// ---------------------------------------------------------------
+
+export interface BudgetLine {
+  id: number;
+  name: string;
+  type: 'general' | 'goal' | 'bill' | 'debt' | 'sinking_fund' | 'investment';
+  planned_amount: number;
+  actual_amount: number;
+  remaining: number;
+  usage_pct: number;
+  goal_id: number | null;
+  debt_id: number | null;
+  recurring_bill_id: number | null;
+  fund_id: number | null;
+  notes: string | null;
+}
+
+export interface BudgetLinesResponse {
+  data: BudgetLine[];
+}
+
+export interface CreateBudgetLinePayload {
+  jar_allocation_id: number;
+  name: string;
+  type?: string;
+  planned_amount: number;
+  actual_amount?: number;
+  goal_id?: number | null;
+  debt_id?: number | null;
+  recurring_bill_id?: number | null;
+  fund_id?: number | null;
   notes?: string | null;
 }

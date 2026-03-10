@@ -10,6 +10,7 @@ import Transactions from './views/Transactions';
 import Jars from './views/Jars';
 import BudgetPlan from './views/BudgetPlan';
 import Goals from './views/Goals';
+import Debts from './views/Debts';
 import { getCurrentMonth } from './lib/api';
 
 export default function App() {
@@ -42,6 +43,7 @@ export default function App() {
         {currentView === 'jars' && <Jars month={selectedMonth} />}
         {currentView === 'budget' && <BudgetPlan month={selectedMonth} />}
         {currentView === 'goals' && <Goals month={selectedMonth} />}
+        {currentView === 'debts' && <Debts month={selectedMonth} />}
       </main>
     </div>
   );

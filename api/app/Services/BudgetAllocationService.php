@@ -187,14 +187,16 @@ class BudgetAllocationService
 
         return [
             'period' => [
-                'id'              => $period->id,
-                'month'           => $period->month,
-                'year'            => $period->year,
-                'month_num'       => $period->month_num,
-                'total_income'    => $period->total_income,
-                'to_be_budgeted'  => $period->to_be_budgeted,
-                'status'          => $period->status,
-                'notes'           => $period->notes,
+                'id'                   => $period->id,
+                'month'                => $period->month,
+                'year'                 => $period->year,
+                'month_num'            => $period->month_num,
+                'total_income'         => $period->total_income,
+                'to_be_budgeted'       => $period->to_be_budgeted,
+                'status'               => $period->status,
+                'notes'                => $period->notes,
+                'salary_received_at'   => $period->salary_received_at?->format('Y-m-d'),
+                'allocation_locked_at' => $period->allocation_locked_at?->format('Y-m-d'),
             ],
             'jars' => $jars,
         ];

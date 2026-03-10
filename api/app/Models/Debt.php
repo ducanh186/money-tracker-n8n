@@ -12,12 +12,14 @@ class Debt extends Model
 
     protected $fillable = [
         'name',
+        'creditor',
         'total_amount',
         'remaining_amount',
         'interest_rate',
         'minimum_payment',
         'due_day_of_month',
         'strategy',
+        'priority',
         'status',
         'notes',
     ];
@@ -26,6 +28,7 @@ class Debt extends Model
         'interest_rate'    => 0,
         'minimum_payment'  => 0,
         'strategy'         => 'snowball',
+        'priority'         => 0,
         'status'           => 'active',
     ];
 
@@ -37,6 +40,7 @@ class Debt extends Model
             'interest_rate'    => 'decimal:2',
             'minimum_payment'  => 'integer',
             'due_day_of_month' => 'integer',
+            'priority'         => 'integer',
         ];
     }
 

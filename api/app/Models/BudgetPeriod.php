@@ -19,15 +19,19 @@ class BudgetPeriod extends Model
         'status',
         'rollover_policy',
         'notes',
+        'salary_received_at',
+        'allocation_locked_at',
     ];
 
     protected function casts(): array
     {
         return [
-            'year'            => 'integer',
-            'month_num'       => 'integer',
-            'total_income'    => 'integer',
-            'to_be_budgeted'  => 'integer',
+            'year'                 => 'integer',
+            'month_num'            => 'integer',
+            'total_income'         => 'integer',
+            'to_be_budgeted'       => 'integer',
+            'salary_received_at'   => 'date:Y-m-d',
+            'allocation_locked_at' => 'date:Y-m-d',
         ];
     }
 

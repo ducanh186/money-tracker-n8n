@@ -29,6 +29,7 @@ class DebtController extends Controller
         $debts = $query->get()->map(fn (Debt $d) => [
             'id'               => $d->id,
             'name'             => $d->name,
+            'creditor'         => $d->creditor,
             'total_amount'     => $d->total_amount,
             'remaining_amount' => $d->remaining_amount,
             'paid_amount'      => $d->paid_amount,
@@ -38,6 +39,7 @@ class DebtController extends Controller
             'due_day_of_month' => $d->due_day_of_month,
             'days_until_due'   => $d->days_until_due,
             'strategy'         => $d->strategy,
+            'priority'         => $d->priority,
             'status'           => $d->status,
             'notes'            => $d->notes,
             'total_paid'       => $d->payments->sum('amount'),
@@ -78,6 +80,7 @@ class DebtController extends Controller
             'data' => [
                 'id'               => $debt->id,
                 'name'             => $debt->name,
+                'creditor'         => $debt->creditor,
                 'total_amount'     => $debt->total_amount,
                 'remaining_amount' => $debt->remaining_amount,
                 'paid_amount'      => $debt->paid_amount,
@@ -87,6 +90,7 @@ class DebtController extends Controller
                 'due_day_of_month' => $debt->due_day_of_month,
                 'days_until_due'   => $debt->days_until_due,
                 'strategy'         => $debt->strategy,
+                'priority'         => $debt->priority,
                 'status'           => $debt->status,
                 'notes'            => $debt->notes,
                 'payments'         => $debt->payments->map(fn ($p) => [
@@ -108,11 +112,13 @@ class DebtController extends Controller
     {
         $validated = $request->validate([
             'name'             => ['sometimes', 'string', 'max:255'],
+            'creditor'         => ['sometimes', 'nullable', 'string', 'max:255'],
             'remaining_amount' => ['sometimes', 'integer', 'min:0'],
             'interest_rate'    => ['sometimes', 'numeric', 'min:0', 'max:100'],
             'minimum_payment'  => ['sometimes', 'integer', 'min:0'],
             'due_day_of_month' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:31'],
             'strategy'         => ['sometimes', 'in:snowball,avalanche'],
+            'priority'         => ['sometimes', 'integer', 'min:0'],
             'status'           => ['sometimes', 'in:active,paid_off,defaulted'],
             'notes'            => ['sometimes', 'nullable', 'string'],
         ]);

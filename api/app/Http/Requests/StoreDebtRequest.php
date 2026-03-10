@@ -15,12 +15,14 @@ class StoreDebtRequest extends FormRequest
     {
         return [
             'name'             => ['required', 'string', 'max:255'],
+            'creditor'         => ['sometimes', 'nullable', 'string', 'max:255'],
             'total_amount'     => ['required', 'integer', 'min:1'],
             'remaining_amount' => ['required', 'integer', 'min:0'],
             'interest_rate'    => ['sometimes', 'numeric', 'min:0', 'max:100'],
             'minimum_payment'  => ['sometimes', 'integer', 'min:0'],
             'due_day_of_month' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:31'],
             'strategy'         => ['sometimes', 'in:snowball,avalanche'],
+            'priority'         => ['sometimes', 'integer', 'min:0'],
             'notes'            => ['sometimes', 'nullable', 'string'],
         ];
     }

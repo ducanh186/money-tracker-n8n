@@ -36,8 +36,37 @@ import {
   closeBudgetPeriod,
   fetchBudgetSetting,
   updateBudgetSetting,
+  fetchDebts,
+  fetchDebt,
+  createDebt,
+  updateDebt,
+  deleteDebt,
+  payDebt,
+  fetchRecurringBills,
+  createRecurringBill,
+  updateRecurringBill,
+  deleteRecurringBill,
+  fetchScenarios,
+  simulateScenario,
+  fetchBudgetLines,
+  createBudgetLine,
+  updateBudgetLine,
+  deleteBudgetLine,
 } from './api';
-import type { TransactionsQuery, CreateGoalPayload, ContributePayload, CreateAccountPayload, CreateTransferPayload, CreateFundPayload, CreateBudgetPeriodPayload } from './types';
+import type {
+  TransactionsQuery,
+  CreateGoalPayload,
+  ContributePayload,
+  CreateAccountPayload,
+  CreateTransferPayload,
+  CreateFundPayload,
+  CreateBudgetPeriodPayload,
+  CreateDebtPayload,
+  PayDebtPayload,
+  CreateRecurringBillPayload,
+  SimulateScenarioPayload,
+  CreateBudgetLinePayload,
+} from './types';
 
 // ---------------------------------------------------------------
 // Retry logic: max 2 retries
@@ -531,6 +560,187 @@ export function useCloseBudgetPeriod() {
     mutationFn: (id: number) => closeBudgetPeriod(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['budget-periods'] });
+      queryClient.invalidateQueries({ queryKey: ['budget-period'] });
+      queryClient.invalidateQueries({ queryKey: ['budget-status'] });
+    },
+  });
+}
+
+// ---------------------------------------------------------------
+// Debt Hooks
+// ---------------------------------------------------------------
+
+export function useDebts(status?: string) {
+  return useQuery({
+    queryKey: ['debts', status],
+    queryFn: () => fetchDebts(status),
+    staleTime: 60_000,
+    retry: MAX_RETRIES,
+  });
+}
+
+export function useDebt(id: number) {
+  return useQuery({
+    queryKey: ['debt', id],
+    queryFn: () => fetchDebt(id),
+    staleTime: 30_000,
+    retry: MAX_RETRIES,
+  });
+}
+
+export function useCreateDebt() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: CreateDebtPayload) => createDebt(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['debts'] });
+    },
+  });
+}
+
+export function useUpdateDebt() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: Partial<CreateDebtPayload> }) => updateDebt(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['debts'] });
+      queryClient.invalidateQueries({ queryKey: ['debt'] });
+    },
+  });
+}
+
+export function useDeleteDebt() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => deleteDebt(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['debts'] });
+    },
+  });
+}
+
+export function usePayDebt() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: PayDebtPayload }) => payDebt(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['debts'] });
+      queryClient.invalidateQueries({ queryKey: ['debt'] });
+      queryClient.invalidateQueries({ queryKey: ['budget-status'] });
+    },
+  });
+}
+
+// ---------------------------------------------------------------
+// Recurring Bill Hooks
+// ---------------------------------------------------------------
+
+export function useRecurringBills() {
+  return useQuery({
+    queryKey: ['recurring-bills'],
+    queryFn: () => fetchRecurringBills(),
+    staleTime: 60_000,
+    retry: MAX_RETRIES,
+  });
+}
+
+export function useCreateRecurringBill() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: CreateRecurringBillPayload) => createRecurringBill(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['recurring-bills'] });
+    },
+  });
+}
+
+export function useUpdateRecurringBill() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: Partial<CreateRecurringBillPayload> }) => updateRecurringBill(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['recurring-bills'] });
+    },
+  });
+}
+
+export function useDeleteRecurringBill() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => deleteRecurringBill(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['recurring-bills'] });
+    },
+  });
+}
+
+// ---------------------------------------------------------------
+// Scenario Hooks
+// ---------------------------------------------------------------
+
+export function useScenarios() {
+  return useQuery({
+    queryKey: ['scenarios'],
+    queryFn: () => fetchScenarios(),
+    staleTime: 60_000,
+    retry: MAX_RETRIES,
+  });
+}
+
+export function useSimulateScenario() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: SimulateScenarioPayload) => simulateScenario(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['scenarios'] });
+    },
+  });
+}
+
+// ---------------------------------------------------------------
+// Budget Line Hooks
+// ---------------------------------------------------------------
+
+export function useBudgetLines(periodId: number) {
+  return useQuery({
+    queryKey: ['budget-lines', periodId],
+    queryFn: () => fetchBudgetLines(periodId),
+    staleTime: 30_000,
+    retry: MAX_RETRIES,
+    enabled: periodId > 0,
+  });
+}
+
+export function useCreateBudgetLine() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: CreateBudgetLinePayload) => createBudgetLine(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['budget-lines'] });
+      queryClient.invalidateQueries({ queryKey: ['budget-period'] });
+      queryClient.invalidateQueries({ queryKey: ['budget-status'] });
+    },
+  });
+}
+
+export function useUpdateBudgetLine() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: Partial<CreateBudgetLinePayload> }) => updateBudgetLine(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['budget-lines'] });
+      queryClient.invalidateQueries({ queryKey: ['budget-period'] });
+      queryClient.invalidateQueries({ queryKey: ['budget-status'] });
+    },
+  });
+}
+
+export function useDeleteBudgetLine() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => deleteBudgetLine(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['budget-lines'] });
       queryClient.invalidateQueries({ queryKey: ['budget-period'] });
       queryClient.invalidateQueries({ queryKey: ['budget-status'] });
     },
