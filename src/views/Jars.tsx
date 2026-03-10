@@ -1,8 +1,8 @@
 import { useState, useMemo } from 'react';
-import { Wallet, Loader2, AlertCircle, ChevronDown, ChevronUp, PiggyBank } from 'lucide-react';
+import { Wallet, Loader2, AlertCircle, ChevronDown, ChevronUp, PiggyBank, Plus, X } from 'lucide-react';
 import { formatCurrency, formatSignedAmount } from '../lib/utils';
-import { useTransactions, useBudgetStatus, useFunds } from '../lib/hooks';
-import type { Transaction, BudgetStatusJarMetric, Fund } from '../lib/types';
+import { useTransactions, useBudgetStatus, useFunds, useJars, useCreateFund } from '../lib/hooks';
+import type { Transaction, BudgetStatusJarMetric, Fund, CreateFundPayload } from '../lib/types';
 import JarStats from './JarStats';
 
 /** Aggregate amounts per jar from a list of transactions. */
@@ -64,10 +64,152 @@ function getJarIconBg(key: string, selected: boolean): string {
   return JAR_ICON_BG[key] ?? 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400';
 }
 
+function CreateFundForm({ onClose }: { onClose: () => void }) {
+  const { data: jarsRes } = useJars();
+  const createMutation = useCreateFund();
+
+  const [form, setForm] = useState<CreateFundPayload>({
+    name: '',
+    type: 'sinking_fund',
+    jar_id: 0,
+    target_amount: 0,
+    monthly_reserve: 0,
+    notes: '',
+  });
+  const [targetStr, setTargetStr] = useState('');
+  const [reserveStr, setReserveStr] = useState('');
+
+  const jars = jarsRes?.data ?? [];
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.name || form.jar_id === 0) return;
+    createMutation.mutate(form, {
+      onSuccess: () => onClose(),
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/30 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-[#1a2433] rounded-2xl shadow-xl w-full max-w-lg">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-700">
+          <h2 className="text-lg font-bold text-slate-900 dark:text-white">Tạo Quỹ con mới</h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+            <X className="size-5" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-4">
+          <div>
+            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Tên quỹ *</label>
+            <input
+              type="text"
+              required
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              placeholder="VD: Mua xe, Tiết kiệm, Đầu tư chứng khoán..."
+              className="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-[#0c1222] text-slate-900 dark:text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Loại quỹ</label>
+              <select
+                value={form.type ?? 'sinking_fund'}
+                onChange={(e) => setForm({ ...form, type: e.target.value as 'sinking_fund' | 'investment' })}
+                className="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-[#0c1222] text-slate-900 dark:text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="sinking_fund">Tích luỹ (Sinking Fund)</option>
+                <option value="investment">Đầu tư (Investment)</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Thuộc hũ (Jar) *</label>
+              <select
+                value={form.jar_id || ''}
+                required
+                onChange={(e) => setForm({ ...form, jar_id: Number(e.target.value) })}
+                className="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-[#0c1222] text-slate-900 dark:text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="" disabled>--- Chọn hũ ---</option>
+                {jars.map((j) => (
+                  <option key={j.id} value={j.id}>{j.label} ({j.key})</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Mục tiêu (tuỳ chọn)</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={targetStr}
+                onChange={(e) => {
+                  const raw = e.target.value.replace(/\D/g, '');
+                  setTargetStr(raw ? Number(raw).toLocaleString('vi-VN') : '');
+                  setForm({ ...form, target_amount: Number(raw) || 0 });
+                }}
+                placeholder="0"
+                className="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-[#0c1222] text-slate-900 dark:text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Góp mỗi tháng (tuỳ chọn)</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={reserveStr}
+                onChange={(e) => {
+                  const raw = e.target.value.replace(/\D/g, '');
+                  setReserveStr(raw ? Number(raw).toLocaleString('vi-VN') : '');
+                  setForm({ ...form, monthly_reserve: Number(raw) || 0 });
+                }}
+                placeholder="0"
+                className="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-[#0c1222] text-slate-900 dark:text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Ghi chú</label>
+            <input
+              type="text"
+              value={form.notes ?? ''}
+              onChange={(e) => setForm({ ...form, notes: e.target.value })}
+              className="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-[#0c1222] text-slate-900 dark:text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div className="pt-2 flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg"
+            >
+              Hủy
+            </button>
+            <button
+              type="submit"
+              disabled={createMutation.isPending || !form.name || form.jar_id === 0}
+              className="flex items-center justify-center min-w-[100px] px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg"
+            >
+              {createMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : 'Tạo quỹ'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export default function Jars({ month }: { month: string }) {
   const [activeTab, setActiveTab] = useState('list');
   const [selectedJar, setSelectedJar] = useState<JarSummary | null>(null);
   const [expandedFundsJar, setExpandedFundsJar] = useState<string | null>(null);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
 
   // Fetch ALL transactions for the month (large pageSize to get everything)
   const { data, isPending, error } = useTransactions({ month, pageSize: 200, sort: 'datetime_desc' });
@@ -154,6 +296,7 @@ export default function Jars({ month }: { month: string }) {
 
   return (
     <div className="flex flex-col gap-6 max-w-7xl mx-auto h-full">
+      {isCreateOpen && <CreateFundForm onClose={() => setIsCreateOpen(false)} />}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="flex flex-col gap-1">
           <h2 className="text-slate-900 text-3xl font-bold tracking-tight">Quản lý Ngân Sách Hũ</h2>
@@ -161,6 +304,13 @@ export default function Jars({ month }: { month: string }) {
         </div>
         
         <div className="flex items-center gap-4">
+          <button 
+            onClick={() => setIsCreateOpen(true)}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+          >
+            <Plus className="size-4" />
+            Tạo quỹ con
+          </button>
           <div className="flex bg-slate-100 p-1 rounded-lg">
             <button 
               onClick={() => setActiveTab('list')}

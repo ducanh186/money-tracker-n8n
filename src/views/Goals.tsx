@@ -16,7 +16,7 @@ import {
   PiggyBank,
 } from 'lucide-react';
 import { formatCurrency } from '../lib/utils';
-import { useGoals, useGoal, useCreateGoal, useContributeGoal, useUpdateGoal, useDeleteGoal, useJars, useFunds } from '../lib/hooks';
+import { useGoals, useGoal, useCreateGoal, useContributeGoal, useUpdateGoal, useDeleteGoal, useJars, useFunds, useInvestmentSummary } from '../lib/hooks';
 import type { Goal, CreateGoalPayload, ContributePayload, Fund } from '../lib/types';
 
 // ── Status helpers ─────────────────────────────
@@ -613,8 +613,11 @@ export default function Goals({ month: _month }: { month: string }) {
 
   const { data: goalsRes, isPending, error } = useGoals(filterStatus || undefined);
   const { data: fundsRes, isPending: fundsLoading } = useFunds();
+  const { data: investmentSummaryRes } = useInvestmentSummary(_month);
+  
   const goals = goalsRes?.data ?? [];
   const funds = fundsRes?.data ?? [];
+  const invSummary = investmentSummaryRes?.data;
 
   if (isPending) {
     return (
@@ -853,6 +856,31 @@ export default function Goals({ month: _month }: { month: string }) {
             </div>
           ) : (
             <>
+              {/* Aggregate Investment Summary Dashboard */}
+              {invSummary && invSummary.planned_allocation > 0 && (
+                <div className="bg-white dark:bg-[#1a2433] rounded-2xl p-5 shadow-sm border border-slate-100 dark:border-slate-700 mb-2">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                       Tổng quan Đầu tư (Trong tháng)
+                    </h3>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                     <div className="bg-slate-50 dark:bg-[#0c1222] p-3 rounded-xl border border-slate-100 dark:border-slate-800">
+                        <p className="text-sm text-slate-500 dark:text-slate-400">Kế hoạch Đầu tư</p>
+                        <p className="text-lg font-bold text-slate-900 dark:text-white mt-1">{formatCurrency(invSummary.planned_allocation)}</p>
+                     </div>
+                     <div className="bg-slate-50 dark:bg-[#0c1222] p-3 rounded-xl border border-slate-100 dark:border-slate-800">
+                        <p className="text-sm text-slate-500 dark:text-slate-400">Đã giải ngân</p>
+                        <p className="text-lg font-bold text-indigo-600 dark:text-indigo-400 mt-1">{formatCurrency(invSummary.total_funded)}</p>
+                     </div>
+                     <div className="bg-slate-50 dark:bg-[#0c1222] p-3 rounded-xl border border-slate-100 dark:border-slate-800">
+                        <p className="text-sm text-slate-500 dark:text-slate-400">Còn lại chờ đầu tư</p>
+                        <p className="text-lg font-bold text-amber-600 dark:text-amber-500 mt-1">{formatCurrency(Math.max(0, invSummary.planned_allocation - invSummary.total_funded))}</p>
+                     </div>
+                  </div>
+                </div>
+              )}
+
               {/* Grouped by jar */}
               {(() => {
                 const grouped = new Map<string, Fund[]>();
@@ -877,13 +905,18 @@ export default function Goals({ month: _month }: { month: string }) {
                               }`}>
                                 {fund.status === 'active' ? 'Hoạt động' : fund.status === 'completed' ? 'Hoàn thành' : 'Tạm dừng'}
                               </span>
+                              {fund.type === 'investment' && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-400">
+                                  Đầu tư
+                                </span>
+                              )}
                             </div>
                             {fund.goal && (
                               <p className="text-xs text-slate-400 dark:text-slate-500 mb-2">Gắn mục tiêu: {fund.goal.name}</p>
                             )}
                             <ProgressBar pct={fund.progress_pct} />
                             <div className="flex items-center justify-between mt-2 text-xs text-slate-500 dark:text-slate-400">
-                              <span>Đã giữ: {formatCurrency(fund.reserved_amount)}</span>
+                              <span>{fund.type === 'investment' ? 'Đã phân bổ' : 'Đã giữ'}: {formatCurrency(fund.reserved_amount)}</span>
                               <span>Mục tiêu: {formatCurrency(fund.target_amount)}</span>
                             </div>
                           </div>
@@ -896,15 +929,15 @@ export default function Goals({ month: _month }: { month: string }) {
                         </div>
                         <div className="grid grid-cols-3 gap-3 mt-3 text-xs">
                           <div className="bg-slate-50 dark:bg-[#0c1222] rounded-lg p-2">
-                            <div className="text-slate-400 dark:text-slate-500">Đã giữ</div>
+                            <div className="text-slate-400 dark:text-slate-500">{fund.type === 'investment' ? 'Đã phân bổ' : 'Đã giữ'}</div>
                             <div className="font-semibold text-blue-600 dark:text-blue-400">{formatCurrency(fund.reserved_amount)}</div>
                           </div>
                           <div className="bg-slate-50 dark:bg-[#0c1222] rounded-lg p-2">
-                            <div className="text-slate-400 dark:text-slate-500">Đã chi</div>
-                            <div className="font-semibold text-red-600 dark:text-red-400">{formatCurrency(fund.spent_amount)}</div>
+                            <div className="text-slate-400 dark:text-slate-500">{fund.type === 'investment' ? 'Đã giải ngân' : 'Đã chi'}</div>
+                            <div className="font-semibold text-indigo-600 dark:text-indigo-400">{formatCurrency(fund.spent_amount)}</div>
                           </div>
                           <div className="bg-slate-50 dark:bg-[#0c1222] rounded-lg p-2">
-                            <div className="text-slate-400 dark:text-slate-500">Còn lại</div>
+                            <div className="text-slate-400 dark:text-slate-500">{fund.type === 'investment' ? 'Tiền mặt chờ' : 'Còn lại'}</div>
                             <div className={`font-semibold ${fund.available >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>{formatCurrency(fund.available)}</div>
                           </div>
                         </div>

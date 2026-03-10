@@ -1,6 +1,6 @@
-import { TrendingUp, TrendingDown, Wallet, ArrowUpCircle, ArrowDownCircle, ArrowRightLeft, Loader2, RefreshCw, PiggyBank, AlertTriangle } from 'lucide-react';
-import { formatCurrency, formatSignedAmount } from '../lib/utils';
-import { useDashboardSummary, useSyncStatus, useTriggerSync, useBudgetStatus } from '../lib/hooks';
+import { TrendingUp, TrendingDown, Wallet, ArrowUpCircle, ArrowDownCircle, ArrowRightLeft, Loader2, RefreshCw, PiggyBank, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { formatCurrency, formatSignedAmount, cn } from '../lib/utils';
+import { useDashboardSummary, useSyncStatus, useTriggerSync, useBudgetStatus, useInvestmentSummary } from '../lib/hooks';
 import { IncomeExpenseChart } from '../components/IncomeExpenseChart';
 import { ExpenseStructureChart } from '../components/ExpenseStructureChart';
 
@@ -22,6 +22,7 @@ export default function Overview({ month }: { month: string }) {
   const { data: syncRes } = useSyncStatus();
   const syncMutation = useTriggerSync();
   const { data: budgetStatus } = useBudgetStatus(month);
+  const { data: investmentData } = useInvestmentSummary(month);
 
   if (isPending) {
     return (
@@ -169,6 +170,70 @@ export default function Overview({ month }: { month: string }) {
                 </div>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {/* Investment Summary */}
+      {investmentData && investmentData.data && investmentData.data.planned_allocation > 0 && (
+        <div className="bg-white dark:bg-[#151b2b] rounded-2xl p-5 shadow-sm border border-slate-100 dark:border-slate-800 lg:col-span-2">
+          <div className="flex items-center gap-2 mb-4">
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white">Tiến độ Đầu tư</h3>
+            <span className="text-xs font-semibold px-2 py-1 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400">
+              Tháng {month}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Aggregate Progress */}
+            <div className="p-4 rounded-xl bg-slate-50 dark:bg-[#0c1222] border border-slate-100 dark:border-slate-700">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm text-slate-500 dark:text-slate-400">Tổng đầu tư so với kế hoạch</span>
+                <span className="text-sm font-bold text-slate-900 dark:text-white">
+                  {Math.round((investmentData.data.total_funded / investmentData.data.planned_allocation) * 100) || 0}%
+                </span>
+              </div>
+              <div className="h-2 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden mb-3">
+                <div 
+                  className={`h-full rounded-full transition-all ${
+                    investmentData.data.total_funded >= investmentData.data.planned_allocation 
+                      ? 'bg-emerald-500' 
+                      : 'bg-indigo-500'
+                  }`}
+                  style={{ width: `${Math.min(100, (investmentData.data.total_funded / investmentData.data.planned_allocation) * 100) || 0}%` }}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <span className="text-slate-500 dark:text-slate-400 block">Kế hoạch:</span>
+                  <span className="font-semibold text-slate-700 dark:text-slate-300">{formatCurrency(investmentData.data.planned_allocation)}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 dark:text-slate-400 block">Đã giải ngân:</span>
+                  <span className="font-semibold text-indigo-600 dark:text-indigo-400">{formatCurrency(investmentData.data.total_funded)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Individual Target Items */}
+            <div className="flex flex-col gap-2">
+              {investmentData.data.allocations.filter(a => a.planned > 0).map(allocation => (
+                <div key={allocation.fund_id} className="flex flex-col gap-1 p-3 rounded-lg bg-slate-50 dark:bg-[#0c1222] border border-slate-100 dark:border-slate-700">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">{allocation.fund_name}</span>
+                    <div className="text-xs text-slate-500 dark:text-slate-400">
+                      {formatCurrency(allocation.current_funded)} / {formatCurrency(allocation.planned)}
+                    </div>
+                  </div>
+                  <div className="h-1.5 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full rounded-full ${allocation.current_funded >= allocation.planned ? 'bg-emerald-500' : 'bg-indigo-400'}`}
+                      style={{ width: `${Math.min(100, (allocation.current_funded / allocation.planned) * 100) || 0}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
