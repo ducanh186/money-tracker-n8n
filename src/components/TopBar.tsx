@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { PieChart, List, Wallet, Target, Crosshair, CreditCard, Search, Sun, Moon, Menu, X, ChevronDown, AlertTriangle } from 'lucide-react';
+import { PieChart, List, Wallet, Target, Crosshair, CreditCard, Sun, Moon, Menu, X, ChevronDown, AlertTriangle } from 'lucide-react';
 import { cn, formatCurrency } from '../lib/utils';
 import { getRecentMonths, formatMonthLabel } from '../lib/api';
 import { useBudgetStatus } from '../lib/hooks';
@@ -79,23 +79,6 @@ export default function TopBar({ currentView, setCurrentView, selectedMonth, onM
               </select>
               <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 size-3.5 text-slate-400 pointer-events-none" />
             </div>
-
-            {/* Search - desktop */}
-            <div className="hidden md:flex relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search className="size-4 text-slate-400" />
-              </div>
-              <input
-                type="text"
-                placeholder="Tìm kiếm..."
-                className="pl-9 pr-4 py-1.5 bg-slate-50 dark:bg-[#0c1222] border border-slate-200 dark:border-slate-600 rounded-lg text-sm text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500/20 focus:outline-none w-48 lg:w-56 transition-colors"
-              />
-            </div>
-
-            {/* Search - mobile */}
-            <button className="md:hidden flex size-9 items-center justify-center rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/60 transition-colors">
-              <Search className="size-5" />
-            </button>
 
             {/* Dark mode toggle */}
             <button

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Loader2,
   Target,
@@ -13,11 +13,15 @@ import {
   ArrowUpCircle,
   Pencil,
   Trash2,
-  PiggyBank,
+  ArrowDownUp,
 } from 'lucide-react';
 import { formatCurrency } from '../lib/utils';
-import { useGoals, useGoal, useCreateGoal, useContributeGoal, useUpdateGoal, useDeleteGoal, useJars, useFunds, useInvestmentSummary } from '../lib/hooks';
-import type { Goal, CreateGoalPayload, ContributePayload, Fund } from '../lib/types';
+import { useGoals, useGoal, useCreateGoal, useContributeGoal, useUpdateGoal, useDeleteGoal, useJars } from '../lib/hooks';
+import type { Goal, CreateGoalPayload, ContributePayload } from '../lib/types';
+
+// ── Sort types ─────────────────────────────
+type SortField = 'deadline' | 'priority' | 'amount';
+type SortDir = 'asc' | 'desc';
 
 // ── Status helpers ─────────────────────────────
 
@@ -609,15 +613,38 @@ export default function Goals({ month: _month }: { month: string }) {
   const [contributeGoalId, setContributeGoalId] = useState<number | null>(null);
   const [expandedGoalId, setExpandedGoalId] = useState<number | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('active');
-  const [activeTab, setActiveTab] = useState<'goals' | 'funds'>('goals');
+  const [sortField, setSortField] = useState<SortField | null>(null);
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
 
   const { data: goalsRes, isPending, error } = useGoals(filterStatus || undefined);
-  const { data: fundsRes, isPending: fundsLoading } = useFunds();
-  const { data: investmentSummaryRes } = useInvestmentSummary(_month);
   
-  const goals = goalsRes?.data ?? [];
-  const funds = fundsRes?.data ?? [];
-  const invSummary = investmentSummaryRes?.data;
+  const rawGoals = goalsRes?.data ?? [];
+
+  // Sort goals
+  const goals = useMemo(() => {
+    if (!sortField) return rawGoals;
+    const sorted = [...rawGoals].sort((a, b) => {
+      if (sortField === 'deadline') {
+        const da = a.deadline ? new Date(a.deadline).getTime() : Infinity;
+        const db = b.deadline ? new Date(b.deadline).getTime() : Infinity;
+        return da - db;
+      }
+      if (sortField === 'priority') return a.priority - b.priority;
+      if (sortField === 'amount') return a.target_amount - b.target_amount;
+      return 0;
+    });
+    return sortDir === 'desc' ? sorted.reverse() : sorted;
+  }, [rawGoals, sortField, sortDir]);
+
+  const toggleSort = (field: SortField) => {
+    if (sortField === field) {
+      if (sortDir === 'asc') setSortDir('desc');
+      else { setSortField(null); setSortDir('asc'); }
+    } else {
+      setSortField(field);
+      setSortDir('asc');
+    }
+  };
 
   if (isPending) {
     return (
@@ -651,57 +678,54 @@ export default function Goals({ month: _month }: { month: string }) {
         <div>
           <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Quỹ & Mục tiêu</h2>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            {activeTab === 'goals'
-              ? `${goals.length} quỹ mục tiêu • Tổng tiến độ ${overallPct}%`
-              : `${funds.length} quỹ con (sub-funds)`
-            }
+            {`${goals.length} quỹ mục tiêu • Tổng tiến độ ${overallPct}%`}
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          {/* Tab switch */}
-          <div className="flex bg-slate-100 dark:bg-[#0c1222] p-1 rounded-lg">
-            <button
-              onClick={() => setActiveTab('goals')}
-              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${activeTab === 'goals' ? 'bg-white dark:bg-[#1a2433] text-slate-900 dark:text-white shadow-sm' : 'text-slate-600 dark:text-slate-400'}`}
-            >
-              <Target className="size-4 inline mr-1" />
-              Mục tiêu
-            </button>
-            <button
-              onClick={() => setActiveTab('funds')}
-              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${activeTab === 'funds' ? 'bg-white dark:bg-[#1a2433] text-slate-900 dark:text-white shadow-sm' : 'text-slate-600 dark:text-slate-400'}`}
-            >
-              <PiggyBank className="size-4 inline mr-1" />
-              Quỹ con
-            </button>
-          </div>
-          {activeTab === 'goals' && (
-            <>
-              <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-                className="rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-[#1a2433] text-slate-700 dark:text-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Tất cả</option>
-                <option value="active">Đang thực hiện</option>
-                <option value="completed">Hoàn thành</option>
-                <option value="paused">Tạm dừng</option>
-              </select>
+        <div className="flex items-center gap-3 flex-wrap">
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-[#1a2433] text-slate-700 dark:text-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">Tất cả</option>
+            <option value="active">Đang thực hiện</option>
+            <option value="completed">Hoàn thành</option>
+            <option value="paused">Tạm dừng</option>
+          </select>
+          {/* Sort buttons */}
+          {([['deadline', 'Kỳ hạn'], ['priority', 'Ưu tiên'], ['amount', 'Số tiền']] as [SortField, string][]).map(([field, label]) => {
+            const active = sortField === field;
+            return (
               <button
-                onClick={() => setShowCreate(true)}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 transition-colors"
+                key={field}
+                onClick={() => toggleSort(field)}
+                className={`flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors border ${
+                  active
+                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400'
+                    : 'border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/60'
+                }`}
               >
-                <Plus className="size-4" />
-                Tạo quỹ
+                {label}
+                {active ? (
+                  sortDir === 'asc' ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />
+                ) : (
+                  <ArrowDownUp className="size-3.5 opacity-40" />
+                )}
               </button>
-            </>
-          )}
+            );
+          })}
+          <button
+            onClick={() => setShowCreate(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 transition-colors"
+          >
+            <Plus className="size-4" />
+            Tạo quỹ
+          </button>
         </div>
       </div>
 
       {/* Summary cards */}
-      {activeTab === 'goals' && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <SummaryCard title="Tổng mục tiêu" amount={totalTarget} icon={Target} color="text-blue-600" bg="bg-blue-50" />
         <SummaryCard title="Đã góp" amount={totalCurrent} icon={ArrowUpCircle} color="text-emerald-600" bg="bg-emerald-50" />
         <SummaryCard title="Còn thiếu" amount={totalShortfall} icon={DollarSign} color="text-amber-600" bg="bg-amber-50" />
@@ -714,10 +738,9 @@ export default function Goals({ month: _month }: { month: string }) {
           </div>
         </div>
       </div>
-      )}
 
       {/* Empty state */}
-      {activeTab === 'goals' && goals.length === 0 && (
+      {goals.length === 0 && (
         <div className="flex flex-col items-center justify-center py-16">
           <Target className="size-16 text-slate-300 mb-3" />
           <p className="text-slate-500 font-medium">Chưa có quỹ nào</p>
@@ -733,7 +756,6 @@ export default function Goals({ month: _month }: { month: string }) {
       )}
 
       {/* Goals list */}
-      {activeTab === 'goals' && (
       <div className="flex flex-col gap-4">
         {goals.map((goal) => (
           <div key={goal.id} className="rounded-xl bg-white dark:bg-[#1a2433] border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow">
@@ -839,117 +861,6 @@ export default function Goals({ month: _month }: { month: string }) {
           </div>
         ))}
       </div>
-      )}
-
-      {/* Funds Tab */}
-      {activeTab === 'funds' && (
-        <div className="flex flex-col gap-4">
-          {fundsLoading ? (
-            <div className="flex items-center justify-center py-16">
-              <Loader2 className="size-8 text-blue-600 animate-spin" />
-            </div>
-          ) : funds.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16">
-              <PiggyBank className="size-16 text-slate-300 mb-3" />
-              <p className="text-slate-500 dark:text-slate-400 font-medium">Chưa có quỹ con nào</p>
-              <p className="text-sm text-slate-400 dark:text-slate-500">Quỹ con được tạo từ trang Quản lý Hũ hoặc API</p>
-            </div>
-          ) : (
-            <>
-              {/* Aggregate Investment Summary Dashboard */}
-              {invSummary && invSummary.planned_allocation > 0 && (
-                <div className="bg-white dark:bg-[#1a2433] rounded-2xl p-5 shadow-sm border border-slate-100 dark:border-slate-700 mb-2">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                       Tổng quan Đầu tư (Trong tháng)
-                    </h3>
-                  </div>
-                  <div className="grid grid-cols-3 gap-3">
-                     <div className="bg-slate-50 dark:bg-[#0c1222] p-3 rounded-xl border border-slate-100 dark:border-slate-800">
-                        <p className="text-sm text-slate-500 dark:text-slate-400">Kế hoạch Đầu tư</p>
-                        <p className="text-lg font-bold text-slate-900 dark:text-white mt-1">{formatCurrency(invSummary.planned_allocation)}</p>
-                     </div>
-                     <div className="bg-slate-50 dark:bg-[#0c1222] p-3 rounded-xl border border-slate-100 dark:border-slate-800">
-                        <p className="text-sm text-slate-500 dark:text-slate-400">Đã giải ngân</p>
-                        <p className="text-lg font-bold text-indigo-600 dark:text-indigo-400 mt-1">{formatCurrency(invSummary.total_funded)}</p>
-                     </div>
-                     <div className="bg-slate-50 dark:bg-[#0c1222] p-3 rounded-xl border border-slate-100 dark:border-slate-800">
-                        <p className="text-sm text-slate-500 dark:text-slate-400">Còn lại chờ đầu tư</p>
-                        <p className="text-lg font-bold text-amber-600 dark:text-amber-500 mt-1">{formatCurrency(Math.max(0, invSummary.planned_allocation - invSummary.total_funded))}</p>
-                     </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Grouped by jar */}
-              {(() => {
-                const grouped = new Map<string, Fund[]>();
-                for (const f of funds) {
-                  const jk = f.jar?.label ?? 'Không thuộc hũ';
-                  if (!grouped.has(jk)) grouped.set(jk, []);
-                  grouped.get(jk)!.push(f);
-                }
-                return Array.from(grouped.entries()).map(([jarLabel, jarFunds]) => (
-                  <div key={jarLabel} className="flex flex-col gap-2">
-                    <h3 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{jarLabel}</h3>
-                    {jarFunds.map((fund) => (
-                      <div key={fund.id} className="rounded-xl bg-white dark:bg-[#1a2433] border border-slate-100 dark:border-slate-700 shadow-sm p-4">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <h4 className="font-bold text-slate-900 dark:text-white">{fund.name}</h4>
-                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${
-                                fund.status === 'active' ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400'
-                                : fund.status === 'completed' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400'
-                                : 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400'
-                              }`}>
-                                {fund.status === 'active' ? 'Hoạt động' : fund.status === 'completed' ? 'Hoàn thành' : 'Tạm dừng'}
-                              </span>
-                              {fund.type === 'investment' && (
-                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-400">
-                                  Đầu tư
-                                </span>
-                              )}
-                            </div>
-                            {fund.goal && (
-                              <p className="text-xs text-slate-400 dark:text-slate-500 mb-2">Gắn mục tiêu: {fund.goal.name}</p>
-                            )}
-                            <ProgressBar pct={fund.progress_pct} />
-                            <div className="flex items-center justify-between mt-2 text-xs text-slate-500 dark:text-slate-400">
-                              <span>{fund.type === 'investment' ? 'Đã phân bổ' : 'Đã giữ'}: {formatCurrency(fund.reserved_amount)}</span>
-                              <span>Mục tiêu: {formatCurrency(fund.target_amount)}</span>
-                            </div>
-                          </div>
-                          <div className="text-right shrink-0">
-                            <span className="text-lg font-bold text-slate-900 dark:text-white">{fund.progress_pct}%</span>
-                            {fund.monthly_reserve > 0 && (
-                              <p className="text-xs text-slate-400 dark:text-slate-500">+{formatCurrency(fund.monthly_reserve)}/tháng</p>
-                            )}
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-3 gap-3 mt-3 text-xs">
-                          <div className="bg-slate-50 dark:bg-[#0c1222] rounded-lg p-2">
-                            <div className="text-slate-400 dark:text-slate-500">{fund.type === 'investment' ? 'Đã phân bổ' : 'Đã giữ'}</div>
-                            <div className="font-semibold text-blue-600 dark:text-blue-400">{formatCurrency(fund.reserved_amount)}</div>
-                          </div>
-                          <div className="bg-slate-50 dark:bg-[#0c1222] rounded-lg p-2">
-                            <div className="text-slate-400 dark:text-slate-500">{fund.type === 'investment' ? 'Đã giải ngân' : 'Đã chi'}</div>
-                            <div className="font-semibold text-indigo-600 dark:text-indigo-400">{formatCurrency(fund.spent_amount)}</div>
-                          </div>
-                          <div className="bg-slate-50 dark:bg-[#0c1222] rounded-lg p-2">
-                            <div className="text-slate-400 dark:text-slate-500">{fund.type === 'investment' ? 'Tiền mặt chờ' : 'Còn lại'}</div>
-                            <div className={`font-semibold ${fund.available >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>{formatCurrency(fund.available)}</div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ));
-              })()}
-            </>
-          )}
-        </div>
-      )}
 
       {/* Create form modal */}
       {showCreate && <CreateGoalForm onClose={() => setShowCreate(false)} />}
