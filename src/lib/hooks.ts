@@ -520,6 +520,8 @@ export function useCreateBudgetPeriod() {
     mutationFn: (payload: CreateBudgetPeriodPayload) => createBudgetPeriod(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['budget-periods'] });
+      queryClient.invalidateQueries({ queryKey: ['budget-period'] });
+      queryClient.invalidateQueries({ queryKey: ['budget-lines'] });
       queryClient.invalidateQueries({ queryKey: ['budget-status'] });
       queryClient.invalidateQueries({ queryKey: ['budget-plan'] });
     },

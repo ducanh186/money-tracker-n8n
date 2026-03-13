@@ -36,6 +36,7 @@ class BudgetLineController extends Controller
     public function store(StoreBudgetLineRequest $request): JsonResponse
     {
         $line = BudgetLine::create($request->validated());
+        $this->syncJarAllocationMetrics($line->jarAllocation);
 
         return response()->json([
             'data'    => $this->serializeLine($line),
@@ -48,6 +49,7 @@ class BudgetLineController extends Controller
      */
     public function update(Request $request, BudgetLine $budgetLine): JsonResponse
     {
+        $originalAllocationId = $budgetLine->jar_allocation_id;
         $validated = $request->validate([
             'jar_allocation_id' => ['sometimes', 'integer', 'exists:jar_allocations,id'],
             'name'           => ['sometimes', 'string', 'max:255'],
@@ -73,9 +75,19 @@ class BudgetLineController extends Controller
         }
 
         $budgetLine->update($validated);
+        $freshLine = $budgetLine->fresh();
+
+        if ($originalAllocationId !== $freshLine->jar_allocation_id) {
+            $originalAllocation = JarAllocation::find($originalAllocationId);
+            if ($originalAllocation) {
+                $this->syncJarAllocationMetrics($originalAllocation);
+            }
+        }
+
+        $this->syncJarAllocationMetrics($freshLine->jarAllocation);
 
         return response()->json([
-            'data'    => $this->serializeLine($budgetLine->fresh()),
+            'data'    => $this->serializeLine($freshLine),
             'message' => 'Budget line updated.',
         ]);
     }
@@ -85,7 +97,9 @@ class BudgetLineController extends Controller
      */
     public function destroy(BudgetLine $budgetLine): JsonResponse
     {
+        $allocation = $budgetLine->jarAllocation;
         $budgetLine->delete();
+        $this->syncJarAllocationMetrics($allocation);
 
         return response()->json([
             'message' => 'Budget line deleted.',
@@ -113,5 +127,12 @@ class BudgetLineController extends Controller
             'fund_id'           => $line->fund_id,
             'notes'             => $line->notes,
         ];
+    }
+
+    private function syncJarAllocationMetrics(JarAllocation $allocation): void
+    {
+        $allocation->update([
+            'committed_amount' => (int) $allocation->budgetLines()->sum('planned_amount'),
+        ]);
     }
 }

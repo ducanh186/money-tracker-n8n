@@ -115,6 +115,18 @@ function getPlannerTypeLabel(type: PlannerType): string {
   return PLANNER_TYPE_OPTIONS.find((option) => option.value === type)?.label ?? 'Chi thường';
 }
 
+function parseBudgetMonth(month: string): { year: number; monthNum: number } | null {
+  const [abbr, yearText] = month.split('-');
+  const year = Number(yearText);
+  const monthNum = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].indexOf(abbr) + 1;
+
+  if (!Number.isInteger(year) || year <= 0 || monthNum <= 0) {
+    return null;
+  }
+
+  return { year, monthNum };
+}
+
 function createBudgetLineDraft(defaultJarAllocationId?: number, line?: BudgetLine): BudgetLineDraft {
   return {
     name: line?.name ?? '',
@@ -562,10 +574,11 @@ type PlannedExpenseSectionProps = {
   debts: Debt[];
   funds: Fund[];
   recurringBills: RecurringBill[];
-  isReady: boolean;
   isLoading: boolean;
+  isPreparing: boolean;
   canEdit: boolean;
   isMutating: boolean;
+  onPrepareCreate: (jarKey: string) => Promise<number | null>;
   onCreateLine: (payload: CreateBudgetLinePayload) => Promise<unknown>;
   onUpdateLine: (id: number, payload: Partial<CreateBudgetLinePayload>) => Promise<unknown>;
   onDeleteLine: (id: number) => Promise<unknown>;
@@ -580,10 +593,11 @@ function PlannedExpenseSection({
   debts,
   funds,
   recurringBills,
-  isReady,
   isLoading,
+  isPreparing,
   canEdit,
   isMutating,
+  onPrepareCreate,
   onCreateLine,
   onUpdateLine,
   onDeleteLine,
@@ -609,6 +623,33 @@ function PlannedExpenseSection({
   const sortedLines = [...lines].sort((a, b) => b.planned_amount - a.planned_amount || a.name.localeCompare(b.name));
   const plannedTotal = jarMetric?.committed ?? sortedLines.reduce((sum, line) => sum + line.planned_amount, 0);
   const availableAmount = jarMetric?.available ?? jar.remaining;
+
+  const handleCreateToggle = async () => {
+    if (showCreateForm) {
+      setShowCreateForm(false);
+      setCreateError(null);
+      setCreateDraft(createBudgetLineDraft(defaultJarOption?.allocation_id));
+      return;
+    }
+
+    try {
+      setEditingLineId(null);
+      setEditingDraft(null);
+      setEditingError(null);
+      setCreateError(null);
+
+      const allocationId = await onPrepareCreate(jar.key);
+      const nextAllocationId = allocationId ?? defaultJarOption?.allocation_id;
+      if (!nextAllocationId) {
+        throw new Error('Không tìm thấy hũ này trong workspace ngân sách hiện tại.');
+      }
+
+      setCreateDraft(createBudgetLineDraft(nextAllocationId));
+      setShowCreateForm(true);
+    } catch (prepareError) {
+      setCreateError(prepareError instanceof Error ? prepareError.message : 'Không thể mở planner cho tháng này.');
+    }
+  };
 
   const handleCreateSubmit = async () => {
     const { payload, error } = buildBudgetLinePayload(createDraft);
@@ -683,19 +724,15 @@ function PlannedExpenseSection({
           </p>
         </div>
 
-        {canEdit && isReady && defaultJarOption ? (
+        {canEdit ? (
           <button
             onClick={() => {
-              setEditingLineId(null);
-              setEditingDraft(null);
-              setEditingError(null);
-              setCreateError(null);
-              setCreateDraft(createBudgetLineDraft(defaultJarOption.allocation_id));
-              setShowCreateForm((current) => !current);
+              void handleCreateToggle();
             }}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-2 text-xs font-bold text-white hover:bg-violet-700"
+            disabled={isLoading || isPreparing}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-2 text-xs font-bold text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            <Plus className="size-3.5" />
+            {(isLoading || isPreparing) ? <Loader2 className="size-3.5 animate-spin" /> : <Plus className="size-3.5" />}
             {showCreateForm ? 'Ẩn form' : 'Thêm khoản'}
           </button>
         ) : (
@@ -729,24 +766,26 @@ function PlannedExpenseSection({
         </div>
       )}
 
+      {!showCreateForm && createError && (
+        <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
+          {createError}
+        </div>
+      )}
+
       <div className="mt-4 space-y-3">
         {isLoading ? (
           <div className="flex items-center justify-center rounded-xl border border-dashed border-violet-200 px-4 py-5 text-violet-600 dark:border-violet-500/20 dark:text-violet-300">
             <Loader2 className="size-4 animate-spin" />
           </div>
-        ) : !isReady ? (
-          <div className="rounded-xl border border-dashed border-violet-200 bg-white/70 px-4 py-4 text-sm text-violet-700 dark:border-violet-500/20 dark:bg-violet-500/5 dark:text-violet-200">
-            Tạo kỳ ngân sách trước để bắt đầu nhập khoản chi dự kiến cho hũ này.
-          </div>
         ) : !canEdit ? (
           <div className="rounded-xl border border-dashed border-violet-200 bg-white/70 px-4 py-4 text-sm text-violet-700 dark:border-violet-500/20 dark:bg-violet-500/5 dark:text-violet-200">
-            Tháng này đã khóa. Planner vẫn hiển thị để đối chiếu nhưng không thể sửa.
+            Planner đang tạm khóa thao tác.
           </div>
         ) : null}
 
-        {!isLoading && isReady && sortedLines.length === 0 && (
+        {!isLoading && sortedLines.length === 0 && (
           <div className="rounded-xl border border-dashed border-violet-200 bg-white/70 px-4 py-5 text-sm text-violet-700 dark:border-violet-500/20 dark:bg-violet-500/5 dark:text-violet-200">
-            Chưa có khoản chi dự kiến. Hãy gài trước các khoản phải chi, mục tiêu hoặc nợ để biết hũ này còn dư bao nhiêu.
+            Chưa có khoản chi dự kiến. Thêm khoản đầu tiên để planner tháng này tự khởi tạo và tính ngay số dư còn có thể chi.
           </div>
         )}
 
@@ -839,6 +878,8 @@ function PlannedExpenseSection({
 
 export default function BudgetPlan({ month }: { month: string }) {
   const [expandedJar, setExpandedJar] = useState<string | null>(null);
+  const [ensuredPeriodId, setEnsuredPeriodId] = useState<number | null>(null);
+  const [optimisticWorkspaceJars, setOptimisticWorkspaceJars] = useState<BudgetWorkspaceJar[] | null>(null);
 
   // Editable total plan (base_income override) — persisted to DB
   const [editingPlan, setEditingPlan] = useState(false);
@@ -859,14 +900,15 @@ export default function BudgetPlan({ month }: { month: string }) {
   const { data: debtsRes } = useDebts();
   const { data: fundsRes } = useFunds();
   const { data: recurringBillsRes } = useRecurringBills();
-  const { data: periodsRes } = useBudgetPeriods();
+  const { data: periodsRes, isPending: isPeriodsPending } = useBudgetPeriods();
 
   const periods = periodsRes?.data ?? [];
   const currentPeriod = periods.find((period) => period.month === month) ?? null;
   const currentPeriodId = currentPeriod?.id ?? null;
+  const effectivePeriodId = currentPeriodId ?? ensuredPeriodId;
 
-  const { data: workspaceRes, isPending: isWorkspacePending } = useBudgetPeriod(currentPeriodId);
-  const { data: budgetLinesRes, isPending: isBudgetLinesPending } = useBudgetLines(currentPeriodId ?? 0);
+  const { data: workspaceRes, isPending: isWorkspacePending } = useBudgetPeriod(effectivePeriodId);
+  const { data: budgetLinesRes, isPending: isBudgetLinesPending } = useBudgetLines(effectivePeriodId ?? 0);
   const createBudgetLineMutation = useCreateBudgetLine();
   const updateBudgetLineMutation = useUpdateBudgetLine();
   const deleteBudgetLineMutation = useDeleteBudgetLine();
@@ -877,17 +919,34 @@ export default function BudgetPlan({ month }: { month: string }) {
     }
   }, [data?.data?.base_income]);
 
+  useEffect(() => {
+    setEnsuredPeriodId(null);
+    setOptimisticWorkspaceJars(null);
+    setExpandedJar(null);
+  }, [month]);
+
+  useEffect(() => {
+    if (currentPeriodId) {
+      setEnsuredPeriodId(currentPeriodId);
+    }
+  }, [currentPeriodId]);
+
+  useEffect(() => {
+    if (workspaceRes?.data.jars?.length) {
+      setOptimisticWorkspaceJars(workspaceRes.data.jars);
+    }
+  }, [workspaceRes?.data.jars]);
+
   const dbJars = jarsRes?.data ?? [];
   const goals = goalsRes?.data ?? [];
   const debts = debtsRes?.data ?? [];
   const funds = fundsRes?.data ?? [];
   const recurringBills = recurringBillsRes?.data ?? [];
-  const workspaceJars = workspaceRes?.data.jars ?? [];
+  const workspaceJars = workspaceRes?.data.jars ?? optimisticWorkspaceJars ?? [];
   const budgetLines = budgetLinesRes?.data ?? [];
-  const plannerLoading = Boolean(currentPeriodId) && (isWorkspacePending || isBudgetLinesPending);
-  const plannerReady = Boolean(currentPeriodId) && workspaceJars.length > 0;
-  const plannerEditable = Boolean(currentPeriodId) && budgetStatus?.period_status === 'open';
-  const plannerMutating = createBudgetLineMutation.isPending || updateBudgetLineMutation.isPending || deleteBudgetLineMutation.isPending;
+  const plannerLoading = isPeriodsPending || createPeriodMutation.isPending || (Boolean(effectivePeriodId) && (isWorkspacePending || isBudgetLinesPending));
+  const plannerEditable = !createPeriodMutation.isPending;
+  const plannerMutating = createPeriodMutation.isPending || createBudgetLineMutation.isPending || updateBudgetLineMutation.isPending || deleteBudgetLineMutation.isPending;
 
   const budgetLinesByJar: Record<string, BudgetLine[]> = {};
   for (const line of budgetLines) {
@@ -896,6 +955,53 @@ export default function BudgetPlan({ month }: { month: string }) {
     }
     budgetLinesByJar[line.jar_key].push(line);
   }
+
+  const ensureCurrentPeriodWorkspace = useCallback(async () => {
+    if (effectivePeriodId) {
+      if (workspaceJars.length > 0) {
+        return {
+          periodId: effectivePeriodId,
+          jars: workspaceJars,
+        };
+      }
+
+      throw new Error('Đang tải planner của tháng này. Thử lại sau vài giây.');
+    }
+
+    if (isPeriodsPending) {
+      throw new Error('Đang tải dữ liệu ngân sách của tháng này. Thử lại sau vài giây.');
+    }
+
+    const parsedMonth = parseBudgetMonth(month);
+    if (!parsedMonth) {
+      throw new Error(`Không đọc được tháng ngân sách từ "${month}".`);
+    }
+
+    const totalIncome = budgetStatus?.income ?? data?.data.sheet_income ?? data?.data.base_income ?? 0;
+    const response = await createPeriodMutation.mutateAsync({
+      month,
+      year: parsedMonth.year,
+      month_num: parsedMonth.monthNum,
+      total_income: totalIncome,
+    });
+
+    setEnsuredPeriodId(response.data.period.id);
+    setOptimisticWorkspaceJars(response.data.jars);
+
+    return {
+      periodId: response.data.period.id,
+      jars: response.data.jars,
+    };
+  }, [
+    budgetStatus?.income,
+    createPeriodMutation,
+    data?.data.base_income,
+    data?.data.sheet_income,
+    effectivePeriodId,
+    isPeriodsPending,
+    month,
+    workspaceJars,
+  ]);
 
   const handleSavePercent = useCallback((jarId: number, percent: number) => {
     updateJarMutation.mutate({ id: jarId, payload: { percent } });
@@ -936,20 +1042,10 @@ export default function BudgetPlan({ month }: { month: string }) {
             Phân bổ Ngân sách tháng
           </h2>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            Gài trước các khoản chi màu tím theo từng hũ để biết tháng này còn bao nhiêu cho mục tiêu, nợ và chi tiêu thường.
+            Gài trước các khoản chi màu tím theo từng hũ để biết tháng này còn bao nhiêu cho mục tiêu, nợ và chi tiêu thường. Planner sẽ tự khởi tạo tháng khi bạn thêm khoản đầu tiên.
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {budgetStatus && !budgetStatus.has_period && (
-            <button
-              onClick={() => createPeriodMutation.mutate({ month, total_income: budgetStatus.income })}
-              disabled={createPeriodMutation.isPending}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 disabled:opacity-50"
-            >
-              {createPeriodMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
-              Tạo kỳ ngân sách
-            </button>
-          )}
           {budgetStatus && budgetStatus.has_period && budgetStatus.period_status === 'open' && (
             <button
               onClick={() => {
@@ -957,9 +1053,9 @@ export default function BudgetPlan({ month }: { month: string }) {
                   alert(`Chưa phân bổ hết: ${formatCurrency(budgetStatus.unassigned)} còn dư. Hãy phân bổ hết trước khi đóng tháng.`);
                   return;
                 }
-                if (currentPeriodId) closePeriodMutation.mutate(currentPeriodId);
+                if (effectivePeriodId) closePeriodMutation.mutate(effectivePeriodId);
               }}
-              disabled={closePeriodMutation.isPending || !currentPeriodId}
+              disabled={closePeriodMutation.isPending || !effectivePeriodId}
               className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 disabled:opacity-50"
             >
               {closePeriodMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Lock className="size-4" />}
@@ -1359,10 +1455,14 @@ export default function BudgetPlan({ month }: { month: string }) {
                   debts={debts}
                   funds={funds}
                   recurringBills={recurringBills}
-                  isReady={plannerReady}
                   isLoading={plannerLoading}
+                  isPreparing={createPeriodMutation.isPending}
                   canEdit={plannerEditable}
                   isMutating={plannerMutating}
+                  onPrepareCreate={async (jarKey) => {
+                    const workspace = await ensureCurrentPeriodWorkspace();
+                    return workspace.jars.find((option) => option.jar_key === jarKey)?.allocation_id ?? null;
+                  }}
                   onCreateLine={(payload) => createBudgetLineMutation.mutateAsync(payload)}
                   onUpdateLine={(id, payload) => updateBudgetLineMutation.mutateAsync({ id, payload })}
                   onDeleteLine={(id) => deleteBudgetLineMutation.mutateAsync(id)}
