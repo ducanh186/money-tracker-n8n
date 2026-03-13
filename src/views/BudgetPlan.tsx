@@ -712,42 +712,26 @@ function PlannedExpenseSection({
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setIsOpen(true)}
-        className="mt-5 w-full rounded-2xl border border-violet-200 bg-gradient-to-br from-violet-50 via-white to-fuchsia-50 p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-violet-500/20 dark:from-violet-500/10 dark:via-[#111827] dark:to-[#1c1530]"
-      >
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <h4 className="text-sm font-bold text-violet-950 dark:text-violet-100">Khoản chi dự kiến</h4>
-              <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-bold text-violet-700 dark:bg-violet-500/20 dark:text-violet-200">
-                {sortedLines.length} khoản
-              </span>
-            </div>
-
-            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-              <div className="rounded-xl bg-white/80 px-3 py-2 shadow-sm dark:bg-[#151b2b]/80">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-violet-500 dark:text-violet-300">Đã gài trước</p>
-                <p className="mt-1 text-sm font-bold text-violet-700 dark:text-violet-100">{formatCurrency(plannedTotal)}</p>
-              </div>
-              <div className="rounded-xl bg-white/80 px-3 py-2 shadow-sm dark:bg-[#151b2b]/80">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-violet-500 dark:text-violet-300">Khả dụng sau dự kiến</p>
-                <p className={cn('mt-1 text-sm font-bold', availableAmount >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400')}>
-                  {formatCurrency(availableAmount)}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="shrink-0 rounded-2xl bg-white/80 px-3 py-2 text-right shadow-sm dark:bg-[#151b2b]/80">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-violet-500 dark:text-violet-300">
-              {canEdit ? 'Mở planner' : 'Xem planner'}
-            </p>
-            <p className="mt-1 text-sm font-bold text-violet-900 dark:text-violet-100">{jar.label}</p>
-          </div>
-        </div>
-      </button>
+      <div className="mt-4 flex items-center justify-end">
+        <button
+          type="button"
+          onClick={() => setIsOpen(true)}
+          className="inline-flex max-w-full items-center gap-2 rounded-full border border-violet-200 bg-violet-50/90 px-3 py-2 text-xs font-semibold text-violet-700 shadow-sm transition hover:border-violet-300 hover:bg-violet-100 dark:border-violet-500/20 dark:bg-violet-500/10 dark:text-violet-200 dark:hover:border-violet-400/40 dark:hover:bg-violet-500/15"
+        >
+          {isLoading ? (
+            <Loader2 className="size-3.5 animate-spin" />
+          ) : (
+            <span className="size-2 rounded-full bg-violet-500 dark:bg-violet-300" />
+          )}
+          <span className="truncate">{canEdit ? 'Khoản chi dự kiến' : 'Xem khoản dự kiến'}</span>
+          <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-bold text-violet-700 dark:bg-violet-500/20 dark:text-violet-100">
+            {sortedLines.length}
+          </span>
+          <span className="hidden text-[11px] font-bold text-violet-600 dark:text-violet-300 sm:inline">
+            {formatCurrency(plannedTotal)}
+          </span>
+        </button>
+      </div>
 
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-end justify-center p-3 sm:items-center sm:p-6">
@@ -1438,13 +1422,24 @@ export default function BudgetPlan({ month }: { month: string }) {
         {jars.map((jar) => {
           const style = getJarStyle(jar.key);
           const isExpanded = expandedJar === jar.key;
-          const progressWidth = Math.min(jar.usage_pct, 100);
           const dbJar = dbJars.find((j: Jar) => j.key === jar.key);
           const jarMetric = budgetStatus?.jars.find((metric) => metric.key === jar.key);
           const jarLines = budgetLinesByJar[jar.key] ?? [];
           const spentAmount = jarMetric?.spent ?? jar.actual_amount;
           const committedAmount = jarMetric?.committed ?? jarLines.reduce((sum, line) => sum + line.planned_amount, 0);
           const availableAmount = jarMetric?.available ?? jar.remaining;
+          const actualUsagePct = jar.planned_amount > 0 ? (spentAmount / jar.planned_amount) * 100 : 0;
+          const progressWidth = Math.min(actualUsagePct, 100);
+          const projectedProgressPct = jar.planned_amount > 0
+            ? (Math.max(spentAmount, committedAmount) / jar.planned_amount) * 100
+            : 0;
+          const projectedWidth = Math.min(projectedProgressPct, 100);
+          const plannedProgressWidth = Math.max(projectedWidth - progressWidth, 0);
+          const actualProgressClass = jar.status === 'OVER'
+            ? 'bg-red-500'
+            : jar.status === 'WARN'
+              ? 'bg-amber-500'
+              : style.progressBg;
 
           return (
             <div
@@ -1474,22 +1469,43 @@ export default function BudgetPlan({ month }: { month: string }) {
                 {/* Progress bar */}
                 <div className="mb-4">
                   <div className="flex justify-between text-xs mb-1.5">
-                    <span className="text-slate-500 dark:text-slate-400 font-medium">Đã chi {Math.round(jar.usage_pct * 100) / 100}% ngân sách hũ</span>
+                    <span className="text-slate-500 dark:text-slate-400 font-medium">Đã chi {Math.round(actualUsagePct * 100) / 100}% ngân sách hũ</span>
                     <span className="text-slate-500 dark:text-slate-400 font-medium">
                       {formatCurrency(spentAmount)} / {formatCurrency(jar.planned_amount)}
                     </span>
                   </div>
                   <div className="h-2.5 w-full bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all duration-500 ${
-                        jar.status === 'OVER'
-                          ? 'bg-red-500'
-                          : jar.status === 'WARN'
-                            ? 'bg-amber-500'
-                            : style.progressBg
-                      }`}
-                      style={{ width: `${progressWidth}%` }}
-                    />
+                    <div className="flex h-full w-full">
+                      {progressWidth > 0 && (
+                        <div
+                          className={cn(
+                            'h-full shrink-0 transition-[width] duration-500',
+                            plannedProgressWidth > 0 ? 'rounded-l-full' : 'rounded-full',
+                            actualProgressClass,
+                          )}
+                          style={{ width: `${progressWidth}%` }}
+                        />
+                      )}
+                      {plannedProgressWidth > 0 && (
+                        <div
+                          className={cn(
+                            'h-full shrink-0 bg-violet-500 transition-[width] duration-500 dark:bg-violet-400',
+                            progressWidth > 0 ? 'rounded-r-full' : 'rounded-full',
+                          )}
+                          style={{ width: `${plannedProgressWidth}%` }}
+                        />
+                      )}
+                    </div>
+                  </div>
+                  <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] font-medium">
+                    <span className="inline-flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
+                      <span className={cn('size-2 rounded-full', actualProgressClass)} />
+                      Đã chi {formatCurrency(spentAmount)}
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 text-violet-600 dark:text-violet-300">
+                      <span className="size-2 rounded-full bg-violet-500 dark:bg-violet-400" />
+                      Khoản chi dự kiến {formatCurrency(committedAmount)}
+                    </span>
                   </div>
                 </div>
 

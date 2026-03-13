@@ -20,18 +20,31 @@ done
 chown -R www-data:www-data /var/www/storage 2>/dev/null || true
 chmod -R 775 /var/www/storage 2>/dev/null || true
 
-# --- 1b. Ensure SQLite persistent volume is ready ---
-mkdir -p /data 2>/dev/null || true
-if [ ! -f /data/app.sqlite ]; then
-    echo "[entrypoint] Creating new SQLite database at /data/app.sqlite"
-    touch /data/app.sqlite
-else
-    echo "[entrypoint] Existing SQLite database found at /data/app.sqlite"
+# --- 1b. Ensure SQLite persistent storage is ready ---
+if [ "${DB_CONNECTION:-sqlite}" = "sqlite" ]; then
+    SQLITE_DB_PATH="${DB_DATABASE:-/data/app.sqlite}"
+    SQLITE_DB_DIR="$(dirname "$SQLITE_DB_PATH")"
+    LEGACY_SQLITE_PATH="/legacy-data/app.sqlite"
+
+    mkdir -p "$SQLITE_DB_DIR" 2>/dev/null || true
+
+    if [ ! -s "$SQLITE_DB_PATH" ] && [ -s "$LEGACY_SQLITE_PATH" ] && [ "$SQLITE_DB_PATH" != "$LEGACY_SQLITE_PATH" ]; then
+        echo "[entrypoint] Migrating SQLite database from legacy Docker volume to $SQLITE_DB_PATH"
+        cp "$LEGACY_SQLITE_PATH" "$SQLITE_DB_PATH"
+    fi
+
+    if [ ! -f "$SQLITE_DB_PATH" ]; then
+        echo "[entrypoint] Creating new SQLite database at $SQLITE_DB_PATH"
+        touch "$SQLITE_DB_PATH"
+    else
+        echo "[entrypoint] Existing SQLite database found at $SQLITE_DB_PATH"
+    fi
+
+    chown www-data:www-data "$SQLITE_DB_PATH" 2>/dev/null || true
+    chmod 664 "$SQLITE_DB_PATH" 2>/dev/null || true
+    chown www-data:www-data "$SQLITE_DB_DIR" 2>/dev/null || true
+    chmod 775 "$SQLITE_DB_DIR" 2>/dev/null || true
 fi
-chown www-data:www-data /data/app.sqlite 2>/dev/null || true
-chmod 664 /data/app.sqlite 2>/dev/null || true
-chown www-data:www-data /data 2>/dev/null || true
-chmod 775 /data 2>/dev/null || true
 
 # --- 2. Clear ALL stale caches (idempotent) ---
 # After EC2 stop/start, cached config may reference stale state

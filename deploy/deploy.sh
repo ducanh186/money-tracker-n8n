@@ -9,6 +9,8 @@ echo "🚀 Starting Money Tracker deployment..."
 # Variables
 DEPLOY_DIR="/opt/almoney"
 REPO_DIR="$DEPLOY_DIR/money-tracker"
+DATA_DIR_DEFAULT="$DEPLOY_DIR/data/api"
+DATA_DIR="$DATA_DIR_DEFAULT"
 
 # 1. Create directory structure
 echo "📁 Creating directory structure..."
@@ -42,6 +44,11 @@ if [ ! -f "$REPO_DIR/deploy/.env" ]; then
     cp $REPO_DIR/deploy/.env.example $REPO_DIR/deploy/.env
     echo "   Please edit $REPO_DIR/deploy/.env with your actual values"
     exit 1
+fi
+
+CONFIGURED_DATA_DIR=$(grep -E '^ALMONEY_DATA_DIR=' "$REPO_DIR/deploy/.env" | tail -n 1 | cut -d= -f2- | tr -d '\r')
+if [ -n "$CONFIGURED_DATA_DIR" ]; then
+    DATA_DIR="$CONFIGURED_DATA_DIR"
 fi
 
 # 4. Check Laravel .env
@@ -80,9 +87,24 @@ docker run --rm \
 # 7. Ensure n8n local-files dir exists (mounted volume)
 mkdir -p $REPO_DIR/n8n/local-files
 
-# 7b. Ensure persistent data volume for SQLite
-echo "💾 Ensuring persistent data volume..."
+# 7b. Ensure persistent SQLite storage on EC2 host
+echo "💾 Ensuring persistent SQLite storage..."
+mkdir -p "$DATA_DIR" "$DATA_DIR/backups"
 docker volume create almoney_app_data 2>/dev/null || true
+
+if [ ! -f "$DATA_DIR/app.sqlite" ]; then
+    echo "📦 Migrating SQLite DB from legacy Docker volume if present..."
+    docker run --rm \
+        -v almoney_app_data:/legacy:ro \
+        -v "$DATA_DIR":/data \
+        alpine sh -c 'if [ -s /legacy/app.sqlite ] && [ ! -f /data/app.sqlite ]; then cp /legacy/app.sqlite /data/app.sqlite; fi'
+fi
+
+if [ -f "$DATA_DIR/app.sqlite" ]; then
+    BACKUP_FILE="$DATA_DIR/backups/app-$(date +%Y%m%d-%H%M%S).sqlite"
+    cp "$DATA_DIR/app.sqlite" "$BACKUP_FILE"
+    echo "🗄️ Backed up SQLite DB to $BACKUP_FILE"
+fi
 
 # 8. Stop old containers if running
 echo "🛑 Stopping old containers..."
@@ -106,6 +128,7 @@ docker compose ps
 
 echo "💾 Verifying SQLite database..."
 docker exec almoney_api sh -c 'test -f /data/app.sqlite && echo "  ✅ SQLite DB exists" || echo "  ❌ SQLite DB missing"'
+echo "📁 Host SQLite path: $DATA_DIR/app.sqlite"
 
 echo ""
 echo "✅ Deployment complete!"
