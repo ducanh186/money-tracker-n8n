@@ -186,10 +186,9 @@ function buildBudgetLinePayload(draft: BudgetLineDraft): { payload?: CreateBudge
 
   if (draft.type === 'bill') {
     const recurringBillId = Number(draft.recurringBillId);
-    if (!Number.isInteger(recurringBillId) || recurringBillId <= 0) {
-      return { error: 'Chọn hóa đơn định kỳ cần liên kết.' };
+    if (Number.isInteger(recurringBillId) && recurringBillId > 0) {
+      payload.recurring_bill_id = recurringBillId;
     }
-    payload.recurring_bill_id = recurringBillId;
   }
 
   if (draft.type === 'sinking_fund' || draft.type === 'investment') {
@@ -372,7 +371,6 @@ type PlannedExpenseFormProps = {
   goals: Goal[];
   debts: Debt[];
   funds: Fund[];
-  recurringBills: RecurringBill[];
 };
 
 function PlannedExpenseForm({
@@ -388,7 +386,6 @@ function PlannedExpenseForm({
   goals,
   debts,
   funds,
-  recurringBills,
 }: PlannedExpenseFormProps) {
   const availableFunds = funds.filter((fund) => {
     if (draft.type === 'investment') {
@@ -411,10 +408,7 @@ function PlannedExpenseForm({
       className="space-y-3 rounded-xl border border-violet-200 bg-white/85 p-4 shadow-sm dark:border-violet-500/20 dark:bg-[#151b2b]"
     >
       <div className="flex items-center justify-between gap-3">
-        <div>
-          <h4 className="text-sm font-bold text-violet-950 dark:text-violet-100">{title}</h4>
-          <p className="text-xs text-violet-600 dark:text-violet-300">Khoản dự kiến sẽ được tô tím để nhìn trước ngân sách tháng.</p>
-        </div>
+        <h4 className="text-sm font-bold text-violet-950 dark:text-violet-100">{title}</h4>
         <span className="rounded-full bg-violet-100 px-2.5 py-1 text-[11px] font-bold text-violet-700 dark:bg-violet-500/20 dark:text-violet-200">
           Planner
         </span>
@@ -501,22 +495,6 @@ function PlannedExpenseForm({
             <option value="">{debts.length ? 'Chọn khoản nợ' : 'Chưa có khoản nợ'}</option>
             {debts.map((debt) => (
               <option key={debt.id} value={debt.id}>{debt.name}</option>
-            ))}
-          </select>
-        </label>
-      )}
-
-      {draft.type === 'bill' && (
-        <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-semibold uppercase tracking-wide text-violet-700 dark:text-violet-300">Liên kết hóa đơn định kỳ</span>
-          <select
-            value={draft.recurringBillId}
-            onChange={(event) => onChange({ recurringBillId: event.target.value })}
-            className={PLANNER_FIELD_CLASS}
-          >
-            <option value="">{recurringBills.length ? 'Chọn hóa đơn' : 'Chưa có hóa đơn'}</option>
-            {recurringBills.map((bill) => (
-              <option key={bill.id} value={bill.id}>{bill.name}</option>
             ))}
           </select>
         </label>
@@ -609,12 +587,34 @@ function PlannedExpenseSection({
   const [editingLineId, setEditingLineId] = useState<number | null>(null);
   const [editingDraft, setEditingDraft] = useState<BudgetLineDraft | null>(null);
   const [editingError, setEditingError] = useState<string | null>(null);
+  const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
     if (!showCreateForm) {
       setCreateDraft(createBudgetLineDraft(defaultJarOption?.allocation_id));
     }
   }, [defaultJarOption?.allocation_id, showCreateForm]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsOpen(false);
+      }
+    };
+
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen]);
 
   const goalsById = new Map(goals.map((goal) => [goal.id, goal]));
   const debtsById = new Map(debts.map((debt) => [debt.id, debt]));
@@ -623,6 +623,7 @@ function PlannedExpenseSection({
   const sortedLines = [...lines].sort((a, b) => b.planned_amount - a.planned_amount || a.name.localeCompare(b.name));
   const plannedTotal = jarMetric?.committed ?? sortedLines.reduce((sum, line) => sum + line.planned_amount, 0);
   const availableAmount = jarMetric?.available ?? jar.remaining;
+  const modalTitleId = `planned-expenses-${jar.key}`;
 
   const handleCreateToggle = async () => {
     if (showCreateForm) {
@@ -710,167 +711,238 @@ function PlannedExpenseSection({
   };
 
   return (
-    <div className="mt-5 rounded-xl border border-violet-200 bg-gradient-to-br from-violet-50 to-white p-4 dark:border-violet-500/20 dark:from-violet-500/10 dark:to-[#111827]">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <h4 className="text-sm font-bold text-violet-950 dark:text-violet-100">Khoản chi dự kiến</h4>
-            <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-bold text-violet-700 dark:bg-violet-500/20 dark:text-violet-200">
-              {sortedLines.length} khoản
-            </span>
-          </div>
-          <p className="mt-1 text-xs text-violet-700 dark:text-violet-300">
-            {formatCurrency(plannedTotal)} đã gài trước · Khả dụng sau dự kiến {formatCurrency(availableAmount)}
-          </p>
-        </div>
+    <>
+      <button
+        type="button"
+        onClick={() => setIsOpen(true)}
+        className="mt-5 w-full rounded-2xl border border-violet-200 bg-gradient-to-br from-violet-50 via-white to-fuchsia-50 p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-violet-500/20 dark:from-violet-500/10 dark:via-[#111827] dark:to-[#1c1530]"
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h4 className="text-sm font-bold text-violet-950 dark:text-violet-100">Khoản chi dự kiến</h4>
+              <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-bold text-violet-700 dark:bg-violet-500/20 dark:text-violet-200">
+                {sortedLines.length} khoản
+              </span>
+            </div>
 
-        {canEdit ? (
-          <button
-            onClick={() => {
-              void handleCreateToggle();
-            }}
-            disabled={isLoading || isPreparing}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-2 text-xs font-bold text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {(isLoading || isPreparing) ? <Loader2 className="size-3.5 animate-spin" /> : <Plus className="size-3.5" />}
-            {showCreateForm ? 'Ẩn form' : 'Thêm khoản'}
-          </button>
-        ) : (
-          <span className="text-[11px] font-semibold uppercase tracking-wide text-violet-500 dark:text-violet-300">
-            {canEdit ? 'Đang tải' : 'Chế độ xem'}
-          </span>
-        )}
-      </div>
-
-      {showCreateForm && (
-        <div className="mt-4">
-          <PlannedExpenseForm
-            title="Thêm khoản dự kiến"
-            draft={createDraft}
-            submitLabel="Lưu khoản dự kiến"
-            error={createError}
-            isSubmitting={isMutating}
-            onChange={(patch) => setCreateDraft((current) => ({ ...current, ...patch }))}
-            onSubmit={handleCreateSubmit}
-            onCancel={() => {
-              setShowCreateForm(false);
-              setCreateError(null);
-              setCreateDraft(createBudgetLineDraft(defaultJarOption?.allocation_id));
-            }}
-            jarOptions={jarOptions}
-            goals={goals}
-            debts={debts}
-            funds={funds}
-            recurringBills={recurringBills}
-          />
-        </div>
-      )}
-
-      {!showCreateForm && createError && (
-        <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
-          {createError}
-        </div>
-      )}
-
-      <div className="mt-4 space-y-3">
-        {isLoading ? (
-          <div className="flex items-center justify-center rounded-xl border border-dashed border-violet-200 px-4 py-5 text-violet-600 dark:border-violet-500/20 dark:text-violet-300">
-            <Loader2 className="size-4 animate-spin" />
-          </div>
-        ) : !canEdit ? (
-          <div className="rounded-xl border border-dashed border-violet-200 bg-white/70 px-4 py-4 text-sm text-violet-700 dark:border-violet-500/20 dark:bg-violet-500/5 dark:text-violet-200">
-            Planner đang tạm khóa thao tác.
-          </div>
-        ) : null}
-
-        {!isLoading && sortedLines.length === 0 && (
-          <div className="rounded-xl border border-dashed border-violet-200 bg-white/70 px-4 py-5 text-sm text-violet-700 dark:border-violet-500/20 dark:bg-violet-500/5 dark:text-violet-200">
-            Chưa có khoản chi dự kiến. Thêm khoản đầu tiên để planner tháng này tự khởi tạo và tính ngay số dư còn có thể chi.
-          </div>
-        )}
-
-        {sortedLines.map((line) => {
-          const linkLabel = getBudgetLineLinkLabel(line, goalsById, debtsById, recurringBillsById, fundsById);
-          const isEditing = editingLineId === line.id && editingDraft !== null;
-
-          if (isEditing) {
-            return (
-              <PlannedExpenseForm
-                key={line.id}
-                title="Sửa khoản dự kiến"
-                draft={editingDraft}
-                submitLabel="Cập nhật"
-                error={editingError}
-                isSubmitting={isMutating}
-                onChange={(patch) => setEditingDraft((current) => current ? { ...current, ...patch } : current)}
-                onSubmit={handleEditSubmit}
-                onCancel={() => {
-                  setEditingLineId(null);
-                  setEditingDraft(null);
-                  setEditingError(null);
-                }}
-                jarOptions={jarOptions}
-                goals={goals}
-                debts={debts}
-                funds={funds}
-                recurringBills={recurringBills}
-              />
-            );
-          }
-
-          return (
-            <div
-              key={line.id}
-              className="rounded-xl border border-violet-200 bg-white/90 p-3 shadow-sm dark:border-violet-500/20 dark:bg-violet-500/10"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-sm font-semibold text-violet-950 dark:text-violet-100">{line.name}</span>
-                    <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-bold text-violet-700 dark:bg-violet-500/20 dark:text-violet-200">
-                      {getPlannerTypeLabel(line.type)}
-                    </span>
-                    {linkLabel && (
-                      <span className="text-xs text-violet-600 dark:text-violet-300">
-                        Liên kết: {linkLabel}
-                      </span>
-                    )}
-                  </div>
-                  <p className="mt-1 text-xs text-violet-600/90 dark:text-violet-300">
-                    Hũ {line.jar_label}
-                    {line.actual_amount > 0 ? ` · Đã chi ${formatCurrency(line.actual_amount)}` : ' · Chưa phát sinh thực tế'}
-                  </p>
-                </div>
-
-                <div className="shrink-0 text-right">
-                  <p className="text-sm font-bold text-violet-700 dark:text-violet-100">
-                    {formatCurrency(line.planned_amount)}
-                  </p>
-                  {canEdit && (
-                    <div className="mt-2 flex items-center justify-end gap-1">
-                      <button
-                        onClick={() => handleStartEdit(line)}
-                        className="rounded-md p-1.5 text-violet-600 hover:bg-violet-100 dark:text-violet-200 dark:hover:bg-violet-500/20"
-                        title="Sửa khoản dự kiến"
-                      >
-                        <Pencil className="size-3.5" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(line)}
-                        className="rounded-md p-1.5 text-red-500 hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-500/10"
-                        title="Xóa khoản dự kiến"
-                      >
-                        <Trash2 className="size-3.5" />
-                      </button>
-                    </div>
-                  )}
-                </div>
+            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <div className="rounded-xl bg-white/80 px-3 py-2 shadow-sm dark:bg-[#151b2b]/80">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-violet-500 dark:text-violet-300">Đã gài trước</p>
+                <p className="mt-1 text-sm font-bold text-violet-700 dark:text-violet-100">{formatCurrency(plannedTotal)}</p>
+              </div>
+              <div className="rounded-xl bg-white/80 px-3 py-2 shadow-sm dark:bg-[#151b2b]/80">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-violet-500 dark:text-violet-300">Khả dụng sau dự kiến</p>
+                <p className={cn('mt-1 text-sm font-bold', availableAmount >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400')}>
+                  {formatCurrency(availableAmount)}
+                </p>
               </div>
             </div>
-          );
-        })}
-      </div>
-    </div>
+          </div>
+
+          <div className="shrink-0 rounded-2xl bg-white/80 px-3 py-2 text-right shadow-sm dark:bg-[#151b2b]/80">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-violet-500 dark:text-violet-300">
+              {canEdit ? 'Mở planner' : 'Xem planner'}
+            </p>
+            <p className="mt-1 text-sm font-bold text-violet-900 dark:text-violet-100">{jar.label}</p>
+          </div>
+        </div>
+      </button>
+
+      {isOpen && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center p-3 sm:items-center sm:p-6">
+          <button
+            type="button"
+            aria-label="Đóng planner"
+            onClick={() => setIsOpen(false)}
+            className="absolute inset-0 bg-slate-950/50 backdrop-blur-sm"
+          />
+
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={modalTitleId}
+            className="relative z-10 flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-[28px] border border-violet-200 bg-white shadow-2xl dark:border-violet-500/20 dark:bg-[#0f1728]"
+          >
+            <div className="border-b border-violet-100 bg-gradient-to-r from-violet-100 via-white to-fuchsia-50 px-5 py-4 dark:border-violet-500/20 dark:from-violet-500/20 dark:via-[#111827] dark:to-[#1b1530] sm:px-6">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="rounded-full bg-violet-600 px-2.5 py-1 text-[11px] font-bold text-white">
+                      Planner
+                    </span>
+                    <span className="rounded-full bg-white/80 px-2.5 py-1 text-[11px] font-bold text-violet-700 dark:bg-white/10 dark:text-violet-200">
+                      {sortedLines.length} khoản
+                    </span>
+                  </div>
+                  <h4 id={modalTitleId} className="mt-3 text-lg font-bold text-slate-900 dark:text-white">
+                    Khoản chi dự kiến · {jar.label}
+                  </h4>
+                  <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                    {formatCurrency(plannedTotal)} đã gài trước · Khả dụng sau dự kiến {formatCurrency(availableAmount)}
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setIsOpen(false)}
+                  className="rounded-full border border-slate-200 bg-white/90 p-2 text-slate-500 transition hover:bg-white hover:text-slate-700 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-300 dark:hover:bg-slate-900"
+                  aria-label="Đóng planner"
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-5 py-5 sm:px-6">
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-sm font-semibold text-violet-950 dark:text-violet-100">
+                  Danh sách khoản dự kiến
+                </div>
+
+                {canEdit ? (
+                  <button
+                    onClick={() => {
+                      void handleCreateToggle();
+                    }}
+                    disabled={isLoading || isPreparing}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-2 text-xs font-bold text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {(isLoading || isPreparing) ? <Loader2 className="size-3.5 animate-spin" /> : <Plus className="size-3.5" />}
+                    {showCreateForm ? 'Ẩn form' : 'Thêm khoản'}
+                  </button>
+                ) : (
+                  <span className="text-[11px] font-semibold uppercase tracking-wide text-violet-500 dark:text-violet-300">
+                    Chế độ xem
+                  </span>
+                )}
+              </div>
+
+              {showCreateForm && (
+                <div className="mt-4">
+                  <PlannedExpenseForm
+                    title="Thêm khoản dự kiến"
+                    draft={createDraft}
+                    submitLabel="Lưu khoản dự kiến"
+                    error={createError}
+                    isSubmitting={isMutating}
+                    onChange={(patch) => setCreateDraft((current) => ({ ...current, ...patch }))}
+                    onSubmit={handleCreateSubmit}
+                    onCancel={() => {
+                      setShowCreateForm(false);
+                      setCreateError(null);
+                      setCreateDraft(createBudgetLineDraft(defaultJarOption?.allocation_id));
+                    }}
+                    jarOptions={jarOptions}
+                    goals={goals}
+                    debts={debts}
+                    funds={funds}
+                  />
+                </div>
+              )}
+
+              {!showCreateForm && createError && (
+                <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
+                  {createError}
+                </div>
+              )}
+
+              <div className="mt-4 space-y-3">
+                {isLoading ? (
+                  <div className="flex items-center justify-center rounded-xl border border-dashed border-violet-200 px-4 py-5 text-violet-600 dark:border-violet-500/20 dark:text-violet-300">
+                    <Loader2 className="size-4 animate-spin" />
+                  </div>
+                ) : !canEdit ? (
+                  <div className="rounded-xl border border-dashed border-violet-200 bg-white/70 px-4 py-4 text-sm text-violet-700 dark:border-violet-500/20 dark:bg-violet-500/5 dark:text-violet-200">
+                    Planner đang tạm khóa thao tác.
+                  </div>
+                ) : null}
+
+                {sortedLines.map((line) => {
+                  const linkLabel = getBudgetLineLinkLabel(line, goalsById, debtsById, recurringBillsById, fundsById);
+                  const isEditing = editingLineId === line.id && editingDraft !== null;
+
+                  if (isEditing) {
+                    return (
+                      <PlannedExpenseForm
+                        key={line.id}
+                        title="Sửa khoản dự kiến"
+                        draft={editingDraft}
+                        submitLabel="Cập nhật"
+                        error={editingError}
+                        isSubmitting={isMutating}
+                        onChange={(patch) => setEditingDraft((current) => current ? { ...current, ...patch } : current)}
+                        onSubmit={handleEditSubmit}
+                        onCancel={() => {
+                          setEditingLineId(null);
+                          setEditingDraft(null);
+                          setEditingError(null);
+                        }}
+                        jarOptions={jarOptions}
+                        goals={goals}
+                        debts={debts}
+                        funds={funds}
+                      />
+                    );
+                  }
+
+                  return (
+                    <div
+                      key={line.id}
+                      className="rounded-xl border border-violet-200 bg-white/90 p-3 shadow-sm dark:border-violet-500/20 dark:bg-violet-500/10"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-sm font-semibold text-violet-950 dark:text-violet-100">{line.name}</span>
+                            <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-bold text-violet-700 dark:bg-violet-500/20 dark:text-violet-200">
+                              {getPlannerTypeLabel(line.type)}
+                            </span>
+                            {linkLabel && (
+                              <span className="text-xs text-violet-600 dark:text-violet-300">
+                                Liên kết: {linkLabel}
+                              </span>
+                            )}
+                          </div>
+                          <p className="mt-1 text-xs text-violet-600/90 dark:text-violet-300">
+                            Hũ {line.jar_label}
+                            {line.actual_amount > 0 ? ` · Đã chi ${formatCurrency(line.actual_amount)}` : ' · Chưa phát sinh thực tế'}
+                          </p>
+                        </div>
+
+                        <div className="shrink-0 text-right">
+                          <p className="text-sm font-bold text-violet-700 dark:text-violet-100">
+                            {formatCurrency(line.planned_amount)}
+                          </p>
+                          {canEdit && (
+                            <div className="mt-2 flex items-center justify-end gap-1">
+                              <button
+                                onClick={() => handleStartEdit(line)}
+                                className="rounded-md p-1.5 text-violet-600 hover:bg-violet-100 dark:text-violet-200 dark:hover:bg-violet-500/20"
+                                title="Sửa khoản dự kiến"
+                              >
+                                <Pencil className="size-3.5" />
+                              </button>
+                              <button
+                                onClick={() => handleDelete(line)}
+                                className="rounded-md p-1.5 text-red-500 hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-500/10"
+                                title="Xóa khoản dự kiến"
+                              >
+                                <Trash2 className="size-3.5" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -1039,11 +1111,8 @@ export default function BudgetPlan({ month }: { month: string }) {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div className="flex flex-col gap-1">
           <h2 className="text-slate-900 dark:text-white text-3xl font-bold tracking-tight">
-            Phân bổ Ngân sách tháng
+            Ngân sách tháng
           </h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Gài trước các khoản chi màu tím theo từng hũ để biết tháng này còn bao nhiêu cho mục tiêu, nợ và chi tiêu thường. Planner sẽ tự khởi tạo tháng khi bạn thêm khoản đầu tiên.
-          </p>
         </div>
         <div className="flex items-center gap-2">
           {budgetStatus && budgetStatus.has_period && budgetStatus.period_status === 'open' && (
