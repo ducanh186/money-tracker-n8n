@@ -612,6 +612,9 @@ export interface SimulateScenarioPayload {
 
 export interface BudgetLine {
   id: number;
+  jar_allocation_id: number;
+  jar_key: string;
+  jar_label: string;
   name: string;
   type: 'general' | 'goal' | 'bill' | 'debt' | 'sinking_fund' | 'investment';
   planned_amount: number;
@@ -632,7 +635,7 @@ export interface BudgetLinesResponse {
 export interface CreateBudgetLinePayload {
   jar_allocation_id: number;
   name: string;
-  type?: string;
+  type?: BudgetLine['type'];
   planned_amount: number;
   actual_amount?: number;
   goal_id?: number | null;

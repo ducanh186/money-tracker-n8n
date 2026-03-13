@@ -15,6 +15,7 @@ import {
   X,
   Lock,
   Plus,
+  Trash2,
 } from 'lucide-react';
 import { formatCurrency } from '../lib/utils';
 import { cn } from '../lib/utils';
@@ -29,8 +30,30 @@ import {
   useBudgetSetting,
   useUpdateBudgetSetting,
   useInvestmentSummary,
+  useGoals,
+  useDebts,
+  useFunds,
+  useRecurringBills,
+  useBudgetPeriods,
+  useBudgetPeriod,
+  useBudgetLines,
+  useCreateBudgetLine,
+  useUpdateBudgetLine,
+  useDeleteBudgetLine,
 } from '../lib/hooks';
-import type { BudgetJar, Transaction, Jar } from '../lib/types';
+import type {
+  BudgetJar,
+  BudgetLine,
+  BudgetStatusJarMetric,
+  BudgetWorkspaceJar,
+  CreateBudgetLinePayload,
+  Debt,
+  Fund,
+  Goal,
+  Jar,
+  RecurringBill,
+  Transaction,
+} from '../lib/types';
 
 // ── Jar styling ──────────────────────────────────────────────
 
@@ -48,6 +71,150 @@ function getJarStyle(key: string) {
     color: 'text-slate-600', bg: 'bg-slate-50', iconBg: 'bg-slate-100 text-slate-600',
     progressBg: 'bg-slate-500', darkIconBg: 'dark:bg-slate-500/20 dark:text-slate-400',
   };
+}
+
+type PlannerType = BudgetLine['type'];
+
+type BudgetLineDraft = {
+  name: string;
+  type: PlannerType;
+  jarAllocationId: string;
+  plannedAmount: string;
+  goalId: string;
+  debtId: string;
+  recurringBillId: string;
+  fundId: string;
+};
+
+const PLANNER_TYPE_OPTIONS: Array<{ value: PlannerType; label: string }> = [
+  { value: 'general', label: 'Chi thường' },
+  { value: 'goal', label: 'Quỹ & mục tiêu' },
+  { value: 'debt', label: 'Nợ' },
+  { value: 'bill', label: 'Hóa đơn' },
+  { value: 'sinking_fund', label: 'Quỹ con' },
+  { value: 'investment', label: 'Đầu tư' },
+];
+
+const PLANNER_FIELD_CLASS = 'w-full rounded-lg border border-violet-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-200 dark:border-violet-500/30 dark:bg-[#0f1728] dark:text-slate-100 dark:focus:border-violet-400 dark:focus:ring-violet-500/20';
+
+function toPlannerType(value: PlannerType | string): PlannerType {
+  if (
+    value === 'goal' ||
+    value === 'debt' ||
+    value === 'bill' ||
+    value === 'sinking_fund' ||
+    value === 'investment'
+  ) {
+    return value;
+  }
+
+  return 'general';
+}
+
+function getPlannerTypeLabel(type: PlannerType): string {
+  return PLANNER_TYPE_OPTIONS.find((option) => option.value === type)?.label ?? 'Chi thường';
+}
+
+function createBudgetLineDraft(defaultJarAllocationId?: number, line?: BudgetLine): BudgetLineDraft {
+  return {
+    name: line?.name ?? '',
+    type: toPlannerType(line?.type ?? 'general'),
+    jarAllocationId: String(line?.jar_allocation_id ?? defaultJarAllocationId ?? ''),
+    plannedAmount: line ? String(line.planned_amount) : '',
+    goalId: line?.goal_id ? String(line.goal_id) : '',
+    debtId: line?.debt_id ? String(line.debt_id) : '',
+    recurringBillId: line?.recurring_bill_id ? String(line.recurring_bill_id) : '',
+    fundId: line?.fund_id ? String(line.fund_id) : '',
+  };
+}
+
+function buildBudgetLinePayload(draft: BudgetLineDraft): { payload?: CreateBudgetLinePayload; error?: string } {
+  const name = draft.name.trim();
+  const jarAllocationId = Number(draft.jarAllocationId);
+  const plannedAmount = Math.round(Number(draft.plannedAmount));
+
+  if (!name) {
+    return { error: 'Nhập tên khoản dự kiến.' };
+  }
+
+  if (!Number.isInteger(jarAllocationId) || jarAllocationId <= 0) {
+    return { error: 'Chọn hũ cần gài khoản dự kiến.' };
+  }
+
+  if (!Number.isFinite(plannedAmount) || plannedAmount <= 0) {
+    return { error: 'Số tiền dự kiến phải lớn hơn 0.' };
+  }
+
+  const payload: CreateBudgetLinePayload = {
+    jar_allocation_id: jarAllocationId,
+    name,
+    type: draft.type,
+    planned_amount: plannedAmount,
+    goal_id: null,
+    debt_id: null,
+    recurring_bill_id: null,
+    fund_id: null,
+  };
+
+  if (draft.type === 'goal') {
+    const goalId = Number(draft.goalId);
+    if (!Number.isInteger(goalId) || goalId <= 0) {
+      return { error: 'Chọn mục tiêu cần liên kết.' };
+    }
+    payload.goal_id = goalId;
+  }
+
+  if (draft.type === 'debt') {
+    const debtId = Number(draft.debtId);
+    if (!Number.isInteger(debtId) || debtId <= 0) {
+      return { error: 'Chọn khoản nợ cần liên kết.' };
+    }
+    payload.debt_id = debtId;
+  }
+
+  if (draft.type === 'bill') {
+    const recurringBillId = Number(draft.recurringBillId);
+    if (!Number.isInteger(recurringBillId) || recurringBillId <= 0) {
+      return { error: 'Chọn hóa đơn định kỳ cần liên kết.' };
+    }
+    payload.recurring_bill_id = recurringBillId;
+  }
+
+  if (draft.type === 'sinking_fund' || draft.type === 'investment') {
+    const fundId = Number(draft.fundId);
+    if (!Number.isInteger(fundId) || fundId <= 0) {
+      return { error: 'Chọn quỹ cần liên kết.' };
+    }
+    payload.fund_id = fundId;
+  }
+
+  return { payload };
+}
+
+function getBudgetLineLinkLabel(
+  line: BudgetLine,
+  goalsById: Map<number, Goal>,
+  debtsById: Map<number, Debt>,
+  recurringBillsById: Map<number, RecurringBill>,
+  fundsById: Map<number, Fund>,
+): string | null {
+  if (line.type === 'goal' && line.goal_id) {
+    return goalsById.get(line.goal_id)?.name ?? `Mục tiêu #${line.goal_id}`;
+  }
+
+  if (line.type === 'debt' && line.debt_id) {
+    return debtsById.get(line.debt_id)?.name ?? `Khoản nợ #${line.debt_id}`;
+  }
+
+  if (line.type === 'bill' && line.recurring_bill_id) {
+    return recurringBillsById.get(line.recurring_bill_id)?.name ?? `Hóa đơn #${line.recurring_bill_id}`;
+  }
+
+  if ((line.type === 'sinking_fund' || line.type === 'investment') && line.fund_id) {
+    return fundsById.get(line.fund_id)?.name ?? `Quỹ #${line.fund_id}`;
+  }
+
+  return null;
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -180,6 +347,494 @@ function JarDrillDown({ jar, month }: { jar: BudgetJar; month: string }) {
   );
 }
 
+type PlannedExpenseFormProps = {
+  title: string;
+  draft: BudgetLineDraft;
+  submitLabel: string;
+  error: string | null;
+  isSubmitting: boolean;
+  onChange: (patch: Partial<BudgetLineDraft>) => void;
+  onSubmit: () => void;
+  onCancel: () => void;
+  jarOptions: BudgetWorkspaceJar[];
+  goals: Goal[];
+  debts: Debt[];
+  funds: Fund[];
+  recurringBills: RecurringBill[];
+};
+
+function PlannedExpenseForm({
+  title,
+  draft,
+  submitLabel,
+  error,
+  isSubmitting,
+  onChange,
+  onSubmit,
+  onCancel,
+  jarOptions,
+  goals,
+  debts,
+  funds,
+  recurringBills,
+}: PlannedExpenseFormProps) {
+  const availableFunds = funds.filter((fund) => {
+    if (draft.type === 'investment') {
+      return fund.type === 'investment';
+    }
+
+    if (draft.type === 'sinking_fund') {
+      return fund.type === 'sinking_fund';
+    }
+
+    return true;
+  });
+
+  return (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        onSubmit();
+      }}
+      className="space-y-3 rounded-xl border border-violet-200 bg-white/85 p-4 shadow-sm dark:border-violet-500/20 dark:bg-[#151b2b]"
+    >
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h4 className="text-sm font-bold text-violet-950 dark:text-violet-100">{title}</h4>
+          <p className="text-xs text-violet-600 dark:text-violet-300">Khoản dự kiến sẽ được tô tím để nhìn trước ngân sách tháng.</p>
+        </div>
+        <span className="rounded-full bg-violet-100 px-2.5 py-1 text-[11px] font-bold text-violet-700 dark:bg-violet-500/20 dark:text-violet-200">
+          Planner
+        </span>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <label className="flex flex-col gap-1.5">
+          <span className="text-xs font-semibold uppercase tracking-wide text-violet-700 dark:text-violet-300">Tên khoản</span>
+          <input
+            value={draft.name}
+            onChange={(event) => onChange({ name: event.target.value })}
+            placeholder="VD: Tiền nhà, trả thẻ, quỹ du lịch"
+            className={PLANNER_FIELD_CLASS}
+          />
+        </label>
+
+        <label className="flex flex-col gap-1.5">
+          <span className="text-xs font-semibold uppercase tracking-wide text-violet-700 dark:text-violet-300">Cate / loại</span>
+          <select
+            value={draft.type}
+            onChange={(event) => onChange({ type: event.target.value as PlannerType })}
+            className={PLANNER_FIELD_CLASS}
+          >
+            {PLANNER_TYPE_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+          </select>
+        </label>
+
+        <label className="flex flex-col gap-1.5">
+          <span className="text-xs font-semibold uppercase tracking-wide text-violet-700 dark:text-violet-300">Hũ nào</span>
+          <select
+            value={draft.jarAllocationId}
+            onChange={(event) => onChange({ jarAllocationId: event.target.value })}
+            className={PLANNER_FIELD_CLASS}
+          >
+            <option value="">Chọn hũ</option>
+            {jarOptions.map((option) => (
+              <option key={option.allocation_id} value={option.allocation_id}>
+                {option.jar_label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="flex flex-col gap-1.5">
+          <span className="text-xs font-semibold uppercase tracking-wide text-violet-700 dark:text-violet-300">Bao tiền</span>
+          <input
+            type="number"
+            min={0}
+            step={1000}
+            value={draft.plannedAmount}
+            onChange={(event) => onChange({ plannedAmount: event.target.value })}
+            placeholder="0"
+            className={PLANNER_FIELD_CLASS}
+          />
+        </label>
+      </div>
+
+      {draft.type === 'goal' && (
+        <label className="flex flex-col gap-1.5">
+          <span className="text-xs font-semibold uppercase tracking-wide text-violet-700 dark:text-violet-300">Liên kết Quỹ & Mục tiêu</span>
+          <select
+            value={draft.goalId}
+            onChange={(event) => onChange({ goalId: event.target.value })}
+            className={PLANNER_FIELD_CLASS}
+          >
+            <option value="">{goals.length ? 'Chọn mục tiêu' : 'Chưa có mục tiêu'}</option>
+            {goals.map((goal) => (
+              <option key={goal.id} value={goal.id}>{goal.name}</option>
+            ))}
+          </select>
+        </label>
+      )}
+
+      {draft.type === 'debt' && (
+        <label className="flex flex-col gap-1.5">
+          <span className="text-xs font-semibold uppercase tracking-wide text-violet-700 dark:text-violet-300">Liên kết Quản lý Nợ</span>
+          <select
+            value={draft.debtId}
+            onChange={(event) => onChange({ debtId: event.target.value })}
+            className={PLANNER_FIELD_CLASS}
+          >
+            <option value="">{debts.length ? 'Chọn khoản nợ' : 'Chưa có khoản nợ'}</option>
+            {debts.map((debt) => (
+              <option key={debt.id} value={debt.id}>{debt.name}</option>
+            ))}
+          </select>
+        </label>
+      )}
+
+      {draft.type === 'bill' && (
+        <label className="flex flex-col gap-1.5">
+          <span className="text-xs font-semibold uppercase tracking-wide text-violet-700 dark:text-violet-300">Liên kết hóa đơn định kỳ</span>
+          <select
+            value={draft.recurringBillId}
+            onChange={(event) => onChange({ recurringBillId: event.target.value })}
+            className={PLANNER_FIELD_CLASS}
+          >
+            <option value="">{recurringBills.length ? 'Chọn hóa đơn' : 'Chưa có hóa đơn'}</option>
+            {recurringBills.map((bill) => (
+              <option key={bill.id} value={bill.id}>{bill.name}</option>
+            ))}
+          </select>
+        </label>
+      )}
+
+      {(draft.type === 'sinking_fund' || draft.type === 'investment') && (
+        <label className="flex flex-col gap-1.5">
+          <span className="text-xs font-semibold uppercase tracking-wide text-violet-700 dark:text-violet-300">Liên kết quỹ</span>
+          <select
+            value={draft.fundId}
+            onChange={(event) => onChange({ fundId: event.target.value })}
+            className={PLANNER_FIELD_CLASS}
+          >
+            <option value="">{availableFunds.length ? 'Chọn quỹ' : 'Chưa có quỹ phù hợp'}</option>
+            {availableFunds.map((fund) => (
+              <option key={fund.id} value={fund.id}>{fund.name}</option>
+            ))}
+          </select>
+        </label>
+      )}
+
+      {error && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
+          {error}
+        </div>
+      )}
+
+      <div className="flex flex-wrap justify-end gap-2">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+        >
+          Hủy
+        </button>
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className="inline-flex items-center gap-2 rounded-lg bg-violet-600 px-4 py-2 text-sm font-bold text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {isSubmitting ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
+          {submitLabel}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+type PlannedExpenseSectionProps = {
+  jar: BudgetJar;
+  jarMetric: BudgetStatusJarMetric | undefined;
+  lines: BudgetLine[];
+  jarOptions: BudgetWorkspaceJar[];
+  goals: Goal[];
+  debts: Debt[];
+  funds: Fund[];
+  recurringBills: RecurringBill[];
+  isReady: boolean;
+  isLoading: boolean;
+  canEdit: boolean;
+  isMutating: boolean;
+  onCreateLine: (payload: CreateBudgetLinePayload) => Promise<unknown>;
+  onUpdateLine: (id: number, payload: Partial<CreateBudgetLinePayload>) => Promise<unknown>;
+  onDeleteLine: (id: number) => Promise<unknown>;
+};
+
+function PlannedExpenseSection({
+  jar,
+  jarMetric,
+  lines,
+  jarOptions,
+  goals,
+  debts,
+  funds,
+  recurringBills,
+  isReady,
+  isLoading,
+  canEdit,
+  isMutating,
+  onCreateLine,
+  onUpdateLine,
+  onDeleteLine,
+}: PlannedExpenseSectionProps) {
+  const defaultJarOption = jarOptions.find((option) => option.jar_key === jar.key);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [createDraft, setCreateDraft] = useState<BudgetLineDraft>(() => createBudgetLineDraft(defaultJarOption?.allocation_id));
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [editingLineId, setEditingLineId] = useState<number | null>(null);
+  const [editingDraft, setEditingDraft] = useState<BudgetLineDraft | null>(null);
+  const [editingError, setEditingError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!showCreateForm) {
+      setCreateDraft(createBudgetLineDraft(defaultJarOption?.allocation_id));
+    }
+  }, [defaultJarOption?.allocation_id, showCreateForm]);
+
+  const goalsById = new Map(goals.map((goal) => [goal.id, goal]));
+  const debtsById = new Map(debts.map((debt) => [debt.id, debt]));
+  const recurringBillsById = new Map(recurringBills.map((bill) => [bill.id, bill]));
+  const fundsById = new Map(funds.map((fund) => [fund.id, fund]));
+  const sortedLines = [...lines].sort((a, b) => b.planned_amount - a.planned_amount || a.name.localeCompare(b.name));
+  const plannedTotal = jarMetric?.committed ?? sortedLines.reduce((sum, line) => sum + line.planned_amount, 0);
+  const availableAmount = jarMetric?.available ?? jar.remaining;
+
+  const handleCreateSubmit = async () => {
+    const { payload, error } = buildBudgetLinePayload(createDraft);
+    if (!payload) {
+      setCreateError(error ?? 'Không thể lưu khoản dự kiến.');
+      return;
+    }
+
+    try {
+      setCreateError(null);
+      await onCreateLine(payload);
+      setShowCreateForm(false);
+      setCreateDraft(createBudgetLineDraft(defaultJarOption?.allocation_id));
+    } catch (submitError) {
+      setCreateError(submitError instanceof Error ? submitError.message : 'Không thể lưu khoản dự kiến.');
+    }
+  };
+
+  const handleStartEdit = (line: BudgetLine) => {
+    setShowCreateForm(false);
+    setCreateError(null);
+    setEditingLineId(line.id);
+    setEditingDraft(createBudgetLineDraft(undefined, line));
+    setEditingError(null);
+  };
+
+  const handleEditSubmit = async () => {
+    if (!editingLineId || !editingDraft) {
+      return;
+    }
+
+    const { payload, error } = buildBudgetLinePayload(editingDraft);
+    if (!payload) {
+      setEditingError(error ?? 'Không thể cập nhật khoản dự kiến.');
+      return;
+    }
+
+    try {
+      setEditingError(null);
+      await onUpdateLine(editingLineId, payload);
+      setEditingLineId(null);
+      setEditingDraft(null);
+    } catch (submitError) {
+      setEditingError(submitError instanceof Error ? submitError.message : 'Không thể cập nhật khoản dự kiến.');
+    }
+  };
+
+  const handleDelete = async (line: BudgetLine) => {
+    if (!window.confirm(`Xóa khoản dự kiến "${line.name}" khỏi planner?`)) {
+      return;
+    }
+
+    try {
+      await onDeleteLine(line.id);
+    } catch (submitError) {
+      setEditingError(submitError instanceof Error ? submitError.message : 'Không thể xóa khoản dự kiến.');
+    }
+  };
+
+  return (
+    <div className="mt-5 rounded-xl border border-violet-200 bg-gradient-to-br from-violet-50 to-white p-4 dark:border-violet-500/20 dark:from-violet-500/10 dark:to-[#111827]">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <h4 className="text-sm font-bold text-violet-950 dark:text-violet-100">Khoản chi dự kiến</h4>
+            <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-bold text-violet-700 dark:bg-violet-500/20 dark:text-violet-200">
+              {sortedLines.length} khoản
+            </span>
+          </div>
+          <p className="mt-1 text-xs text-violet-700 dark:text-violet-300">
+            {formatCurrency(plannedTotal)} đã gài trước · Khả dụng sau dự kiến {formatCurrency(availableAmount)}
+          </p>
+        </div>
+
+        {canEdit && isReady && defaultJarOption ? (
+          <button
+            onClick={() => {
+              setEditingLineId(null);
+              setEditingDraft(null);
+              setEditingError(null);
+              setCreateError(null);
+              setCreateDraft(createBudgetLineDraft(defaultJarOption.allocation_id));
+              setShowCreateForm((current) => !current);
+            }}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-2 text-xs font-bold text-white hover:bg-violet-700"
+          >
+            <Plus className="size-3.5" />
+            {showCreateForm ? 'Ẩn form' : 'Thêm khoản'}
+          </button>
+        ) : (
+          <span className="text-[11px] font-semibold uppercase tracking-wide text-violet-500 dark:text-violet-300">
+            {canEdit ? 'Đang tải' : 'Chế độ xem'}
+          </span>
+        )}
+      </div>
+
+      {showCreateForm && (
+        <div className="mt-4">
+          <PlannedExpenseForm
+            title="Thêm khoản dự kiến"
+            draft={createDraft}
+            submitLabel="Lưu khoản dự kiến"
+            error={createError}
+            isSubmitting={isMutating}
+            onChange={(patch) => setCreateDraft((current) => ({ ...current, ...patch }))}
+            onSubmit={handleCreateSubmit}
+            onCancel={() => {
+              setShowCreateForm(false);
+              setCreateError(null);
+              setCreateDraft(createBudgetLineDraft(defaultJarOption?.allocation_id));
+            }}
+            jarOptions={jarOptions}
+            goals={goals}
+            debts={debts}
+            funds={funds}
+            recurringBills={recurringBills}
+          />
+        </div>
+      )}
+
+      <div className="mt-4 space-y-3">
+        {isLoading ? (
+          <div className="flex items-center justify-center rounded-xl border border-dashed border-violet-200 px-4 py-5 text-violet-600 dark:border-violet-500/20 dark:text-violet-300">
+            <Loader2 className="size-4 animate-spin" />
+          </div>
+        ) : !isReady ? (
+          <div className="rounded-xl border border-dashed border-violet-200 bg-white/70 px-4 py-4 text-sm text-violet-700 dark:border-violet-500/20 dark:bg-violet-500/5 dark:text-violet-200">
+            Tạo kỳ ngân sách trước để bắt đầu nhập khoản chi dự kiến cho hũ này.
+          </div>
+        ) : !canEdit ? (
+          <div className="rounded-xl border border-dashed border-violet-200 bg-white/70 px-4 py-4 text-sm text-violet-700 dark:border-violet-500/20 dark:bg-violet-500/5 dark:text-violet-200">
+            Tháng này đã khóa. Planner vẫn hiển thị để đối chiếu nhưng không thể sửa.
+          </div>
+        ) : null}
+
+        {!isLoading && isReady && sortedLines.length === 0 && (
+          <div className="rounded-xl border border-dashed border-violet-200 bg-white/70 px-4 py-5 text-sm text-violet-700 dark:border-violet-500/20 dark:bg-violet-500/5 dark:text-violet-200">
+            Chưa có khoản chi dự kiến. Hãy gài trước các khoản phải chi, mục tiêu hoặc nợ để biết hũ này còn dư bao nhiêu.
+          </div>
+        )}
+
+        {sortedLines.map((line) => {
+          const linkLabel = getBudgetLineLinkLabel(line, goalsById, debtsById, recurringBillsById, fundsById);
+          const isEditing = editingLineId === line.id && editingDraft !== null;
+
+          if (isEditing) {
+            return (
+              <PlannedExpenseForm
+                key={line.id}
+                title="Sửa khoản dự kiến"
+                draft={editingDraft}
+                submitLabel="Cập nhật"
+                error={editingError}
+                isSubmitting={isMutating}
+                onChange={(patch) => setEditingDraft((current) => current ? { ...current, ...patch } : current)}
+                onSubmit={handleEditSubmit}
+                onCancel={() => {
+                  setEditingLineId(null);
+                  setEditingDraft(null);
+                  setEditingError(null);
+                }}
+                jarOptions={jarOptions}
+                goals={goals}
+                debts={debts}
+                funds={funds}
+                recurringBills={recurringBills}
+              />
+            );
+          }
+
+          return (
+            <div
+              key={line.id}
+              className="rounded-xl border border-violet-200 bg-white/90 p-3 shadow-sm dark:border-violet-500/20 dark:bg-violet-500/10"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-semibold text-violet-950 dark:text-violet-100">{line.name}</span>
+                    <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-bold text-violet-700 dark:bg-violet-500/20 dark:text-violet-200">
+                      {getPlannerTypeLabel(line.type)}
+                    </span>
+                    {linkLabel && (
+                      <span className="text-xs text-violet-600 dark:text-violet-300">
+                        Liên kết: {linkLabel}
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-1 text-xs text-violet-600/90 dark:text-violet-300">
+                    Hũ {line.jar_label}
+                    {line.actual_amount > 0 ? ` · Đã chi ${formatCurrency(line.actual_amount)}` : ' · Chưa phát sinh thực tế'}
+                  </p>
+                </div>
+
+                <div className="shrink-0 text-right">
+                  <p className="text-sm font-bold text-violet-700 dark:text-violet-100">
+                    {formatCurrency(line.planned_amount)}
+                  </p>
+                  {canEdit && (
+                    <div className="mt-2 flex items-center justify-end gap-1">
+                      <button
+                        onClick={() => handleStartEdit(line)}
+                        className="rounded-md p-1.5 text-violet-600 hover:bg-violet-100 dark:text-violet-200 dark:hover:bg-violet-500/20"
+                        title="Sửa khoản dự kiến"
+                      >
+                        <Pencil className="size-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(line)}
+                        className="rounded-md p-1.5 text-red-500 hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-500/10"
+                        title="Xóa khoản dự kiến"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────
 
 export default function BudgetPlan({ month }: { month: string }) {
@@ -200,6 +855,21 @@ export default function BudgetPlan({ month }: { month: string }) {
   const createPeriodMutation = useCreateBudgetPeriod();
   const closePeriodMutation = useCloseBudgetPeriod();
   const { data: investmentData } = useInvestmentSummary(month);
+  const { data: goalsRes } = useGoals();
+  const { data: debtsRes } = useDebts();
+  const { data: fundsRes } = useFunds();
+  const { data: recurringBillsRes } = useRecurringBills();
+  const { data: periodsRes } = useBudgetPeriods();
+
+  const periods = periodsRes?.data ?? [];
+  const currentPeriod = periods.find((period) => period.month === month) ?? null;
+  const currentPeriodId = currentPeriod?.id ?? null;
+
+  const { data: workspaceRes, isPending: isWorkspacePending } = useBudgetPeriod(currentPeriodId);
+  const { data: budgetLinesRes, isPending: isBudgetLinesPending } = useBudgetLines(currentPeriodId ?? 0);
+  const createBudgetLineMutation = useCreateBudgetLine();
+  const updateBudgetLineMutation = useUpdateBudgetLine();
+  const deleteBudgetLineMutation = useDeleteBudgetLine();
 
   useEffect(() => {
     if (data?.data?.base_income) {
@@ -208,6 +878,24 @@ export default function BudgetPlan({ month }: { month: string }) {
   }, [data?.data?.base_income]);
 
   const dbJars = jarsRes?.data ?? [];
+  const goals = goalsRes?.data ?? [];
+  const debts = debtsRes?.data ?? [];
+  const funds = fundsRes?.data ?? [];
+  const recurringBills = recurringBillsRes?.data ?? [];
+  const workspaceJars = workspaceRes?.data.jars ?? [];
+  const budgetLines = budgetLinesRes?.data ?? [];
+  const plannerLoading = Boolean(currentPeriodId) && (isWorkspacePending || isBudgetLinesPending);
+  const plannerReady = Boolean(currentPeriodId) && workspaceJars.length > 0;
+  const plannerEditable = Boolean(currentPeriodId) && budgetStatus?.period_status === 'open';
+  const plannerMutating = createBudgetLineMutation.isPending || updateBudgetLineMutation.isPending || deleteBudgetLineMutation.isPending;
+
+  const budgetLinesByJar: Record<string, BudgetLine[]> = {};
+  for (const line of budgetLines) {
+    if (!budgetLinesByJar[line.jar_key]) {
+      budgetLinesByJar[line.jar_key] = [];
+    }
+    budgetLinesByJar[line.jar_key].push(line);
+  }
 
   const handleSavePercent = useCallback((jarId: number, percent: number) => {
     updateJarMutation.mutate({ id: jarId, payload: { percent } });
@@ -247,6 +935,9 @@ export default function BudgetPlan({ month }: { month: string }) {
           <h2 className="text-slate-900 dark:text-white text-3xl font-bold tracking-tight">
             Phân bổ Ngân sách tháng
           </h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Gài trước các khoản chi màu tím theo từng hũ để biết tháng này còn bao nhiêu cho mục tiêu, nợ và chi tiêu thường.
+          </p>
         </div>
         <div className="flex items-center gap-2">
           {budgetStatus && !budgetStatus.has_period && (
@@ -266,10 +957,9 @@ export default function BudgetPlan({ month }: { month: string }) {
                   alert(`Chưa phân bổ hết: ${formatCurrency(budgetStatus.unassigned)} còn dư. Hãy phân bổ hết trước khi đóng tháng.`);
                   return;
                 }
-                const periodId = (budgetStatus as any).period_id;
-                if (periodId) closePeriodMutation.mutate(periodId);
+                if (currentPeriodId) closePeriodMutation.mutate(currentPeriodId);
               }}
-              disabled={closePeriodMutation.isPending}
+              disabled={closePeriodMutation.isPending || !currentPeriodId}
               className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 disabled:opacity-50"
             >
               {closePeriodMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Lock className="size-4" />}
@@ -283,13 +973,13 @@ export default function BudgetPlan({ month }: { month: string }) {
       {budgetStatus && (
         <div className="bg-white dark:bg-[#1a2433] rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-4">
           <div className="flex flex-col gap-3">
-            <div className="flex items-center justify-between text-sm">
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between text-sm">
               <span className="font-medium text-slate-700 dark:text-slate-200">Trạng thái phân bổ</span>
               <span className={cn(
-                "font-bold text-sm",
+                'font-bold text-sm',
                 budgetStatus.unassigned === 0
-                  ? "text-green-600 dark:text-green-400"
-                  : "text-red-600 dark:text-red-400"
+                  ? 'text-green-600 dark:text-green-400'
+                  : 'text-red-600 dark:text-red-400'
               )}>
                 {budgetStatus.unassigned === 0 ? '✓ Đã cân bằng' : `Còn ${formatCurrency(budgetStatus.unassigned)} chưa phân bổ`}
               </span>
@@ -312,7 +1002,7 @@ export default function BudgetPlan({ month }: { month: string }) {
                 </>
               )}
             </div>
-            <div className="grid grid-cols-3 gap-4 text-xs">
+            <div className="grid grid-cols-2 gap-4 text-xs md:grid-cols-5">
               <div>
                 <span className="text-slate-400 dark:text-slate-500">Thu nhập</span>
                 <p className="font-bold text-slate-800 dark:text-slate-200">{formatCurrency(budgetStatus.income)}</p>
@@ -322,8 +1012,21 @@ export default function BudgetPlan({ month }: { month: string }) {
                 <p className="font-bold text-blue-600 dark:text-blue-400">{formatCurrency(budgetStatus.assigned)}</p>
               </div>
               <div>
+                <span className="text-slate-400 dark:text-slate-500">Đã gài dự kiến</span>
+                <p className="font-bold text-violet-600 dark:text-violet-300">{formatCurrency(budgetStatus.committed)}</p>
+              </div>
+              <div>
+                <span className="text-slate-400 dark:text-slate-500">Còn có thể chi</span>
+                <p className={cn(
+                  'font-bold',
+                  budgetStatus.available_to_spend >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400',
+                )}>
+                  {formatCurrency(budgetStatus.available_to_spend)}
+                </p>
+              </div>
+              <div>
                 <span className="text-slate-400 dark:text-slate-500">Chưa phân bổ</span>
-                <p className={cn("font-bold", budgetStatus.unassigned === 0 ? "text-green-600" : "text-red-600")}>
+                <p className={cn('font-bold', budgetStatus.unassigned === 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400')}>
                   {formatCurrency(budgetStatus.unassigned)}
                 </p>
               </div>
@@ -572,6 +1275,11 @@ export default function BudgetPlan({ month }: { month: string }) {
           const isExpanded = expandedJar === jar.key;
           const progressWidth = Math.min(jar.usage_pct, 100);
           const dbJar = dbJars.find((j: Jar) => j.key === jar.key);
+          const jarMetric = budgetStatus?.jars.find((metric) => metric.key === jar.key);
+          const jarLines = budgetLinesByJar[jar.key] ?? [];
+          const spentAmount = jarMetric?.spent ?? jar.actual_amount;
+          const committedAmount = jarMetric?.committed ?? jarLines.reduce((sum, line) => sum + line.planned_amount, 0);
+          const availableAmount = jarMetric?.available ?? jar.remaining;
 
           return (
             <div
@@ -601,9 +1309,9 @@ export default function BudgetPlan({ month }: { month: string }) {
                 {/* Progress bar */}
                 <div className="mb-4">
                   <div className="flex justify-between text-xs mb-1.5">
-                    <span className="text-slate-500 dark:text-slate-400 font-medium">Đã dùng {Math.round(jar.usage_pct * 100) / 100}%</span>
+                    <span className="text-slate-500 dark:text-slate-400 font-medium">Đã chi {Math.round(jar.usage_pct * 100) / 100}% ngân sách hũ</span>
                     <span className="text-slate-500 dark:text-slate-400 font-medium">
-                      {formatCurrency(jar.actual_amount)} / {formatCurrency(jar.planned_amount)}
+                      {formatCurrency(spentAmount)} / {formatCurrency(jar.planned_amount)}
                     </span>
                   </div>
                   <div className="h-2.5 w-full bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
@@ -621,22 +1329,44 @@ export default function BudgetPlan({ month }: { month: string }) {
                 </div>
 
                 {/* Stats row */}
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                   <div className="flex flex-col">
-                    <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider font-semibold">Kế hoạch</span>
+                    <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider font-semibold">Phân bổ</span>
                     <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{formatCurrency(jar.planned_amount)}</span>
                   </div>
                   <div className="flex flex-col">
-                    <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider font-semibold">Thực tế</span>
-                    <span className="text-sm font-bold text-red-600 dark:text-red-400">{formatCurrency(jar.actual_amount)}</span>
+                    <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider font-semibold">Dự kiến</span>
+                    <span className="text-sm font-bold text-violet-600 dark:text-violet-300">{formatCurrency(committedAmount)}</span>
                   </div>
                   <div className="flex flex-col">
-                    <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider font-semibold">Còn lại</span>
-                    <span className={`text-sm font-bold ${jar.remaining >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
-                      {jar.remaining >= 0 ? '' : '-'}{formatCurrency(Math.abs(jar.remaining))}
+                    <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider font-semibold">Đã chi</span>
+                    <span className="text-sm font-bold text-red-600 dark:text-red-400">{formatCurrency(spentAmount)}</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider font-semibold">Khả dụng</span>
+                    <span className={`text-sm font-bold ${availableAmount >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                      {formatCurrency(availableAmount)}
                     </span>
                   </div>
                 </div>
+
+                <PlannedExpenseSection
+                  jar={jar}
+                  jarMetric={jarMetric}
+                  lines={jarLines}
+                  jarOptions={workspaceJars}
+                  goals={goals}
+                  debts={debts}
+                  funds={funds}
+                  recurringBills={recurringBills}
+                  isReady={plannerReady}
+                  isLoading={plannerLoading}
+                  canEdit={plannerEditable}
+                  isMutating={plannerMutating}
+                  onCreateLine={(payload) => createBudgetLineMutation.mutateAsync(payload)}
+                  onUpdateLine={(id, payload) => updateBudgetLineMutation.mutateAsync({ id, payload })}
+                  onDeleteLine={(id) => deleteBudgetLineMutation.mutateAsync(id)}
+                />
               </div>
 
               {/* Drill-down toggle */}
