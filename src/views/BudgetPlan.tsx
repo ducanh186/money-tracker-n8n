@@ -44,7 +44,6 @@ import {
 import type {
   BudgetJar,
   BudgetLine,
-  BudgetStatusJarMetric,
   BudgetWorkspaceJar,
   CreateBudgetLinePayload,
   Debt,
@@ -547,8 +546,9 @@ function PlannedExpenseForm({
 
 type PlannedExpenseSectionProps = {
   jar: BudgetJar;
-  jarMetric: BudgetStatusJarMetric | undefined;
   lines: BudgetLine[];
+  committedAmount: number;
+  availableAmount: number;
   jarOptions: BudgetWorkspaceJar[];
   goals: Goal[];
   debts: Debt[];
@@ -566,8 +566,9 @@ type PlannedExpenseSectionProps = {
 
 function PlannedExpenseSection({
   jar,
-  jarMetric,
   lines,
+  committedAmount,
+  availableAmount,
   jarOptions,
   goals,
   debts,
@@ -623,8 +624,7 @@ function PlannedExpenseSection({
   const recurringBillsById = new Map(recurringBills.map((bill) => [bill.id, bill]));
   const fundsById = new Map(funds.map((fund) => [fund.id, fund]));
   const sortedLines = [...lines].sort((a, b) => b.planned_amount - a.planned_amount || a.name.localeCompare(b.name));
-  const plannedTotal = jarMetric?.committed ?? sortedLines.reduce((sum, line) => sum + line.planned_amount, 0);
-  const availableAmount = jarMetric?.available ?? jar.remaining;
+  const plannedTotal = committedAmount;
   const modalTitleId = `planned-expenses-${jar.key}`;
 
   const handleCreateToggle = async () => {
@@ -1005,6 +1005,7 @@ export default function BudgetPlan({ month }: { month: string }) {
   const plannerLoading = isPeriodsPending || createPeriodMutation.isPending || (Boolean(effectivePeriodId) && (isWorkspacePending || isBudgetLinesPending));
   const plannerEditable = !createPeriodMutation.isPending;
   const plannerMutating = createPeriodMutation.isPending || createBudgetLineMutation.isPending || updateBudgetLineMutation.isPending || deleteBudgetLineMutation.isPending;
+  const hasHydratedBudgetLines = effectivePeriodId !== null && !isBudgetLinesPending;
 
   const budgetLinesByJar: Record<string, BudgetLine[]> = {};
   for (const line of budgetLines) {
@@ -1428,8 +1429,11 @@ export default function BudgetPlan({ month }: { month: string }) {
           const jarMetric = budgetStatus?.jars.find((metric) => metric.key === jar.key);
           const jarLines = budgetLinesByJar[jar.key] ?? [];
           const spentAmount = jarMetric?.spent ?? jar.actual_amount;
-          const committedAmount = jarMetric?.committed ?? jarLines.reduce((sum, line) => sum + line.planned_amount, 0);
-          const availableAmount = jarMetric?.available ?? jar.remaining;
+          const committedFromLines = jarLines.reduce((sum, line) => sum + line.planned_amount, 0);
+          const committedAmount = hasHydratedBudgetLines
+            ? committedFromLines
+            : (jarMetric?.committed ?? committedFromLines);
+          const availableAmount = jar.planned_amount + (jarMetric?.rollover ?? 0) - committedAmount - spentAmount;
           const actualUsagePct = jar.planned_amount > 0 ? (spentAmount / jar.planned_amount) * 100 : 0;
           const spentProgressWidth = Math.min(Math.max(actualUsagePct, 0), 100);
           const committedUsagePct = jar.planned_amount > 0 ? (committedAmount / jar.planned_amount) * 100 : 0;
@@ -1532,8 +1536,9 @@ export default function BudgetPlan({ month }: { month: string }) {
 
                 <PlannedExpenseSection
                   jar={jar}
-                  jarMetric={jarMetric}
                   lines={jarLines}
+                  committedAmount={committedAmount}
+                  availableAmount={availableAmount}
                   jarOptions={workspaceJars}
                   goals={goals}
                   debts={debts}

@@ -9,6 +9,7 @@ use App\Models\JarAllocation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\ValidationException;
 
 class BudgetLineController extends Controller
@@ -37,6 +38,7 @@ class BudgetLineController extends Controller
     {
         $line = BudgetLine::create($request->validated());
         $this->syncJarAllocationMetrics($line->jarAllocation);
+        $this->forgetBudgetStatusCacheForAllocation($line->jarAllocation);
 
         return response()->json([
             'data'    => $this->serializeLine($line),
@@ -81,10 +83,12 @@ class BudgetLineController extends Controller
             $originalAllocation = JarAllocation::find($originalAllocationId);
             if ($originalAllocation) {
                 $this->syncJarAllocationMetrics($originalAllocation);
+                $this->forgetBudgetStatusCacheForAllocation($originalAllocation);
             }
         }
 
         $this->syncJarAllocationMetrics($freshLine->jarAllocation);
+        $this->forgetBudgetStatusCacheForAllocation($freshLine->jarAllocation);
 
         return response()->json([
             'data'    => $this->serializeLine($freshLine),
@@ -100,6 +104,7 @@ class BudgetLineController extends Controller
         $allocation = $budgetLine->jarAllocation;
         $budgetLine->delete();
         $this->syncJarAllocationMetrics($allocation);
+        $this->forgetBudgetStatusCacheForAllocation($allocation);
 
         return response()->json([
             'message' => 'Budget line deleted.',
@@ -134,5 +139,15 @@ class BudgetLineController extends Controller
         $allocation->update([
             'committed_amount' => (int) $allocation->budgetLines()->sum('planned_amount'),
         ]);
+    }
+
+    private function forgetBudgetStatusCacheForAllocation(JarAllocation $allocation): void
+    {
+        $month = $allocation->budgetPeriod()->value('month');
+        if (!$month) {
+            return;
+        }
+
+        Cache::forget('budget_status_' . md5($month));
     }
 }

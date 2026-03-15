@@ -6,13 +6,33 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
- * Format a number as VND currency (always unsigned).
- * Uses Math.abs() to avoid double-negative display bugs.
+ * Format VND amount in compact style:
+ * - >= 1,000,000 => x M VND (one decimal when needed, e.g. 1,2 M VND)
+ * - >= 1,000 and < 1,000,000 => xk VND
+ * - < 1,000 => x VND
+ *
+ * Always unsigned. Sign is handled by `formatSignedAmount`.
  */
 export function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' })
-    .format(Math.abs(value))
-    .replace('₫', 'đ');
+  const amount = Math.abs(value);
+
+  if (amount >= 1_000_000) {
+    const millions = Math.round((amount / 1_000_000) * 10) / 10;
+    const millionText = Number.isInteger(millions)
+      ? String(millions)
+      : millions.toFixed(1).replace('.', ',');
+    return `${millionText} M VND`;
+  }
+
+  if (amount >= 1_000) {
+    const thousands = Math.round((amount / 1_000) * 10) / 10;
+    const thousandText = Number.isInteger(thousands)
+      ? String(thousands)
+      : thousands.toFixed(1).replace('.', ',');
+    return `${thousandText}k VND`;
+  }
+
+  return `${Math.round(amount)} VND`;
 }
 
 /**
