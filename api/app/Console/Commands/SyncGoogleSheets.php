@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Contracts\TransactionsRepositoryInterface;
+use App\Services\PlannedExpenseAutoCleanupService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -19,7 +20,10 @@ class SyncGoogleSheets extends Command
     protected $signature = 'sheets:sync {--force : Force refresh even if cache is fresh}';
     protected $description = 'Sync Google Sheets data into local cache snapshot';
 
-    public function handle(TransactionsRepositoryInterface $repository): int
+    public function handle(
+        TransactionsRepositoryInterface $repository,
+        PlannedExpenseAutoCleanupService $plannedExpenseCleanup,
+    ): int
     {
         $start = microtime(true);
 
@@ -46,10 +50,26 @@ class SyncGoogleSheets extends Command
                 $repository->getByMonth($month);
             }
 
-            // 4. Clear derived caches (budget plan, transaction pages)
+            // 4. Auto-remove planned lines when expense notes match (>60%)
+            $cleanupStats = $plannedExpenseCleanup->cleanupFromSheetRows(
+                Cache::get('sheets_all_rows', [])
+            );
+
+            if (($cleanupStats['deleted_lines'] ?? 0) > 0) {
+                $this->info(
+                    sprintf(
+                        'Auto cleanup deleted %d planned lines (%d/%d matched notes).',
+                        $cleanupStats['deleted_lines'],
+                        $cleanupStats['matches_found'],
+                        $cleanupStats['notes_checked']
+                    )
+                );
+            }
+
+            // 5. Clear derived caches (budget plan, transaction pages)
             $this->clearDerivedCaches($months);
 
-            // 5. Store sync metadata
+            // 6. Store sync metadata
             $elapsed = round((microtime(true) - $start) * 1000);
             $rowCount = count(Cache::get('sheets_all_rows', []));
 
@@ -58,6 +78,7 @@ class SyncGoogleSheets extends Command
                 'row_count' => $rowCount,
                 'elapsed_ms' => $elapsed,
                 'months_warmed' => $months,
+                'planned_expense_cleanup' => $cleanupStats,
             ], 300); // 5 min TTL
 
             $this->info("Synced {$rowCount} rows in {$elapsed}ms. Months warmed: " . implode(', ', $months));
