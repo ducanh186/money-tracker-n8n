@@ -96,6 +96,8 @@ const PLANNER_TYPE_OPTIONS: Array<{ value: PlannerType; label: string }> = [
 ];
 
 const PLANNER_FIELD_CLASS = 'w-full rounded-lg border border-violet-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-200 dark:border-violet-500/30 dark:bg-[#0f1728] dark:text-slate-100 dark:focus:border-violet-400 dark:focus:ring-violet-500/20';
+const PLANNED_PROGRESS_BAR_CLASS = 'bg-violet-500 dark:bg-violet-400';
+const PLANNED_PROGRESS_TEXT_CLASS = 'text-violet-600 dark:text-violet-300';
 
 function toPlannerType(value: PlannerType | string): PlannerType {
   if (
@@ -1429,17 +1431,13 @@ export default function BudgetPlan({ month }: { month: string }) {
           const committedAmount = jarMetric?.committed ?? jarLines.reduce((sum, line) => sum + line.planned_amount, 0);
           const availableAmount = jarMetric?.available ?? jar.remaining;
           const actualUsagePct = jar.planned_amount > 0 ? (spentAmount / jar.planned_amount) * 100 : 0;
-          const progressWidth = Math.min(actualUsagePct, 100);
-          const projectedProgressPct = jar.planned_amount > 0
-            ? (Math.max(spentAmount, committedAmount) / jar.planned_amount) * 100
-            : 0;
-          const projectedWidth = Math.min(projectedProgressPct, 100);
-          const plannedProgressWidth = Math.max(projectedWidth - progressWidth, 0);
-          const actualProgressClass = jar.status === 'OVER'
-            ? 'bg-red-500'
-            : jar.status === 'WARN'
-              ? 'bg-amber-500'
-              : style.progressBg;
+          const spentProgressWidth = Math.min(Math.max(actualUsagePct, 0), 100);
+          const committedUsagePct = jar.planned_amount > 0 ? (committedAmount / jar.planned_amount) * 100 : 0;
+          const committedProgressWidth = Math.min(
+            Math.max(committedUsagePct, 0),
+            Math.max(100 - spentProgressWidth, 0),
+          );
+          const actualProgressClass = style.progressBg;
 
           return (
             <div
@@ -1476,23 +1474,24 @@ export default function BudgetPlan({ month }: { month: string }) {
                   </div>
                   <div className="h-2.5 w-full bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
                     <div className="flex h-full w-full">
-                      {progressWidth > 0 && (
+                      {spentProgressWidth > 0 && (
                         <div
                           className={cn(
                             'h-full shrink-0 transition-[width] duration-500',
-                            plannedProgressWidth > 0 ? 'rounded-l-full' : 'rounded-full',
+                            committedProgressWidth > 0 ? 'rounded-l-full' : 'rounded-full',
                             actualProgressClass,
                           )}
-                          style={{ width: `${progressWidth}%` }}
+                          style={{ width: `${spentProgressWidth}%` }}
                         />
                       )}
-                      {plannedProgressWidth > 0 && (
+                      {committedProgressWidth > 0 && (
                         <div
                           className={cn(
-                            'h-full shrink-0 bg-violet-500 transition-[width] duration-500 dark:bg-violet-400',
-                            progressWidth > 0 ? 'rounded-r-full' : 'rounded-full',
+                            'h-full shrink-0 transition-[width] duration-500',
+                            PLANNED_PROGRESS_BAR_CLASS,
+                            spentProgressWidth > 0 ? 'rounded-r-full' : 'rounded-full',
                           )}
-                          style={{ width: `${plannedProgressWidth}%` }}
+                          style={{ width: `${committedProgressWidth}%` }}
                         />
                       )}
                     </div>
@@ -1502,8 +1501,8 @@ export default function BudgetPlan({ month }: { month: string }) {
                       <span className={cn('size-2 rounded-full', actualProgressClass)} />
                       Đã chi {formatCurrency(spentAmount)}
                     </span>
-                    <span className="inline-flex items-center gap-1.5 text-violet-600 dark:text-violet-300">
-                      <span className="size-2 rounded-full bg-violet-500 dark:bg-violet-400" />
+                    <span className={cn('inline-flex items-center gap-1.5', PLANNED_PROGRESS_TEXT_CLASS)}>
+                      <span className={cn('size-2 rounded-full', PLANNED_PROGRESS_BAR_CLASS)} />
                       Khoản chi dự kiến {formatCurrency(committedAmount)}
                     </span>
                   </div>
@@ -1517,7 +1516,7 @@ export default function BudgetPlan({ month }: { month: string }) {
                   </div>
                   <div className="flex flex-col">
                     <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider font-semibold">Dự kiến</span>
-                    <span className="text-sm font-bold text-violet-600 dark:text-violet-300">{formatCurrency(committedAmount)}</span>
+                    <span className={cn('text-sm font-bold', PLANNED_PROGRESS_TEXT_CLASS)}>{formatCurrency(committedAmount)}</span>
                   </div>
                   <div className="flex flex-col">
                     <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider font-semibold">Đã chi</span>
