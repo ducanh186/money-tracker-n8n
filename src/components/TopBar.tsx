@@ -154,7 +154,7 @@ export default function TopBar({ currentView, setCurrentView, selectedMonth, onM
       </div>
 
       {/* Budget Status Strip */}
-      {budgetStatus && (
+      {budgetStatus && currentView !== 'budget' && (
         <div className="border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-[#0c1222]">
           <div className="mx-auto flex max-w-[1440px] items-center gap-4 overflow-x-auto px-4 py-1.5 text-xs md:gap-6 md:px-6 xl:px-8">
             <div className="flex items-center gap-1.5 shrink-0">

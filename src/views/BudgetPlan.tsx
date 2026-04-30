@@ -1087,6 +1087,10 @@ export default function BudgetPlan({ month, hideHeader = false }: { month: strin
 
   const plan = data.data;
   const { summary, jars } = plan;
+  const parsedHeaderMonth = parseBudgetMonth(month);
+  const budgetHeading = parsedHeaderMonth
+    ? `Chi tiêu · Th ${String(parsedHeaderMonth.monthNum).padStart(2, '0')}/${parsedHeaderMonth.year}`
+    : 'Chi tiêu';
 
   const toggleJar = (key: string) => {
     setExpandedJar(expandedJar === key ? null : key);
@@ -1096,20 +1100,13 @@ export default function BudgetPlan({ month, hideHeader = false }: { month: strin
     <div className="flex flex-col gap-6 max-w-7xl mx-auto">
       {/* Page header */}
       {!hideHeader && (
-        <div className="rounded-[28px] border border-slate-200/80 bg-white/90 p-5 shadow-sm backdrop-blur-sm dark:border-slate-700/80 dark:bg-[#111827]/85 md:p-6">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div className="flex flex-col gap-1.5">
-              <span className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400 dark:text-slate-500">
-                Budget Workspace
-              </span>
-              <h2 className="text-slate-900 dark:text-white text-3xl font-bold tracking-tight">
-                Ngân sách tháng
-              </h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                Phân bổ thu nhập, gài khoản dự kiến và theo dõi thực chi theo từng hũ trong cùng một workspace.
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-1">
+            <h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
+              {budgetHeading}
+            </h2>
+          </div>
+          <div className="flex items-center gap-2">
             {budgetStatus && budgetStatus.has_period && budgetStatus.period_status === 'open' && (
               <button
                 onClick={() => {
@@ -1126,74 +1123,6 @@ export default function BudgetPlan({ month, hideHeader = false }: { month: strin
                 Đóng tháng
               </button>
             )}
-          </div>
-        </div>
-      </div>
-      )}
-
-      {/* Allocation Status Bar */}
-      {budgetStatus && (
-        <div className="relative overflow-hidden rounded-[24px] border border-slate-200/80 bg-white/90 p-4 shadow-sm dark:border-slate-700/80 dark:bg-[#111827]/85">
-          <div className="absolute right-0 top-0 h-24 w-24 translate-x-8 -translate-y-8 rounded-full bg-blue-50 dark:bg-blue-500/10" />
-          <div className="relative flex flex-col gap-3">
-            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between text-sm">
-              <span className="font-medium text-slate-700 dark:text-slate-200">Trạng thái phân bổ</span>
-              <span className={cn(
-                'font-bold text-sm',
-                budgetStatus.unassigned === 0
-                  ? 'text-green-600 dark:text-green-400'
-                  : 'text-red-600 dark:text-red-400'
-              )}>
-                {budgetStatus.unassigned === 0 ? '✓ Đã cân bằng' : `Còn ${formatCurrency(budgetStatus.unassigned)} chưa phân bổ`}
-              </span>
-            </div>
-            <div className="flex items-center gap-1 h-4 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-700">
-              {budgetStatus.income > 0 && (
-                <>
-                  <div
-                    className="h-full bg-blue-500 rounded-l-full"
-                    style={{ width: `${Math.min(100, (budgetStatus.assigned / budgetStatus.income) * 100)}%` }}
-                    title={`Đã phân bổ: ${formatCurrency(budgetStatus.assigned)}`}
-                  />
-                  {budgetStatus.unassigned > 0 && (
-                    <div
-                      className="h-full bg-red-400 rounded-r-full"
-                      style={{ width: `${(budgetStatus.unassigned / budgetStatus.income) * 100}%` }}
-                      title={`Chưa phân bổ: ${formatCurrency(budgetStatus.unassigned)}`}
-                    />
-                  )}
-                </>
-              )}
-            </div>
-            <div className="grid grid-cols-2 gap-4 text-xs md:grid-cols-5">
-              <div>
-                <span className="text-slate-400 dark:text-slate-500">Thu nhập</span>
-                <p className="font-bold text-slate-800 dark:text-slate-200">{formatCurrency(budgetStatus.income)}</p>
-              </div>
-              <div>
-                <span className="text-slate-400 dark:text-slate-500">Đã phân bổ</span>
-                <p className="font-bold text-blue-600 dark:text-blue-400">{formatCurrency(budgetStatus.assigned)}</p>
-              </div>
-              <div>
-                <span className="text-slate-400 dark:text-slate-500">Đã gài dự kiến</span>
-                <p className="font-bold text-violet-600 dark:text-violet-300">{formatCurrency(budgetStatus.committed)}</p>
-              </div>
-              <div>
-                <span className="text-slate-400 dark:text-slate-500">Còn có thể chi</span>
-                <p className={cn(
-                  'font-bold',
-                  budgetStatus.available_to_spend >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400',
-                )}>
-                  {formatCurrency(budgetStatus.available_to_spend)}
-                </p>
-              </div>
-              <div>
-                <span className="text-slate-400 dark:text-slate-500">Chưa phân bổ</span>
-                <p className={cn('font-bold', budgetStatus.unassigned === 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400')}>
-                  {formatCurrency(budgetStatus.unassigned)}
-                </p>
-              </div>
-            </div>
           </div>
         </div>
       )}
