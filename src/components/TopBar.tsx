@@ -29,7 +29,7 @@ export default function TopBar({ currentView, setCurrentView, selectedMonth, onM
 
   return (
     <nav className="bg-white dark:bg-[#1a2433] border-b border-slate-200 dark:border-slate-700 sticky top-0 z-50 transition-colors duration-200">
-      <div className="max-w-7xl mx-auto px-4 md:px-6">
+      <div className="mx-auto max-w-[1440px] px-4 md:px-6 xl:px-8">
         <div className="flex items-center justify-between h-14">
           {/* Left: Logo + Desktop Nav */}
           <div className="flex items-center gap-3">
@@ -156,7 +156,7 @@ export default function TopBar({ currentView, setCurrentView, selectedMonth, onM
       {/* Budget Status Strip */}
       {budgetStatus && (
         <div className="border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-[#0c1222]">
-          <div className="max-w-7xl mx-auto px-4 md:px-6 py-1.5 flex items-center gap-4 md:gap-6 text-xs overflow-x-auto">
+          <div className="mx-auto flex max-w-[1440px] items-center gap-4 overflow-x-auto px-4 py-1.5 text-xs md:gap-6 md:px-6 xl:px-8">
             <div className="flex items-center gap-1.5 shrink-0">
               <span className="text-slate-500 dark:text-slate-400">Thu nhập:</span>
               <span className="font-semibold text-slate-700 dark:text-slate-200">{formatCurrency(budgetStatus.income)}</span>

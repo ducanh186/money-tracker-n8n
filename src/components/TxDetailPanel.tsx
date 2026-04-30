@@ -60,7 +60,7 @@ function FieldRow({
 export default function TxDetailPanel({ tx }: { tx: Transaction | null }) {
   if (!tx) {
     return (
-      <aside className="hidden lg:flex flex-col items-center justify-center bg-white dark:bg-[#1a2433] rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm p-6 text-center min-h-[400px]">
+      <aside className="hidden min-[1460px]:flex min-[1460px]:flex-col min-[1460px]:items-center min-[1460px]:justify-center bg-white dark:bg-[#1a2433] rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm p-6 text-center min-h-[400px]">
         <div className="size-12 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center mb-3">
           <Store className="size-5 text-slate-400 dark:text-slate-500" />
         </div>
@@ -84,7 +84,7 @@ export default function TxDetailPanel({ tx }: { tx: Transaction | null }) {
       : 'text-blue-600 dark:text-blue-400';
 
   return (
-    <aside className="hidden lg:flex flex-col bg-white dark:bg-[#1a2433] rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm sticky top-6 max-h-[calc(100vh-7rem)] overflow-hidden">
+    <aside className="hidden min-[1460px]:flex min-[1460px]:flex-col bg-white dark:bg-[#1a2433] rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm sticky top-6 max-h-[calc(100vh-7rem)] overflow-hidden">
       <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-700">
         <h4 className="text-sm font-bold text-slate-900 dark:text-white">Chi tiết giao dịch</h4>
       </div>

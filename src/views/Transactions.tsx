@@ -101,7 +101,7 @@ export default function Transactions({ month, hideHeader = false }: { month: str
   const totalPages = meta ? Math.ceil(meta.total / meta.pageSize) : 1;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 max-w-7xl mx-auto">
+    <div className="grid w-full grid-cols-1 gap-6 min-[1460px]:grid-cols-[minmax(0,1fr)_320px]">
       <div className="flex flex-col gap-6 min-w-0">
       {!hideHeader && (
         <div className="flex flex-col gap-1">
@@ -383,9 +383,9 @@ export default function Transactions({ month, hideHeader = false }: { month: str
       {/* Desktop inline detail panel */}
       <TxDetailPanel tx={selectedTx} />
 
-      {/* Mobile drawer (hidden on lg+) */}
+      {/* Overlay detail panel when inline desktop panel is unavailable */}
       {selectedTx && (
-        <div className="lg:hidden">
+        <div className="min-[1460px]:hidden">
           <TransactionDetails tx={selectedTx} onClose={() => setSelectedTx(null)} />
         </div>
       )}

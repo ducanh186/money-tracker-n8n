@@ -130,7 +130,7 @@ export default function App() {
         darkMode={darkMode}
         toggleDarkMode={() => setDarkMode(!darkMode)}
       />
-      <main className="max-w-7xl mx-auto px-4 md:px-8 py-6">
+      <main className="mx-auto max-w-[1440px] px-4 py-6 md:px-6 xl:px-8">
         {renderCurrentView(false)}
       </main>
       <AddTransactionModal open={addModalOpen} onClose={closeAddModal} />
