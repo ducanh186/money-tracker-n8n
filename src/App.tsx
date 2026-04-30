@@ -12,6 +12,7 @@ import BudgetPlan from './views/BudgetPlan';
 import Goals from './views/Goals';
 import Debts from './views/Debts';
 import UiPlayground from './views/UiPlayground';
+import AddTransactionModal from './components/AddTransactionModal';
 import { getCurrentMonth } from './lib/api';
 
 function useHashRoute(): string {
@@ -48,6 +49,14 @@ export default function App() {
     );
   }
 
+  const addModalOpen = hash === '#/add' || hash === '#add';
+  const closeAddModal = () => {
+    if (window.location.hash) {
+      history.replaceState(null, '', window.location.pathname + window.location.search);
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#0c1222] text-slate-900 dark:text-slate-200 font-sans transition-colors duration-200">
       <TopBar
@@ -66,6 +75,7 @@ export default function App() {
         {currentView === 'goals' && <Goals month={selectedMonth} />}
         {currentView === 'debts' && <Debts month={selectedMonth} />}
       </main>
+      <AddTransactionModal open={addModalOpen} onClose={closeAddModal} />
     </div>
   );
 }
