@@ -177,8 +177,13 @@ export default function TopBar({ currentView, setCurrentView, selectedMonth, onM
               </span>
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
-              <span className="text-slate-500 dark:text-slate-400">Được phép chi:</span>
-              <span className="font-semibold text-emerald-600 dark:text-emerald-400">{formatCurrency(budgetStatus.available_to_spend)}</span>
+              <span className="text-slate-500 dark:text-slate-400">Còn chi được:</span>
+              <span className={cn(
+                'font-semibold',
+                budgetStatus.available_to_spend >= 0
+                  ? 'text-emerald-600 dark:text-emerald-400'
+                  : 'text-red-600 dark:text-red-400'
+              )}>{formatCurrency(budgetStatus.available_to_spend)}</span>
             </div>
             {budgetStatus.overspent_jars && budgetStatus.overspent_jars.length > 0 && (
               <div className="flex items-center gap-1.5 shrink-0 text-amber-600 dark:text-amber-400">

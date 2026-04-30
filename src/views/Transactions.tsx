@@ -54,6 +54,41 @@ function flowColor(flow: string | null) {
   }
 }
 
+function parseTxDate(value: string | null): Date | null {
+  if (!value) return null;
+  const match = /^(\d{1,2})\/(\d{1,2})(?:\/(\d{4}))?$/.exec(value.trim());
+  if (!match) return null;
+
+  const day = Number(match[1]);
+  const month = Number(match[2]);
+  const year = Number(match[3] ?? new Date().getFullYear());
+  const parsed = new Date(year, month - 1, day);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function mobileDateLabel(value: string | null) {
+  if (!value) return 'Không rõ ngày';
+
+  const parsed = parseTxDate(value);
+  if (!parsed) return value;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  parsed.setHours(0, 0, 0, 0);
+
+  const base = parsed.toLocaleDateString('vi-VN', {
+    weekday: 'short',
+    day: '2-digit',
+    month: '2-digit',
+  });
+
+  if (parsed.getTime() === today.getTime()) return `Hôm nay · ${base}`;
+  if (parsed.getTime() === yesterday.getTime()) return `Hôm qua · ${base}`;
+  return base;
+}
+
 export default function Transactions({ month, hideHeader = false }: { month: string; hideHeader?: boolean }) {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -99,6 +134,23 @@ export default function Transactions({ month, hideHeader = false }: { month: str
   const transactions = data?.data ?? [];
   const meta = data?.meta;
   const totalPages = meta ? Math.ceil(meta.total / meta.pageSize) : 1;
+  const mobileGroups = useMemo(() => {
+    const groups = new Map<string, Transaction[]>();
+
+    for (const tx of transactions) {
+      const date = tx.date ?? 'unknown';
+      const items = groups.get(date) ?? [];
+      items.push(tx);
+      groups.set(date, items);
+    }
+
+    return Array.from(groups.entries()).map(([date, items]) => ({
+      date,
+      label: mobileDateLabel(date === 'unknown' ? null : date),
+      total: items.reduce((sum, tx) => sum + tx.signed_amount_vnd, 0),
+      items,
+    }));
+  }, [transactions]);
 
   return (
     <div className="grid w-full grid-cols-1 gap-6 min-[1460px]:grid-cols-[minmax(0,1fr)_320px]">
@@ -114,7 +166,7 @@ export default function Transactions({ month, hideHeader = false }: { month: str
 
       {/* Summary cards */}
       {meta && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="bg-white dark:bg-[#1a2433] rounded-xl p-5 border border-slate-200 dark:border-slate-700 shadow-sm">
             <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Tổng thu</p>
             <p className="text-xl font-bold text-green-600 dark:text-green-400">{formatCurrency(meta.totals.income_vnd)}</p>
@@ -124,7 +176,7 @@ export default function Transactions({ month, hideHeader = false }: { month: str
             <p className="text-xl font-bold text-red-600 dark:text-red-400">{formatCurrency(meta.totals.expense_vnd)}</p>
           </div>
           <div className="bg-white dark:bg-[#1a2433] rounded-xl p-5 border border-slate-200 dark:border-slate-700 shadow-sm">
-            <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Được phép chi</p>
+            <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Còn chi được</p>
             <p className={`text-xl font-bold ${(budgetStatus?.available_to_spend ?? meta.totals.net_vnd) >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
               {formatCurrency(budgetStatus?.available_to_spend ?? meta.totals.net_vnd)}
             </p>
@@ -294,31 +346,46 @@ export default function Transactions({ month, hideHeader = false }: { month: str
 
               {/* Mobile list */}
               <div className="md:hidden divide-y divide-slate-100 dark:divide-slate-700/60">
-                {transactions.map((tx, idx) => (
-                  <div
-                    key={tx.idempotency_key ?? idx}
-                    onClick={() => setSelectedTx(tx)}
-                    className="flex items-center gap-3 px-4 py-3.5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/40 transition-colors"
-                  >
-                    <div className={`size-10 rounded-full flex items-center justify-center shrink-0 ${
-                      tx.flow === 'income' ? 'bg-green-100 dark:bg-green-900/30' :
-                      tx.flow === 'expense' ? 'bg-red-100 dark:bg-red-900/30' : 'bg-blue-100 dark:bg-blue-900/30'
-                    }`}>
-                      {flowIcon(tx.flow)}
+                {mobileGroups.map((group, groupIndex) => (
+                  <div key={`${group.date}-${groupIndex}`}>
+                    <div className={`flex items-center justify-between px-4 py-3 ${groupIndex > 0 ? 'border-t border-slate-100 dark:border-slate-700/60' : ''}`}>
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
+                        {group.label}
+                      </span>
+                      <span className={`text-xs font-bold tabular-nums ${group.total >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                        {group.total >= 0 ? '+' : '−'}{formatCurrency(Math.abs(group.total))}
+                      </span>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{tx.description ?? '—'}</p>
-                      <p className="text-xs text-slate-400 dark:text-slate-500">{tx.category ?? ''} · {tx.date ?? ''}</p>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <p className={`text-sm font-semibold ${
-                        tx.flow === 'income' ? 'text-green-600' :
-                        tx.flow === 'expense' ? 'text-red-600' : 'text-blue-600'
-                      }`}>
-                        {formatSignedAmount(tx.amount_vnd, tx.flow)}
-                      </p>
-                      <p className="text-xs text-slate-400">{tx.jar ?? ''}</p>
-                    </div>
+
+                    {group.items.map((tx, idx) => (
+                      <div
+                        key={tx.idempotency_key ?? `${group.date}-${idx}`}
+                        onClick={() => setSelectedTx(tx)}
+                        className={`flex items-center gap-3 px-4 py-3.5 cursor-pointer transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/40 ${idx > 0 ? 'border-t border-slate-100/70 dark:border-slate-700/50' : ''}`}
+                      >
+                        <div className={`size-10 rounded-full flex items-center justify-center shrink-0 ${
+                          tx.flow === 'income' ? 'bg-green-100 dark:bg-green-900/30' :
+                          tx.flow === 'expense' ? 'bg-red-100 dark:bg-red-900/30' : 'bg-blue-100 dark:bg-blue-900/30'
+                        }`}>
+                          {flowIcon(tx.flow)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{tx.description ?? tx.category ?? '—'}</p>
+                          <p className="text-xs text-slate-400 dark:text-slate-500 truncate">
+                            {tx.time ?? '--:--'} · {tx.flow === 'income' ? 'Thu nhập' : tx.jar ?? tx.category ?? 'Chưa gán hũ'}
+                          </p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className={`text-sm font-semibold ${
+                            tx.flow === 'income' ? 'text-green-600' :
+                            tx.flow === 'expense' ? 'text-red-600' : 'text-blue-600'
+                          }`}>
+                            {formatSignedAmount(tx.amount_vnd, tx.flow)}
+                          </p>
+                          <p className="text-xs text-slate-400">{tx.category ?? tx.date ?? ''}</p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 ))}
               </div>

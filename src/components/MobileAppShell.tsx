@@ -1,4 +1,4 @@
-import { ArrowLeft, Bell, ChevronDown, List, Menu, Moon, PieChart, Plus, Sun, Wallet } from 'lucide-react';
+import { ArrowLeft, Bell, ChevronDown, House, Layers3, Menu, Moon, Plus, ReceiptText, Sun } from 'lucide-react';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { formatMonthLabel, getRecentMonths } from '../lib/api';
 import { cn } from '../lib/utils';
@@ -16,9 +16,9 @@ type MobileAppShellProps = {
 };
 
 const navItems = [
-  { id: 'overview', label: 'Trang chủ', icon: PieChart },
-  { id: 'transactions', label: 'Giao dịch', icon: List },
-  { id: 'jars', label: 'Hũ', icon: Wallet },
+  { id: 'overview', label: 'Trang chủ', icon: House },
+  { id: 'transactions', label: 'Giao dịch', icon: ReceiptText },
+  { id: 'jars', label: 'Hũ', icon: Layers3 },
   { id: 'more', label: 'Khác', icon: Menu },
 ];
 
@@ -70,7 +70,7 @@ export default function MobileAppShell({
     <div className="min-h-screen bg-[var(--color-surface-alt)] text-[var(--color-text-primary)] lg:hidden">
       {showHeader && (
         <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-slate-50/95 backdrop-blur-md dark:border-slate-700/80 dark:bg-[#0c1222]/95">
-          <div className="flex items-center justify-between px-4 py-3">
+          <div className="mx-auto flex max-w-md items-center justify-between px-4 py-3">
             <div className="relative flex min-w-0 items-center gap-2">
               {showBack ? (
                 <button
@@ -127,7 +127,7 @@ export default function MobileAppShell({
                 onClick={() => setInsightsOpen(true)}
                 className="inline-flex size-9 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-700/60 dark:hover:text-white"
               >
-                <PieChart className="size-4.5" />
+                <Layers3 className="size-4.5" />
               </button>
               <button
                 onClick={toggleDarkMode}
@@ -140,7 +140,7 @@ export default function MobileAppShell({
         </header>
       )}
 
-      <main className="px-4 pb-24 pt-4">{children}</main>
+      <main className="mx-auto max-w-md px-4 pb-24 pt-4">{children}</main>
 
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200/80 bg-white/92 px-4 pb-[calc(env(safe-area-inset-bottom)+10px)] pt-2 backdrop-blur-md dark:border-slate-700/80 dark:bg-[#111827]/92">
         <div className="mx-auto grid max-w-md grid-cols-[1fr_1fr_auto_1fr_1fr] items-end gap-1">

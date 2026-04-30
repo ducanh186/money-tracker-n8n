@@ -1,4 +1,5 @@
 import { ArrowUpCircle, ArrowDownCircle, ArrowRightLeft, Loader2, RefreshCw } from 'lucide-react';
+import { useMemo } from 'react';
 import { formatCurrency, formatSignedAmount } from '../lib/utils';
 import { useDashboardSummary, useSyncStatus, useTriggerSync, useInvestmentSummary } from '../lib/hooks';
 import { IncomeExpenseChart } from '../components/IncomeExpenseChart';
@@ -20,12 +21,89 @@ const flowColors = (flow: string | null) => {
   return { color: 'text-blue-600', bg: 'bg-blue-100' };
 };
 
+const parseTxDate = (value: string | null | undefined): Date | null => {
+  if (!value) return null;
+  const match = /^(\d{1,2})\/(\d{1,2})(?:\/(\d{4}))?$/.exec(value.trim());
+  if (!match) return null;
+
+  const day = Number(match[1]);
+  const month = Number(match[2]);
+  const year = Number(match[3] ?? new Date().getFullYear());
+  const parsed = new Date(year, month - 1, day);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const txDateLabel = (value: string | null | undefined): string => {
+  if (!value) return 'Không rõ ngày';
+
+  const parsed = parseTxDate(value);
+  if (!parsed) return value;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  parsed.setHours(0, 0, 0, 0);
+
+  const base = parsed.toLocaleDateString('vi-VN', {
+    weekday: 'short',
+    day: '2-digit',
+    month: '2-digit',
+  });
+
+  if (parsed.getTime() === today.getTime()) return `Hôm nay · ${base}`;
+  if (parsed.getTime() === yesterday.getTime()) return `Hôm qua · ${base}`;
+  return base;
+};
+
+const txSignedAmount = (amount: number, flow: string | null): number => {
+  if (flow === 'income') return amount;
+  if (flow === 'expense') return -amount;
+  return 0;
+};
+
 export default function Overview({ month }: { month: string }) {
   // Lightweight summary endpoint — no full transaction list
   const { data: summaryRes, isPending, error } = useDashboardSummary(month);
   const { data: syncRes } = useSyncStatus();
   const syncMutation = useTriggerSync();
   const { data: investmentData } = useInvestmentSummary(month);
+
+  const summary = summaryRes?.data;
+  const recentTxs = summary?.recent_transactions ?? [];
+  const syncStatus = syncRes?.data;
+  const investmentSummary = investmentData?.data;
+  const plannedMonthlyInvestment = investmentSummary?.total_monthly_planned ?? 0;
+  const actualMonthlyInvestment = investmentSummary?.total_monthly_actual ?? 0;
+  const investmentProgress = plannedMonthlyInvestment > 0
+    ? Math.round((actualMonthlyInvestment / plannedMonthlyInvestment) * 100)
+    : 0;
+  const investmentFunds = investmentSummary?.funds.filter((fund) => fund.monthly_planned > 0) ?? [];
+  const expenseByJar = summary?.expense_by_jar ?? {};
+  const totalJarExpense = Object.values(expenseByJar).reduce((sum, value) => sum + Math.abs(value), 0);
+  const topJars = JAR_ORDER
+    .map((key) => ({ key, amount: Math.abs(expenseByJar[key] ?? 0) }))
+    .filter((item) => item.amount > 0)
+    .sort((a, b) => b.amount - a.amount)
+    .slice(0, 3);
+
+  const recentGroups = useMemo(() => {
+    const groups = new Map<string, typeof recentTxs>();
+
+    for (const tx of recentTxs) {
+      const date = tx.date ?? 'unknown';
+      const existing = groups.get(date) ?? [];
+      existing.push(tx);
+      groups.set(date, existing);
+    }
+
+    return Array.from(groups.entries()).map(([date, txs]) => ({
+      date,
+      label: txDateLabel(date === 'unknown' ? null : date),
+      total: txs.reduce((sum, tx) => sum + txSignedAmount(tx.amount_vnd, tx.flow), 0),
+      txs,
+    }));
+  }, [recentTxs]);
 
   if (isPending) {
     return (
@@ -42,17 +120,6 @@ export default function Overview({ month }: { month: string }) {
       </div>
     );
   }
-
-  const summary = summaryRes?.data;
-  const recentTxs = summary?.recent_transactions ?? [];
-  const syncStatus = syncRes?.data;
-  const expenseByJar = summary?.expense_by_jar ?? {};
-  const totalJarExpense = Object.values(expenseByJar).reduce((sum, value) => sum + Math.abs(value), 0);
-  const topJars = JAR_ORDER
-    .map((key) => ({ key, amount: Math.abs(expenseByJar[key] ?? 0) }))
-    .filter((item) => item.amount > 0)
-    .sort((a, b) => b.amount - a.amount)
-    .slice(0, 3);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 max-w-7xl mx-auto">
@@ -81,7 +148,7 @@ export default function Overview({ month }: { month: string }) {
       <JarMiniGrid month={month} />
 
       {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+      <div className="hidden lg:grid grid-cols-1 lg:grid-cols-5 gap-4">
         <div className="lg:col-span-3">
           <IncomeExpenseChart currentMonth={month} />
         </div>
@@ -91,8 +158,8 @@ export default function Overview({ month }: { month: string }) {
       </div>
 
       {/* Investment Summary */}
-      {investmentData && investmentData.data && investmentData.data.planned_allocation > 0 && (
-        <div className="bg-white dark:bg-[#151b2b] rounded-2xl p-5 shadow-sm border border-slate-100 dark:border-slate-800 lg:col-span-2">
+      {investmentSummary && plannedMonthlyInvestment > 0 && (
+        <div className="hidden rounded-2xl border border-slate-100 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-[#151b2b] lg:block lg:col-span-2">
           <div className="flex items-center gap-2 mb-4">
             <h3 className="text-lg font-bold text-slate-900 dark:text-white">Tiến độ Đầu tư</h3>
             <span className="text-xs font-semibold px-2 py-1 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400">
@@ -106,45 +173,48 @@ export default function Overview({ month }: { month: string }) {
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm text-slate-500 dark:text-slate-400">Tổng đầu tư so với kế hoạch</span>
                 <span className="text-sm font-bold text-slate-900 dark:text-white">
-                  {Math.round((investmentData.data.total_funded / investmentData.data.planned_allocation) * 100) || 0}%
+                  {investmentProgress}%
                 </span>
               </div>
               <div className="h-2 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden mb-3">
                 <div 
                   className={`h-full rounded-full transition-all ${
-                    investmentData.data.total_funded >= investmentData.data.planned_allocation 
+                    actualMonthlyInvestment >= plannedMonthlyInvestment 
                       ? 'bg-emerald-500' 
                       : 'bg-indigo-500'
                   }`}
-                  style={{ width: `${Math.min(100, (investmentData.data.total_funded / investmentData.data.planned_allocation) * 100) || 0}%` }}
+                  style={{ width: `${Math.min(100, investmentProgress)}%` }}
                 />
               </div>
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <div>
                   <span className="text-slate-500 dark:text-slate-400 block">Kế hoạch:</span>
-                  <span className="font-semibold text-slate-700 dark:text-slate-300">{formatCurrency(investmentData.data.planned_allocation)}</span>
+                  <span className="font-semibold text-slate-700 dark:text-slate-300">{formatCurrency(plannedMonthlyInvestment)}</span>
                 </div>
                 <div>
-                  <span className="text-slate-500 dark:text-slate-400 block">Đã giải ngân:</span>
-                  <span className="font-semibold text-indigo-600 dark:text-indigo-400">{formatCurrency(investmentData.data.total_funded)}</span>
+                  <span className="text-slate-500 dark:text-slate-400 block">Đã góp tháng này:</span>
+                  <span className="font-semibold text-indigo-600 dark:text-indigo-400">{formatCurrency(actualMonthlyInvestment)}</span>
                 </div>
               </div>
             </div>
 
             {/* Individual Target Items */}
             <div className="flex flex-col gap-2">
-              {investmentData.data.allocations.filter(a => a.planned > 0).map(allocation => (
-                <div key={allocation.fund_id} className="flex flex-col gap-1 p-3 rounded-lg bg-slate-50 dark:bg-[#0c1222] border border-slate-100 dark:border-slate-700">
+              {investmentFunds.map((fund) => (
+                <div key={fund.id} className="flex flex-col gap-1 p-3 rounded-lg bg-slate-50 dark:bg-[#0c1222] border border-slate-100 dark:border-slate-700">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">{allocation.fund_name}</span>
+                    <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">{fund.name}</span>
                     <div className="text-xs text-slate-500 dark:text-slate-400">
-                      {formatCurrency(allocation.current_funded)} / {formatCurrency(allocation.planned)}
+                      {formatCurrency(fund.monthly_actual)} / {formatCurrency(fund.monthly_planned)}
                     </div>
                   </div>
+                  {fund.jar?.label && (
+                    <div className="text-[11px] text-slate-400 dark:text-slate-500">{fund.jar.label}</div>
+                  )}
                   <div className="h-1.5 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                     <div 
-                      className={`h-full rounded-full ${allocation.current_funded >= allocation.planned ? 'bg-emerald-500' : 'bg-indigo-400'}`}
-                      style={{ width: `${Math.min(100, (allocation.current_funded / allocation.planned) * 100) || 0}%` }}
+                      className={`h-full rounded-full ${fund.monthly_actual >= fund.monthly_planned ? 'bg-emerald-500' : 'bg-indigo-400'}`}
+                      style={{ width: `${Math.min(100, fund.monthly_planned > 0 ? (fund.monthly_actual / fund.monthly_planned) * 100 : 0)}%` }}
                     />
                   </div>
                 </div>
@@ -208,28 +278,51 @@ export default function Overview({ month }: { month: string }) {
           <p className="text-sm text-slate-400 text-center py-8">Không có giao dịch nào trong tháng này</p>
         )}
 
-        <div className="flex flex-col gap-3">
-          {recentTxs.map((tx, idx) => {
-            const Icon = flowIcon(tx.flow);
-            const colors = flowColors(tx.flow);
-            return (
-              <div key={idx} className="flex items-center justify-between rounded-xl bg-white dark:bg-[#1a2433] p-4 shadow-sm border border-slate-100 dark:border-slate-700 hover:shadow-md transition-shadow cursor-pointer">
-                <div className="flex items-center gap-4">
-                  <div className={`flex size-12 shrink-0 items-center justify-center rounded-full ${colors.bg} ${colors.color}`}>
-                    <Icon className="size-6" />
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="font-semibold text-slate-900 dark:text-white">{tx.description ?? tx.category ?? '—'}</span>
-                    <span className="text-xs text-slate-500 dark:text-slate-400">{tx.time} • {tx.date}</span>
-                  </div>
+        {recentGroups.length > 0 && (
+          <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm dark:border-slate-700 dark:bg-[#1a2433]">
+            {recentGroups.map((group, groupIndex) => (
+              <div key={`${group.date}-${groupIndex}`}>
+                <div className={`flex items-center justify-between px-4 py-3 ${groupIndex > 0 ? 'border-t border-slate-100 dark:border-slate-700' : ''}`}>
+                  <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
+                    {group.label}
+                  </span>
+                  <span className={`text-xs font-bold tabular-nums ${group.total >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                    {group.total >= 0 ? '+' : '−'}{formatCurrency(Math.abs(group.total))}
+                  </span>
                 </div>
-                <span className={`font-bold ${tx.flow === 'income' ? 'text-green-600' : 'text-slate-900 dark:text-white'}`}>
-                  {formatSignedAmount(tx.amount_vnd, tx.flow)}
-                </span>
+
+                {group.txs.map((tx, idx) => {
+                  const Icon = flowIcon(tx.flow);
+                  const colors = flowColors(tx.flow);
+
+                  return (
+                    <div
+                      key={`${tx.date ?? 'unknown'}-${tx.time ?? 'unknown'}-${idx}`}
+                      className={`flex items-center justify-between gap-3 px-4 py-3.5 ${idx > 0 ? 'border-t border-slate-100/70 dark:border-slate-700/60' : ''}`}
+                    >
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className={`flex size-11 shrink-0 items-center justify-center rounded-full ${colors.bg} ${colors.color}`}>
+                          <Icon className="size-5" />
+                        </div>
+                        <div className="min-w-0">
+                          <span className="block truncate font-semibold text-slate-900 dark:text-white">
+                            {tx.description ?? tx.category ?? '—'}
+                          </span>
+                          <span className="block truncate text-xs text-slate-500 dark:text-slate-400">
+                            {tx.time ?? '--:--'} · {tx.flow === 'income' ? 'Thu nhập' : getJar(tx.jar ?? '')?.label_vi ?? tx.jar ?? 'Chưa gán hũ'}
+                          </span>
+                        </div>
+                      </div>
+                      <span className={`shrink-0 text-sm font-bold ${tx.flow === 'income' ? 'text-green-600 dark:text-green-400' : 'text-slate-900 dark:text-white'}`}>
+                        {formatSignedAmount(tx.amount_vnd, tx.flow)}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
-            );
-          })}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
       </div>
       <OverviewSidebar month={month} />

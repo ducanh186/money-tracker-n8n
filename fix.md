@@ -1,5 +1,6 @@
 # FIX — Thêm "Vay / Trả nợ" và Loại khỏi Budget Plan
-
+claude : fix: claude --resume d159ec6b-a480-405a-a6e7-971fe22d88f0
+new-UI: claude --resume 65ce8d87-c4de-4e27-9fcb-a0c9437e90f8
 > File workflow phân tích: `tracking_money.json` (đã xoá phiên bản cũ `tracking_money (1).json`).
 > Mục tiêu:
 > 1. Thêm category vay / trả nợ vào pipeline n8n (Telegram → Google Sheets).
@@ -19,18 +20,28 @@ Webhook (VCB SMS từ MacroDroid)
   → Jar fallback (gắn jar = cột `hu` từ SETUP_N8N)
   → Append TRANSACTIONS_LOG (Google Sheets)
   → Needs classify? (nếu category còn là Uncategorized)
-       → Telegram hỏi "Bạn có muốn thêm note?" (Y/N)
-            ├─ Y → Ask Note Text → Update Note in Sheet
-            └─ N → Read Categories → Build Category Keyboard
-                → Send Category Options → user chọn category
-                → Update row in sheet (category, status=categorized)
+    → Telegram hỏi "Bạn có muốn thêm note?" (Y/N)
+      ├─ Y → Ask Note Text → Update Note in Sheet
+      │    → Read Categories → Build Category Keyboard → Send Category Options1
+      └─ N → Read Categories → Build Category Keyboard → Send Category Options1
+    → user chọn category
+      → Parse reply context → Remove Category Buttons
+      → Update row in sheet (category, status=categorized, jar)
 ```
+
+Ghi chú để khớp workflow thật:
+- `Parse VCB notification` hiện đang hardcode `category = "Uncategorized"`, nên với SMS VCB hiện tại nhánh `Needs classify?` thực tế gần như luôn đi vào `true`.
+- `Needs classify?` hiện chỉ nối tiếp nhánh `true`; nếu sau này upstream parser trả sẵn category khác `Uncategorized`, workflow hiện tại sẽ dừng sau `Append TRANSACTIONS_LOG` và không đi vào prompt note/category.
+- Callback Telegram đi qua `Parse reply context` → `IF Has callback_query_id?` → `Route by step`. Hai node tên `Remove Category Buttons1` và `Remove Category Buttons` thực chất là `editMessageText` để dọn inline keyboard sau khi user bấm nút.
+- Nhánh `Y` không dừng ở `Update Note in Sheet`; sau khi lưu note, workflow vẫn đi tiếp sang `Read Categories` để user chọn category.
+- `Append TRANSACTIONS_LOG` trong workflow JSON hiện chỉ ghi các field lõi của giao dịch. `category`, `jar`, `month` không được map trực tiếp ở node này.
 
 ### 1.2 Bảng SETUP_N8N (cột `category`, `hu`, `cat_code`)
 - Jar hiện tại trong `Build Category Keyboard`:
-  `INCOME` (treat khác — chỉ hiện ở flow=income), còn lại (`NEC, EDU, LTSS, PLAY, FFA, GIVE`) hiện ở flow=expense.
+  `INCOME` được treat riêng và chỉ hiện ở `flow=income`; mọi jar khác trong sheet hiện bị xếp vào nhánh `flow=expense`.
+  Trong setup hiện tại, các jar non-`INCOME` đang là `NEC, EDU, LTSS, PLAY, FFA, GIVE`.
 - HIDE list: `["Transfer", "Uncategorized"]`.
-- Không có jar nào dành riêng cho **vay / trả nợ** → giao dịch vay/trả hiện đang lọt vào jar thường (vd. NEC, FFA…) và **bị tính vào kế hoạch**.
+- Không có jar nào dành riêng cho **vay / trả nợ** → khi user classify thủ công trên Telegram, giao dịch vay/trả chỉ có thể rơi vào các jar thường (vd. NEC, FFA…) và **bị tính vào kế hoạch**.
 
 ### 1.3 Web side — chỗ lọt bug
 | File | Chỗ cần loại trừ |
@@ -50,7 +61,7 @@ Cả 4 chỗ trên đều dùng cùng một quy ước: nếu `flow === 'income'
 
 Lý do dùng **jar** thay vì chỉ thêm category lẻ:
 - Backend Laravel đã group theo cột `jar` ở sheet (`row['jar']`). Lọc theo jar = 1 chỗ duy nhất, không phải maintain danh sách category.
-- Telegram keyboard cũng filter theo jar (`INCOME` vs phần còn lại) → thêm jar mới rất nhẹ.
+- Telegram keyboard hiện filter theo jar và `callback_data` đã mang sẵn `jar`, nên thêm `LOAN` chỉ cần sửa filter ở keyboard và persist `jar` ở bước update category.
 
 #### Categories thuộc jar `LOAN` (đặt trong sheet SETUP_N8N):
 | category (EN) | hu (jar) | cat_code | flow áp dụng | Ý nghĩa |
@@ -90,6 +101,8 @@ if (flow === "income") {
 }
 ```
 
+Node này hiện đã build `callback_data` theo dạng `CAT|${r.category}|${r.jar}|${flow}`. Vì vậy sau khi sửa filter, `jar = LOAN` sẽ được mang theo luôn khi user bấm nút category.
+
 #### c) Bổ sung icon trong `ICON` map (cùng node)
 ```js
 "Loan In":         "🤝",
@@ -99,10 +112,52 @@ if (flow === "income") {
 ```
 
 #### d) Node `Get jar mapping row`
-Không phải sửa — đã `lookupColumn: category`, sẽ tự lookup ra `hu = LOAN` khi khớp.
+Không cần đổi lookup logic. Node này vẫn map `category -> hu` theo sheet `SETUP_N8N`.
 
-#### e) **Không** chỉnh các node Append/Update sheet
-Sheet TRANSACTIONS_LOG vẫn ghi cột `jar = LOAN`. Web sẽ căn cứ vào đây.
+Tuy nhiên note cũ dễ gây hiểu nhầm ở đây: node này **không** tự làm `LOAN` chạy trong luồng VCB hiện tại, vì `Parse VCB notification` đang hardcode `category = Uncategorized`.
+
+Nó chỉ tự lookup ra `hu = LOAN` nếu sau này upstream parser trả về sẵn category loan ngay từ đầu. Còn trong nhánh **user chọn category trên Telegram**, dữ liệu `jar` không tự động được lookup lại ở bước update sheet; `jar` thực tế đi tiếp từ `callback_data` của node `Build Category Keyboard`.
+
+#### e) Node `Parse reply context`
+Không phải sửa — workflow hiện tại đã parse được callback kiểu `CAT|category|jar|flow` và đưa `jar` ra `Route by step.item.json.jar`.
+
+#### f) Node update `TRANSACTIONS_LOG` sau khi user chọn category
+**Phải sửa.** Đây là chỗ workflow hiện tại chưa khớp với note cũ.
+
+Hiện node update category đang ghi:
+```js
+{
+  category: "={{ String($('Route by step').item.json.category || '').replace(/^=/, '').trim() }}",
+  status: "categorized",
+  idempotency_key: "={{ $('Route by step').item.json.id }}",
+  jar: "="
+}
+```
+
+Tức là sau khi user chọn `Loan In` / `Loan Repayment` / ... thì `category` được lưu, nhưng `jar` **không** được persist xuống `TRANSACTIONS_LOG`.
+
+Trong khi backend web nhận diện loan bằng đúng điều kiện `row['jar'] === 'LOAN'`, nên nếu không ghi `jar`, phía Laravel sẽ **không** coi đây là giao dịch loan.
+
+Sửa thành:
+```js
+{
+  category: "={{ String($('Route by step').item.json.category || '').replace(/^=/, '').trim() }}",
+  status: "categorized",
+  idempotency_key: "={{ $('Route by step').item.json.id }}",
+  jar: "={{ String($('Route by step').item.json.jar || '').replace(/^=/, '').trim() }}"
+}
+```
+
+Nếu còn giữ callback cũ kiểu `C|cat_code`, thì nhánh đó chưa mang theo `jar`; khi đó phải lookup lại `jar` theo `cat_code` trước khi update. Còn workflow hiện tại của node `Build Category Keyboard` đang dùng callback kiểu `CAT|category|jar|flow`, nên chỉ cần persist `Route by step.item.json.jar` là đủ.
+
+#### g) Node `Append TRANSACTIONS_LOG` ban đầu
+Không bắt buộc sửa riêng cho LOAN. Giao dịch thô vẫn có thể append trước như hiện tại.
+
+Nhưng cần mô tả đúng workflow hiện tại: node này đang append các field lõi như `date`, `flow`, `amount`, `currency`, `description`, `account`, `status`, `idempotency_key`, `datetime`, `balance`, `note`.
+
+Nó **chưa** ghi trực tiếp `category`, `jar`, `month` trong JSON workflow hiện tại. Nếu sheet vẫn có giá trị `month` thì nhiều khả năng đang do formula/AppScript phía sheet xử lý, không phải do node này map vào.
+
+Điều bắt buộc là ở bước **user chọn category**, node `Update row in sheet` phải ghi được `category` đúng và `jar = LOAN`. Web sẽ căn cứ vào cột `jar` này để loại vay/trả ra khỏi budget plan và các tổng income/expense.
 
 ---
 
@@ -194,7 +249,10 @@ Sau khi deploy:
 - n8n: kích hoạt lại workflow để pick up bản mới.
 
 ## 4. Test plan
-1. **n8n**: pin 1 SMS giả → chạy đến node Telegram → thử chọn `Loan In` ở keyboard income, `Loan Repayment` ở expense → kiểm tra sheet TRANSACTIONS_LOG: cột `jar = LOAN`, `category` đúng.
+1. **n8n**: pin 1 SMS giả → workflow đi qua prompt note Y/N.
+  - Nhánh `N`: vào `Read Categories` → `Build Category Keyboard` → chọn `Loan In` ở keyboard income, `Loan Repayment` ở expense.
+  - Nhánh `Y`: nhập note xong vẫn phải quay lại `Read Categories` → `Build Category Keyboard` rồi mới chọn category.
+  - Kiểm tra `Update row in sheet`: sheet `TRANSACTIONS_LOG` phải có `category` đúng và `jar = LOAN`.
 2. **BudgetPlan**: gọi `GET /api/budget-plan?month=Mar-2026` trước/sau khi có 1 dòng `Loan Repayment` 500k → giá trị `actual_amount` của các hũ NEC/EDU/… **không đổi**, `sheet_income` không tăng khi thêm `Loan In`.
 3. **Dashboard**: `/api/dashboard/summary` & `/api/budget-status` cũng không đổi.
 4. **Transactions**: `GET /api/transactions?month=Mar-2026` vẫn trả về dòng vay/trả; `meta.totals.income_vnd / expense_vnd` **không bao gồm** chúng.
@@ -207,7 +265,8 @@ Sau khi deploy:
 | Layer | File | Hành động |
 |---|---|---|
 | Sheet | `Monthly Budget` › `SETUP_N8N` | Thêm 4 hàng category với `hu = LOAN` |
-| n8n | `tracking_money.json` › node `Build Category Keyboard` | Sửa filter theo jar + thêm icon |
+| n8n | `tracking_money.json` › node `Build Category Keyboard` | Sửa filter theo jar + thêm icon + giữ `callback_data` mang theo `jar` |
+| n8n | `tracking_money.json` › node `Update row in sheet` | Persist `category` + `jar = LOAN` sau khi user chọn category |
 | BE | `api/app/Support/TransactionFilters.php` | **Mới** |
 | BE | `api/app/Http/Controllers/Api/BudgetPlanController.php` | `continue` khi `isLoan` (+ optional `loan_summary`) |
 | BE | `api/app/Http/Controllers/Api/DashboardController.php` | `continue` ở `summary()` & `budgetStatus()` |

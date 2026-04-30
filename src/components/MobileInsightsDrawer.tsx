@@ -150,7 +150,7 @@ export default function MobileInsightsDrawer({
                     {recent.map((tx, index) => {
                       const Icon = flowIcon(tx.flow);
                       return (
-                        <div key={`${tx.idempotency_key ?? index}-${tx.date ?? index}`} className="flex items-center gap-3 rounded-xl bg-slate-50 px-3 py-3 dark:bg-[#0c1222]">
+                        <div key={`${tx.date ?? 'unknown'}-${tx.time ?? 'unknown'}-${index}`} className="flex items-center gap-3 rounded-xl bg-slate-50 px-3 py-3 dark:bg-[#0c1222]">
                           <span className={`inline-flex size-9 shrink-0 items-center justify-center rounded-full ${tx.flow === 'income' ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' : tx.flow === 'expense' ? 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400' : 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'}`}>
                             <Icon className="size-4" />
                           </span>

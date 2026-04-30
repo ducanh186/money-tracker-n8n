@@ -5,13 +5,6 @@ import { useDashboardSummary, useBudgetStatus } from '../lib/hooks';
 
 type HeroMode = 'remaining' | 'spent' | 'savings';
 
-const compact = (v: number): string => {
-  const a = Math.abs(v);
-  if (a >= 1_000_000) return `${(v / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`;
-  if (a >= 1_000) return `${Math.round(v / 1_000)}K`;
-  return v.toLocaleString('vi-VN');
-};
-
 const full = (v: number): string => v.toLocaleString('vi-VN');
 
 export default function HeroCard({ month }: { month: string }) {
@@ -22,12 +15,15 @@ export default function HeroCard({ month }: { month: string }) {
   const totals = summaryRes?.data?.totals;
   const income = budgetStatus?.income ?? totals?.income_vnd ?? 0;
   const totalSpent = budgetStatus?.total_spent ?? totals?.expense_vnd ?? 0;
-  const totalPlanned =
-    budgetStatus?.jars?.reduce((s, j) => s + j.planned, 0) ?? income;
-  const remaining = income - totalSpent;
-  const savingsRate = income > 0 ? Math.round((remaining / income) * 100) : 0;
-  const planUsage = totalPlanned > 0 ? Math.round((totalSpent / totalPlanned) * 100) : 0;
-  const onTrack = planUsage <= 100 && remaining >= 0;
+  const spendableBudget = budgetStatus?.jars?.reduce(
+    (sum, jar) => sum + jar.planned + jar.rollover - jar.committed,
+    0,
+  ) ?? income;
+  const remaining = budgetStatus?.available_to_spend ?? (income - totalSpent);
+  const netAfterSpend = income - totalSpent;
+  const savingsRate = income > 0 ? Math.round((netAfterSpend / income) * 100) : 0;
+  const planUsage = spendableBudget > 0 ? Math.round((totalSpent / spendableBudget) * 100) : 0;
+  const onTrack = remaining >= 0 && (spendableBudget <= 0 || planUsage <= 100);
 
   let big: number;
   let label: string;
@@ -99,21 +95,6 @@ export default function HeroCard({ month }: { month: string }) {
         )}
       </div>
 
-      {/* Meta row */}
-      <div className="flex items-center gap-3 text-[13px] text-slate-500 dark:text-slate-400 mb-4 flex-wrap">
-        <span>
-          Thu <strong className="text-slate-900 dark:text-white tabular-nums">+{compact(income)}</strong>
-        </span>
-        <span className="text-slate-300 dark:text-slate-600">·</span>
-        <span>
-          Chi <strong className="text-slate-900 dark:text-white tabular-nums">−{compact(totalSpent)}</strong>
-        </span>
-        <span className="text-slate-300 dark:text-slate-600">·</span>
-        <span>
-          KH <strong className="text-slate-900 dark:text-white tabular-nums">{compact(totalPlanned)}</strong>
-        </span>
-      </div>
-
       {/* Progress */}
       <div className="h-2 w-full bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
         <div
@@ -131,7 +112,7 @@ export default function HeroCard({ month }: { month: string }) {
 
       {/* Footer */}
       <div className="flex items-center justify-between mt-2 text-xs text-slate-500 dark:text-slate-400">
-        <span className="tabular-nums">{planUsage}% kế hoạch tháng</span>
+        <span className="tabular-nums">{planUsage}% ngân sách chi</span>
         <a
           href="#jars"
           onClick={(e) => {

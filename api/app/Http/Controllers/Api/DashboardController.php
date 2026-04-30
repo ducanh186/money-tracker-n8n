@@ -218,6 +218,7 @@ class DashboardController extends Controller
         $totalIncome = $sheetIncome;
         $assigned = 0;
         $committed = 0;
+        $availableToSpend = 0;
         $overspentJars = [];
         $periodStatus = 'not_started';
         $jarsMetrics = [];
@@ -236,6 +237,7 @@ class DashboardController extends Controller
 
                 $assigned += $planned;
                 $committed += $committedAmt;
+                $availableToSpend += $available;
 
                 if ($spent > $planned) {
                     $overspentJars[] = [
@@ -268,6 +270,7 @@ class DashboardController extends Controller
                 $available = $planned - $spent;
 
                 $assigned += $planned;
+                $availableToSpend += $available;
 
                 if ($spent > $planned) {
                     $overspentJars[] = [
@@ -293,7 +296,6 @@ class DashboardController extends Controller
         }
 
         $unassigned = $totalIncome - $assigned;
-        $availableToSpend = $assigned - $committed - $totalExpense;
 
         $payload = [
             'data' => [
@@ -304,7 +306,7 @@ class DashboardController extends Controller
                 'unassigned'        => $unassigned,
                 'committed'         => $committed,
                 'total_spent'       => $totalExpense,
-                'available_to_spend' => max(0, $availableToSpend),
+                'available_to_spend' => $availableToSpend,
                 'overspent_jars'    => $overspentJars,
                 'period_status'     => $periodStatus,
                 'has_period'        => $period !== null,
