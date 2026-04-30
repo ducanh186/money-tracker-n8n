@@ -84,6 +84,7 @@ class MockMoneyRepository implements MoneyRepository {
       unassigned: 0,
       totalSpent: totalSpent,
       availableToSpend: 18000000 - totalSpent,
+      planningInsightsEnabled: true,
       jars: jars,
     );
 

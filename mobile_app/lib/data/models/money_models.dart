@@ -77,6 +77,7 @@ class BudgetStatus {
     required this.unassigned,
     required this.totalSpent,
     required this.availableToSpend,
+    required this.planningInsightsEnabled,
     required this.jars,
   });
 
@@ -86,6 +87,7 @@ class BudgetStatus {
   final int unassigned;
   final int totalSpent;
   final int availableToSpend;
+  final bool planningInsightsEnabled;
   final List<JarMetric> jars;
 
   factory BudgetStatus.fromJson(Map<String, Object?> json) {
@@ -101,6 +103,7 @@ class BudgetStatus {
       unassigned: _intFromJson(json['unassigned']),
       totalSpent: _intFromJson(json['total_spent']),
       availableToSpend: _intFromJson(json['available_to_spend']),
+      planningInsightsEnabled: json['planning_insights_enabled'] == true,
       jars: jars,
     );
   }

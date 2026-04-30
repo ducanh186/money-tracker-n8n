@@ -17,6 +17,51 @@ function flowIcon(flow: string | null) {
   return ArrowRightLeft;
 }
 
+function parseTxDate(value: string | null | undefined): Date | null {
+  if (!value) return null;
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const parsed = new Date(`${value}T00:00:00`);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  const match = /^(\d{1,2})\/(\d{1,2})(?:\/(\d{4}))?$/.exec(value.trim());
+  if (!match) return null;
+
+  const day = Number(match[1]);
+  const month = Number(match[2]);
+  const year = Number(match[3] ?? new Date().getFullYear());
+  const parsed = new Date(year, month - 1, day);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function recentLabel(value: string | null | undefined): string {
+  if (!value) return 'Không rõ ngày';
+  const parsed = parseTxDate(value);
+  if (!parsed) return value;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  parsed.setHours(0, 0, 0, 0);
+
+  const base = parsed.toLocaleDateString('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+  });
+
+  if (parsed.getTime() === today.getTime()) return `Hôm nay · ${base}`;
+  if (parsed.getTime() === yesterday.getTime()) return `Hôm qua · ${base}`;
+  return base;
+}
+
+function signedAmount(amount: number, flow: string | null): number {
+  if (flow === 'income') return amount;
+  if (flow === 'expense') return -amount;
+  return 0;
+}
+
 export default function OverviewSidebar({ month }: { month: string }) {
   const { data: summaryRes } = useDashboardSummary(month);
   const isDark = useDarkMode();
@@ -38,6 +83,19 @@ export default function OverviewSidebar({ month }: { month: string }) {
     .slice(0, 3);
 
   const recent = (summary?.recent_transactions ?? []).slice(0, 4);
+  const recentGroups = Object.entries(
+    recent.reduce<Record<string, typeof recent>>((groups, tx) => {
+      const key = tx.date ?? 'unknown';
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(tx);
+      return groups;
+    }, {})
+  ).map(([date, txs]) => ({
+    date,
+    label: recentLabel(date === 'unknown' ? null : date),
+    total: txs.reduce((sum, tx) => sum + signedAmount(tx.amount_vnd, tx.flow), 0),
+    txs,
+  }));
 
   return (
     <aside className="hidden lg:flex flex-col gap-4">
@@ -130,45 +188,57 @@ export default function OverviewSidebar({ month }: { month: string }) {
           <p className="text-xs text-slate-400 dark:text-slate-500 px-4 pb-4">Chưa có giao dịch</p>
         ) : (
           <div className="flex flex-col">
-            {recent.map((tx, i) => {
-              const Icon = flowIcon(tx.flow);
-              const iconColor =
-                tx.flow === 'income'
-                  ? 'text-green-600 bg-green-100 dark:bg-green-900/30 dark:text-green-400'
-                  : tx.flow === 'expense'
-                  ? 'text-orange-600 bg-orange-100 dark:bg-orange-900/30 dark:text-orange-400'
-                  : 'text-blue-600 bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400';
-              return (
-                <div
-                  key={i}
-                  className={`flex items-center gap-3 px-4 py-2.5 ${
-                    i < recent.length - 1 ? 'border-b border-slate-100 dark:border-slate-700' : ''
-                  }`}
-                >
-                  <div className={`size-8 rounded-full flex items-center justify-center shrink-0 ${iconColor}`}>
-                    <Icon className="size-4" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium text-slate-900 dark:text-white truncate">
-                      {tx.description ?? tx.category ?? '—'}
-                    </p>
-                    <p className="text-[10px] text-slate-400 dark:text-slate-500">
-                      {tx.time ?? ''}
-                      {tx.date ? ` · ${tx.date}` : ''}
-                    </p>
-                  </div>
-                  <span
-                    className={`text-xs font-semibold tabular-nums shrink-0 ${
-                      tx.flow === 'income'
-                        ? 'text-green-600 dark:text-green-400'
-                        : 'text-slate-700 dark:text-slate-200'
-                    }`}
-                  >
-                    {formatSignedAmount(tx.amount_vnd, tx.flow)}
-                  </span>
+            {recentGroups.map((group, groupIndex) => (
+              <div key={`${group.date}-${groupIndex}`} className={groupIndex > 0 ? 'border-t border-slate-100 dark:border-slate-700' : ''}>
+                <div className="flex items-center justify-between px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400 dark:text-slate-500">
+                  <span>{group.label}</span>
+                  <span className="tabular-nums">{group.total >= 0 ? '+' : '−'}{compact(Math.abs(group.total))}</span>
                 </div>
-              );
-            })}
+
+                {group.txs.map((tx, txIndex) => {
+                  const Icon = flowIcon(tx.flow);
+                  const iconColor =
+                    tx.flow === 'income'
+                      ? 'text-green-600 bg-green-100 dark:bg-green-900/30 dark:text-green-400'
+                      : tx.flow === 'expense'
+                      ? 'text-orange-600 bg-orange-100 dark:bg-orange-900/30 dark:text-orange-400'
+                      : 'text-blue-600 bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400';
+
+                  return (
+                    <div
+                      key={`${group.date}-${tx.time ?? txIndex}-${txIndex}`}
+                      className={`flex items-center gap-3 px-4 py-2.5 ${
+                        txIndex < group.txs.length - 1 ? 'border-b border-slate-100 dark:border-slate-700' : ''
+                      }`}
+                    >
+                      <div className={`size-8 rounded-full flex items-center justify-center shrink-0 ${iconColor}`}>
+                        <Icon className="size-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium text-slate-900 dark:text-white truncate">
+                          {tx.description ?? tx.category ?? '—'}
+                        </p>
+                        <p className="text-[10px] text-slate-400 dark:text-slate-500">
+                          {tx.time ?? '--:--'}
+                          {tx.flow === 'income'
+                            ? ' · Thu nhập'
+                            : ` · ${getJar((tx.jar ?? '') as JarKey)?.label_vi ?? tx.jar ?? 'Chưa gán hũ'}`}
+                        </p>
+                      </div>
+                      <span
+                        className={`text-xs font-semibold tabular-nums shrink-0 ${
+                          tx.flow === 'income'
+                            ? 'text-green-600 dark:text-green-400'
+                            : 'text-slate-700 dark:text-slate-200'
+                        }`}
+                      >
+                        {formatSignedAmount(tx.amount_vnd, tx.flow)}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
           </div>
         )}
       </div>

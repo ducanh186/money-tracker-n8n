@@ -89,7 +89,7 @@ class _SyncRow extends StatelessWidget {
       children: [
         Expanded(
           child: Text(
-            'Mock data · sẵn sàng nối API',
+            'Dữ liệu tổng quan từ API',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
@@ -127,13 +127,9 @@ class _HeroCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final status = data.budgetStatus;
-    final planUsage = status.assigned > 0
-        ? ((status.totalSpent / status.assigned) * 100).round()
-        : 0;
     final savingsRate = status.income > 0
         ? (((status.income - status.totalSpent) / status.income) * 100).round()
         : 0;
-    final onTrack = status.availableToSpend >= 0 && planUsage <= 100;
     final bigValue = switch (mode) {
       _HeroMode.remaining => status.availableToSpend,
       _HeroMode.spent => status.totalSpent,
@@ -143,14 +139,6 @@ class _HeroCard extends StatelessWidget {
       _HeroMode.remaining => 'Còn chi được',
       _HeroMode.spent => 'Đã chi tháng này',
       _HeroMode.savings => 'Tỷ lệ tiết kiệm',
-    };
-    final sub = switch (mode) {
-      _HeroMode.remaining =>
-        'Đã chi ${formatCompactCurrency(status.totalSpent)} / ${formatCompactCurrency(status.assigned)} kế hoạch',
-      _HeroMode.spent =>
-        'Còn lại ${formatCompactCurrency(status.availableToSpend)} · $planUsage% kế hoạch',
-      _HeroMode.savings =>
-        'Tiết kiệm ${formatCompactCurrency(status.income - status.totalSpent)} từ ${formatCompactCurrency(status.income)} thu nhập',
     };
 
     return Card(
@@ -171,7 +159,6 @@ class _HeroCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                _StatusPill(onTrack: onTrack),
               ],
             ),
             const SizedBox(height: 8),
@@ -192,57 +179,12 @@ class _HeroCard extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 6),
+                const SizedBox(height: 10),
             Text(
-              sub,
+                  'Thu ${formatCompactCurrency(status.income)} · Chi ${formatCompactCurrency(status.totalSpent)}',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 12,
-              runSpacing: 6,
-              children: [
-                _MetaText(label: 'Thu thực tế', value: status.income),
-                _MetaText(label: 'Chi thực tế', value: status.totalSpent),
-                _MetaText(label: 'Đã phân bổ', value: status.assigned),
-              ],
-            ),
-            const SizedBox(height: 16),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(999),
-              child: LinearProgressIndicator(
-                minHeight: 8,
-                value: planUsage.clamp(0, 100) / 100,
-                backgroundColor: Theme.of(
-                  context,
-                ).colorScheme.surfaceContainerHighest,
-                color: planUsage > 100
-                    ? Colors.red
-                    : planUsage >= 80
-                    ? Colors.orange
-                    : Theme.of(context).colorScheme.primary,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Text(
-                  '$planUsage% kế hoạch tháng',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  'Phân tích →',
-                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.primary,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ],
             ),
           ],
         ),
@@ -323,71 +265,6 @@ class _ToggleButton extends StatelessWidget {
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _StatusPill extends StatelessWidget {
-  const _StatusPill({required this.onTrack});
-
-  final bool onTrack;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = onTrack ? Colors.green : Colors.orange;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            onTrack ? Icons.check_circle_outline : Icons.error_outline,
-            size: 14,
-            color: color.shade700,
-          ),
-          const SizedBox(width: 4),
-          Text(
-            onTrack ? 'Đúng tiến độ' : 'Chậm tiến độ',
-            style: TextStyle(
-              color: color.shade700,
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MetaText extends StatelessWidget {
-  const _MetaText({required this.label, required this.value});
-
-  final String label;
-  final int value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Text.rich(
-      TextSpan(
-        text: '$label ',
-        children: [
-          TextSpan(
-            text: formatCompactCurrency(value),
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurface,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
-      ),
-      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-        color: Theme.of(context).colorScheme.onSurfaceVariant,
       ),
     );
   }

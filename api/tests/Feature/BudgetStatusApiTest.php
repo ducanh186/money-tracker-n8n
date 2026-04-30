@@ -81,6 +81,7 @@ class BudgetStatusApiTest extends TestCase
         $response->assertJsonPath('data.committed', 100_000);
         $response->assertJsonPath('data.total_spent', 1_000_000);
         $response->assertJsonPath('data.available_to_spend', -150_000);
+        $response->assertJsonPath('data.planning_insights_enabled', true);
 
         $jars = collect($response->json('data.jars'));
 

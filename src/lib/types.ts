@@ -349,6 +349,7 @@ export interface BudgetStatusData {
   available_to_spend: number;
   overspent_jars: OverspentJar[];
   period_status: string;
+  planning_insights_enabled: boolean;
   has_period: boolean;
   jars: BudgetStatusJarMetric[];
 }

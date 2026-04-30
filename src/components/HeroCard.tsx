@@ -1,9 +1,15 @@
 import { useState } from 'react';
-import { ArrowRight, CircleAlert, CircleCheck } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useDashboardSummary, useBudgetStatus } from '../lib/hooks';
 
 type HeroMode = 'remaining' | 'spent' | 'savings';
+
+const compact = (v: number): string => {
+  const a = Math.abs(v);
+  if (a >= 1_000_000) return `${(v / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`;
+  if (a >= 1_000) return `${Math.round(v / 1_000)}K`;
+  return v.toLocaleString('vi-VN');
+};
 
 const full = (v: number): string => v.toLocaleString('vi-VN');
 
@@ -15,15 +21,9 @@ export default function HeroCard({ month }: { month: string }) {
   const totals = summaryRes?.data?.totals;
   const income = budgetStatus?.income ?? totals?.income_vnd ?? 0;
   const totalSpent = budgetStatus?.total_spent ?? totals?.expense_vnd ?? 0;
-  const spendableBudget = budgetStatus?.jars?.reduce(
-    (sum, jar) => sum + jar.planned + jar.rollover - jar.committed,
-    0,
-  ) ?? income;
   const remaining = budgetStatus?.available_to_spend ?? (income - totalSpent);
   const netAfterSpend = income - totalSpent;
   const savingsRate = income > 0 ? Math.round((netAfterSpend / income) * 100) : 0;
-  const planUsage = spendableBudget > 0 ? Math.round((totalSpent / spendableBudget) * 100) : 0;
-  const onTrack = remaining >= 0 && (spendableBudget <= 0 || planUsage <= 100);
 
   let big: number;
   let label: string;
@@ -60,21 +60,7 @@ export default function HeroCard({ month }: { month: string }) {
         ))}
       </div>
 
-      {/* Label + status pill */}
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-sm text-slate-500 dark:text-slate-400">{label}</span>
-        <span
-          className={cn(
-            'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold',
-            onTrack
-              ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'
-              : 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'
-          )}
-        >
-          {onTrack ? <CircleCheck className="size-3" /> : <CircleAlert className="size-3" />}
-          {onTrack ? 'Đúng tiến độ' : 'Chậm tiến độ'}
-        </span>
-      </div>
+      <div className="mb-2 text-sm text-slate-500 dark:text-slate-400">{label}</div>
 
       {/* Big money */}
       <div className="flex items-baseline gap-1.5 mb-3">
@@ -95,34 +81,8 @@ export default function HeroCard({ month }: { month: string }) {
         )}
       </div>
 
-      {/* Progress */}
-      <div className="h-2 w-full bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
-        <div
-          className={cn(
-            'h-full rounded-full transition-all',
-            planUsage > 100
-              ? 'bg-red-500'
-              : planUsage >= 80
-              ? 'bg-amber-500'
-              : 'bg-blue-500'
-          )}
-          style={{ width: `${Math.min(100, planUsage)}%` }}
-        />
-      </div>
-
-      {/* Footer */}
-      <div className="flex items-center justify-between mt-2 text-xs text-slate-500 dark:text-slate-400">
-        <span className="tabular-nums">{planUsage}% ngân sách chi</span>
-        <a
-          href="#jars"
-          onClick={(e) => {
-            e.preventDefault();
-            window.location.hash = '#jars';
-          }}
-          className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 font-semibold hover:underline"
-        >
-          Phân tích <ArrowRight className="size-3" />
-        </a>
+      <div className="text-sm text-slate-500 dark:text-slate-400">
+        Thu {compact(income)} · Chi {compact(totalSpent)}
       </div>
     </div>
   );

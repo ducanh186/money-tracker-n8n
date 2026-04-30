@@ -21,9 +21,9 @@ export default function TopBar({ currentView, setCurrentView, selectedMonth, onM
   const navItems = [
     { id: 'overview', label: 'Tổng quan', icon: PieChart },
     { id: 'transactions', label: 'Giao dịch', icon: List },
-    { id: 'jars', label: 'Quản lý Hũ', icon: Wallet },
-    { id: 'budget', label: 'Chi tiêu', icon: Target },
-    { id: 'goals', label: 'Quỹ & Mục tiêu', icon: Crosshair },
+    { id: 'jars', label: 'Hũ', icon: Wallet },
+    { id: 'budget', label: 'Kế hoạch', icon: Target },
+    { id: 'goals', label: 'Mục tiêu', icon: Crosshair },
     { id: 'debts', label: 'Nợ', icon: CreditCard },
   ];
 
@@ -32,12 +32,15 @@ export default function TopBar({ currentView, setCurrentView, selectedMonth, onM
       <div className="mx-auto max-w-[1440px] px-4 md:px-6 xl:px-8">
         <div className="flex items-center justify-between h-14">
           {/* Left: Logo + Desktop Nav */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-5">
             {/* Logo */}
             <div className="flex items-center gap-2.5 shrink-0">
               <div className="bg-blue-600 text-white rounded-lg size-8 flex items-center justify-center font-bold text-sm">
                 💰
               </div>
+              <span className="hidden xl:block text-sm font-semibold text-slate-900 dark:text-white">
+                Money Tracker
+              </span>
             </div>
 
             {/* Desktop Nav */}
@@ -71,8 +74,8 @@ export default function TopBar({ currentView, setCurrentView, selectedMonth, onM
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-slate-400 pointer-events-none" />
               <input
                 type="text"
-                placeholder="Tìm kiếm…"
-                className="bg-slate-50 dark:bg-[#0c1222] border border-slate-200 dark:border-slate-600 rounded-lg text-sm text-slate-700 dark:text-slate-200 pl-9 pr-3 py-1.5 w-48 focus:ring-2 focus:ring-blue-500/20 focus:outline-none focus:w-56 transition-all"
+                placeholder="⌘K · Tìm kiếm"
+                className="bg-slate-50 dark:bg-[#0c1222] border border-slate-200 dark:border-slate-600 rounded-lg text-sm text-slate-700 dark:text-slate-200 pl-9 pr-3 py-1.5 w-52 focus:ring-2 focus:ring-blue-500/20 focus:outline-none focus:w-60 transition-all"
               />
             </div>
 

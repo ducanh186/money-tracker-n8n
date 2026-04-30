@@ -309,6 +309,7 @@ class DashboardController extends Controller
                 'available_to_spend' => $availableToSpend,
                 'overspent_jars'    => $overspentJars,
                 'period_status'     => $periodStatus,
+                'planning_insights_enabled' => $period !== null && $assigned > 0,
                 'has_period'        => $period !== null,
                 'jars'              => $jarsMetrics,
             ],
