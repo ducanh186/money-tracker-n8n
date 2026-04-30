@@ -46,3 +46,9 @@ CLAUDE.md
 /deploy/claude/
 /deploy.ps1
 
+# UI design handoff bundles + scratch
+/test-handoff/
+/test-handoff.zip
+/redes_p1/uploads/
+/public/preview/uploads/
+

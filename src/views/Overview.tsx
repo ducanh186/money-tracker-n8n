@@ -3,6 +3,7 @@ import { formatCurrency, formatSignedAmount, cn } from '../lib/utils';
 import { useDashboardSummary, useSyncStatus, useTriggerSync, useBudgetStatus, useInvestmentSummary } from '../lib/hooks';
 import { IncomeExpenseChart } from '../components/IncomeExpenseChart';
 import { ExpenseStructureChart } from '../components/ExpenseStructureChart';
+import OverviewSidebar from '../components/OverviewSidebar';
 
 const flowIcon = (flow: string | null) => {
   if (flow === 'income') return ArrowUpCircle;
@@ -77,7 +78,8 @@ export default function Overview({ month }: { month: string }) {
   ];
 
   return (
-    <div className="flex flex-col gap-6 max-w-7xl mx-auto">
+    <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 max-w-7xl mx-auto">
+      <div className="flex flex-col gap-6 min-w-0">
       {/* Sync status bar */}
       <div className="flex items-center justify-between text-xs text-slate-400">
         <span>
@@ -95,7 +97,7 @@ export default function Overview({ month }: { month: string }) {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {summaryCards.map((card, i) => {
           const Icon = card.icon;
           return (
@@ -270,6 +272,8 @@ export default function Overview({ month }: { month: string }) {
           })}
         </div>
       </div>
+      </div>
+      <OverviewSidebar month={month} />
     </div>
   );
 }

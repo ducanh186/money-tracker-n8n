@@ -81,10 +81,11 @@
 <script type="text/babel" src="screens-home.jsx"></script>
 <script type="text/babel" src="screens-rest.jsx"></script>
 <script type="text/babel" src="app-shell.jsx"></script>
+<script type="text/babel" src="desktop.jsx"></script>
 
 <script type="text/babel">
 const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
-  "theme": "earthy",
+  "theme": "dark",
   "accent": "slate",
   "density": "compact",
   "fontScale": 1.05,
@@ -140,6 +141,15 @@ function App() {
               <MobileApp initialView="tx" theme={tweaks.theme === 'default' ? 'default' : tweaks.theme} density={tweaks.density} label="③ Giao dịch" />
               <MobileApp initialView="jars" theme={tweaks.theme === 'default' ? 'default' : tweaks.theme} density={tweaks.density} label="④ Hũ — phân bổ %" />
               <MobileApp initialView="budget" theme={tweaks.theme === 'default' ? 'default' : tweaks.theme} density={tweaks.density} label="⑤ Kế hoạch chi tiêu (3 tabs)" />
+            </div>
+          </div>
+
+          {/* ─── DESKTOP ─── */}
+          <div className="canvas-section">
+            <h2>Prototype · Desktop · 1280px</h2>
+            <p>Cùng app, layout web. Top bar gộp tabs + search + nút thêm GD. Home dùng grid 2 cột: hero + 6 hũ + charts bên trái, sidebar Tuần này / Top ăn tiền / Gần đây bên phải.</p>
+            <div className="canvas-row">
+              <DesktopApp theme={tweaks.theme === 'default' ? 'default' : tweaks.theme} density={tweaks.density} label="Desktop · Home" />
             </div>
           </div>
 

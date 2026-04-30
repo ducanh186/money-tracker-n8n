@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { PieChart, List, Wallet, Target, Crosshair, CreditCard, Sun, Moon, Menu, X, ChevronDown, AlertTriangle } from 'lucide-react';
+import { PieChart, List, Wallet, Target, Crosshair, CreditCard, Sun, Moon, Menu, X, ChevronDown, AlertTriangle, Search, Bell, Plus } from 'lucide-react';
 import { cn, formatCurrency } from '../lib/utils';
 import { getRecentMonths, formatMonthLabel } from '../lib/api';
 import { useBudgetStatus } from '../lib/hooks';
@@ -66,6 +66,16 @@ export default function TopBar({ currentView, setCurrentView, selectedMonth, onM
 
           {/* Right: Controls */}
           <div className="flex items-center gap-2 md:gap-3">
+            {/* Desktop search (lg+ only) */}
+            <div className="hidden xl:block relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-slate-400 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Tìm kiếm…"
+                className="bg-slate-50 dark:bg-[#0c1222] border border-slate-200 dark:border-slate-600 rounded-lg text-sm text-slate-700 dark:text-slate-200 pl-9 pr-3 py-1.5 w-48 focus:ring-2 focus:ring-blue-500/20 focus:outline-none focus:w-56 transition-all"
+              />
+            </div>
+
             {/* Month selector */}
             <div className="relative">
               <select
@@ -79,6 +89,24 @@ export default function TopBar({ currentView, setCurrentView, selectedMonth, onM
               </select>
               <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 size-3.5 text-slate-400 pointer-events-none" />
             </div>
+
+            {/* Add transaction (lg+ only) */}
+            <button
+              onClick={() => { window.location.hash = '#/add'; }}
+              className="hidden lg:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-colors cursor-pointer"
+              title="Thêm giao dịch"
+            >
+              <Plus className="size-4" />
+              <span>Thêm GD</span>
+            </button>
+
+            {/* Notifications (lg+ only) */}
+            <button
+              className="hidden lg:flex size-9 items-center justify-center rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/60 transition-colors cursor-pointer"
+              title="Thông báo"
+            >
+              <Bell className="size-5" />
+            </button>
 
             {/* Dark mode toggle */}
             <button
