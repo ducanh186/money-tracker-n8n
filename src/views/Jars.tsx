@@ -201,7 +201,7 @@ function CreateFundForm({ onClose }: { onClose: () => void }) {
   );
 }
 
-export default function Jars({ month }: { month: string }) {
+export default function Jars({ month, hideHeader = false }: { month: string; hideHeader?: boolean }) {
   const [activeTab, setActiveTab] = useState('list');
   const [selectedJar, setSelectedJar] = useState<JarSummary | null>(null);
   const [expandedFundsJar, setExpandedFundsJar] = useState<string | null>(null);
@@ -284,83 +284,94 @@ export default function Jars({ month }: { month: string }) {
 
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center max-w-7xl mx-auto">
-        <AlertCircle className="size-8 text-red-400 mx-auto mb-2" />
-        <p className="text-red-700 font-medium">{error?.message}</p>
+      <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/40 rounded-xl p-6 text-center max-w-7xl mx-auto">
+        <AlertCircle className="size-8 text-red-400 dark:text-red-500 mx-auto mb-2" />
+        <p className="text-red-700 dark:text-red-400 font-medium">{error?.message}</p>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-6 max-w-7xl mx-auto h-full">
+    <div className="flex flex-col gap-6 max-w-7xl mx-auto h-full min-w-0">
       {isCreateOpen && <CreateFundForm onClose={() => setIsCreateOpen(false)} />}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div className="flex flex-col gap-1">
-          <h2 className="text-slate-900 text-3xl font-bold tracking-tight">Quản lý Ngân Sách Hũ</h2>
-          <p className="text-slate-500 text-base">Theo dõi thực tế chi tiêu cho từng hũ trong tháng</p>
-        </div>
-        
-        <div className="flex items-center gap-4">
-          <button 
-            onClick={() => setIsCreateOpen(true)}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-          >
-            <Plus className="size-4" />
-            Tạo quỹ con
-          </button>
-          <div className="flex bg-slate-100 p-1 rounded-lg">
+      {!hideHeader && (
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 rounded-[28px] border border-slate-200/80 bg-white/90 p-5 shadow-sm backdrop-blur-sm dark:border-slate-700/80 dark:bg-[#111827]/85 md:p-6">
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400 dark:text-slate-500">
+              Jar Workspace
+            </span>
+            <h2 className="text-slate-900 dark:text-white text-3xl font-bold tracking-tight">Quản lý Ngân Sách Hũ</h2>
+            <p className="text-slate-500 dark:text-slate-400 text-base">
+              Theo dõi thực tế chi tiêu, quỹ con và phân bổ sức chứa của từng hũ trong tháng.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
             <button 
-              onClick={() => setActiveTab('list')}
-              className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${activeTab === 'list' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+              onClick={() => setIsCreateOpen(true)}
+              className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700"
             >
-              Danh sách
+              <Plus className="size-4" />
+              Tạo quỹ con
             </button>
-            <button 
-              onClick={() => setActiveTab('stats')}
-              className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${activeTab === 'stats' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
-            >
-              Thống kê
-            </button>
+            <div className="flex rounded-xl border border-slate-200/70 bg-slate-100/90 p-1 dark:border-slate-700 dark:bg-[#0c1222]/90">
+              <button 
+                onClick={() => setActiveTab('list')}
+                className={`rounded-lg px-4 py-1.5 text-sm font-medium transition-all ${activeTab === 'list' ? 'bg-white text-slate-900 shadow-sm dark:bg-[#1a2433] dark:text-white' : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'}`}
+              >
+                Danh sách
+              </button>
+              <button 
+                onClick={() => setActiveTab('stats')}
+                className={`rounded-lg px-4 py-1.5 text-sm font-medium transition-all ${activeTab === 'stats' ? 'bg-white text-slate-900 shadow-sm dark:bg-[#1a2433] dark:text-white' : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'}`}
+              >
+                Thống kê
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Summary cards */}
       {activeTab === 'list' && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-white dark:bg-[#1a2433] rounded-xl p-5 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col gap-2">
-            <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
+          <div className="relative overflow-hidden bg-white dark:bg-[#1a2433] rounded-xl p-5 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col gap-2">
+            <div className="absolute right-0 top-0 h-20 w-20 translate-x-6 -translate-y-6 rounded-full bg-blue-50 dark:bg-blue-500/10" />
+            <div className="relative flex items-center gap-2 text-slate-500 dark:text-slate-400">
               <Wallet className="size-4 text-blue-500" />
               <p className="text-sm font-medium uppercase tracking-wider">Kế hoạch</p>
             </div>
-            <p className="text-blue-600 dark:text-blue-400 text-xl font-bold leading-tight">
+            <p className="relative text-blue-600 dark:text-blue-400 text-xl font-bold leading-tight">
               {formatCurrency(budgetStatus?.assigned ?? totals?.income_vnd ?? 0)}
             </p>
           </div>
-          <div className="bg-white dark:bg-[#1a2433] rounded-xl p-5 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col gap-2">
-            <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
+          <div className="relative overflow-hidden bg-white dark:bg-[#1a2433] rounded-xl p-5 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col gap-2">
+            <div className="absolute right-0 top-0 h-20 w-20 translate-x-6 -translate-y-6 rounded-full bg-purple-50 dark:bg-purple-500/10" />
+            <div className="relative flex items-center gap-2 text-slate-500 dark:text-slate-400">
               <PiggyBank className="size-4 text-purple-500" />
               <p className="text-sm font-medium uppercase tracking-wider">Cam kết</p>
             </div>
-            <p className="text-purple-600 dark:text-purple-400 text-xl font-bold leading-tight">
+            <p className="relative text-purple-600 dark:text-purple-400 text-xl font-bold leading-tight">
               {formatCurrency(budgetStatus?.committed ?? 0)}
             </p>
           </div>
-          <div className="bg-white dark:bg-[#1a2433] rounded-xl p-5 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col gap-2">
-            <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
+          <div className="relative overflow-hidden bg-white dark:bg-[#1a2433] rounded-xl p-5 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col gap-2">
+            <div className="absolute right-0 top-0 h-20 w-20 translate-x-6 -translate-y-6 rounded-full bg-red-50 dark:bg-red-500/10" />
+            <div className="relative flex items-center gap-2 text-slate-500 dark:text-slate-400">
               <Wallet className="size-4 text-red-500" />
               <p className="text-sm font-medium uppercase tracking-wider">Đã chi</p>
             </div>
-            <p className="text-red-600 dark:text-red-400 text-xl font-bold leading-tight">
+            <p className="relative text-red-600 dark:text-red-400 text-xl font-bold leading-tight">
               {formatCurrency(budgetStatus?.total_spent ?? totals?.expense_vnd ?? 0)}
             </p>
           </div>
-          <div className="bg-white dark:bg-[#1a2433] rounded-xl p-5 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col gap-2">
-            <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
+          <div className="relative overflow-hidden bg-white dark:bg-[#1a2433] rounded-xl p-5 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col gap-2">
+            <div className="absolute right-0 top-0 h-20 w-20 translate-x-6 -translate-y-6 rounded-full bg-emerald-50 dark:bg-emerald-500/10" />
+            <div className="relative flex items-center gap-2 text-slate-500 dark:text-slate-400">
               <Wallet className="size-4 text-emerald-500" />
               <p className="text-sm font-medium uppercase tracking-wider">Còn lại</p>
             </div>
-            <p className={`text-xl font-bold leading-tight ${(budgetStatus?.available_to_spend ?? (totals?.net_vnd ?? 0)) >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+            <p className={`relative text-xl font-bold leading-tight ${(budgetStatus?.available_to_spend ?? (totals?.net_vnd ?? 0)) >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
               {formatCurrency(budgetStatus?.available_to_spend ?? totals?.net_vnd ?? 0)}
             </p>
           </div>
@@ -373,8 +384,8 @@ export default function Jars({ month }: { month: string }) {
         <div className="flex flex-col lg:flex-row gap-6 h-full">
           <div className="flex-1 flex flex-col gap-4">
             {jarSummaries.length === 0 ? (
-              <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
-                <p className="text-slate-400 text-lg">Không có dữ liệu hũ</p>
+              <div className="bg-white dark:bg-[#1a2433] rounded-xl border border-slate-200 dark:border-slate-700 p-12 text-center">
+                <p className="text-slate-400 dark:text-slate-500 text-lg">Không có dữ liệu hũ</p>
               </div>
             ) : (
               jarSummaries.map((jar) => {
@@ -389,7 +400,7 @@ export default function Jars({ month }: { month: string }) {
                     <div 
                       onClick={() => setSelectedJar(jar)}
                       className={`group relative flex items-center gap-4 bg-white dark:bg-[#1a2433] p-4 rounded-xl border cursor-pointer transition-all ${
-                        isSelected ? 'border-blue-500 shadow-sm' : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 hover:shadow-sm'
+                        isSelected ? 'border-blue-500 shadow-sm dark:shadow-black/20' : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 hover:shadow-sm dark:hover:border-slate-600 dark:hover:shadow-black/20'
                       }`}
                     >
                       {isSelected && <div className="absolute right-0 top-0 h-full w-1.5 bg-blue-500 rounded-l-sm rounded-r-xl"></div>}
@@ -441,14 +452,14 @@ export default function Jars({ month }: { month: string }) {
                               }}
                             ></div>
                           </div>
-                          <span className={`text-xs font-medium ${isSelected ? 'text-blue-600' : 'text-slate-500 dark:text-slate-400'}`}>
+                          <span className={`text-xs font-medium ${isSelected ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400'}`}>
                             {percent}% chi
                           </span>
                         </div>
                         {jarFunds.length > 0 && (
                           <button
                             onClick={(e) => { e.stopPropagation(); setExpandedFundsJar(isExpandedFunds ? null : jar.jar); }}
-                            className="flex items-center gap-1 text-xs text-blue-500 hover:text-blue-600 mt-1"
+                            className="mt-1 flex items-center gap-1 text-xs text-blue-500 transition-colors hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300"
                           >
                             <PiggyBank className="size-3" />
                             {jarFunds.length} quỹ con
@@ -471,7 +482,7 @@ export default function Jars({ month }: { month: string }) {
                             </div>
                             <div className="flex flex-col items-end">
                               <span className="font-bold text-slate-700 dark:text-slate-200">{formatCurrency(fund.reserved_amount)}</span>
-                              <span className="text-slate-400">/ {formatCurrency(fund.target_amount)}</span>
+                              <span className="text-slate-400 dark:text-slate-500">/ {formatCurrency(fund.target_amount)}</span>
                             </div>
                           </div>
                         ))}
@@ -538,15 +549,15 @@ export default function Jars({ month }: { month: string }) {
                   <div className="bg-slate-50 dark:bg-[#0c1222] p-5 rounded-xl border border-slate-100 dark:border-slate-700 mb-6 space-y-4">
                     <div className="flex justify-between items-baseline">
                       <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Thu nhập</span>
-                      <span className="text-lg font-bold text-green-600">{formatCurrency(selectedJar.income)}</span>
+                      <span className="text-lg font-bold text-green-600 dark:text-green-400">{formatCurrency(selectedJar.income)}</span>
                     </div>
                     <div className="flex justify-between items-baseline">
                       <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Chi tiêu</span>
-                      <span className="text-lg font-bold text-red-600">{formatCurrency(selectedJar.expense)}</span>
+                      <span className="text-lg font-bold text-red-600 dark:text-red-400">{formatCurrency(selectedJar.expense)}</span>
                     </div>
                     <div className="border-t border-slate-200 dark:border-slate-600 pt-4 flex justify-between items-baseline">
                       <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Net</span>
-                      <span className={`text-xl font-bold ${selectedJar.net >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      <span className={`text-xl font-bold ${selectedJar.net >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                         {formatSignedAmount(selectedJar.net)}
                       </span>
                     </div>
@@ -557,10 +568,10 @@ export default function Jars({ month }: { month: string }) {
               {totalExpense > 0 && (
                 <div className="mb-4">
                   <div className="flex justify-between text-sm mb-2">
-                    <span className="text-slate-600">Tỷ trọng chi tiêu</span>
-                    <span className="font-medium text-slate-900">{Math.round((selectedJar.expense / totalExpense) * 100)}%</span>
+                    <span className="text-slate-600 dark:text-slate-400">Tỷ trọng chi tiêu</span>
+                    <span className="font-medium text-slate-900 dark:text-white">{Math.round((selectedJar.expense / totalExpense) * 100)}%</span>
                   </div>
-                  <div className="h-3 w-full bg-slate-200 rounded-full overflow-hidden">
+                  <div className="h-3 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                     <div
                       className="h-full rounded-full"
                       style={{

@@ -4,6 +4,7 @@ import { formatCurrency, formatSignedAmount } from '../lib/utils';
 import { useTransactions, useBudgetStatus } from '../lib/hooks';
 import type { Transaction, TransactionsQuery } from '../lib/types';
 import TransactionDetails from '../components/TransactionDetails';
+import TxDetailPanel from '../components/TxDetailPanel';
 
 const PAGE_SIZE = 20;
 
@@ -53,7 +54,7 @@ function flowColor(flow: string | null) {
   }
 }
 
-export default function Transactions({ month }: { month: string }) {
+export default function Transactions({ month, hideHeader = false }: { month: string; hideHeader?: boolean }) {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [activeFlow, setActiveFlow] = useState<TransactionsQuery['flow'] | undefined>(undefined);
@@ -100,14 +101,16 @@ export default function Transactions({ month }: { month: string }) {
   const totalPages = meta ? Math.ceil(meta.total / meta.pageSize) : 1;
 
   return (
-    <div className="flex flex-col gap-6 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="flex flex-col gap-1">
-        <h2 className="text-slate-900 text-3xl font-bold tracking-tight">Giao dịch</h2>
-        <p className="text-slate-500 text-base">
-          {meta ? `${meta.total} giao dịch` : 'Đang tải...'}
-        </p>
-      </div>
+    <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 max-w-7xl mx-auto">
+      <div className="flex flex-col gap-6 min-w-0">
+      {!hideHeader && (
+        <div className="flex flex-col gap-1">
+          <h2 className="text-slate-900 dark:text-white text-3xl font-bold tracking-tight">Giao dịch</h2>
+          <p className="text-slate-500 dark:text-slate-400 text-base">
+            {meta ? `${meta.total} giao dịch` : 'Đang tải...'}
+          </p>
+        </div>
+      )}
 
       {/* Summary cards */}
       {meta && (
@@ -169,9 +172,9 @@ export default function Transactions({ month }: { month: string }) {
 
       {/* Error state */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
-          <AlertCircle className="size-8 text-red-400 mx-auto mb-2" />
-          <p className="text-red-700 font-medium">{error?.message}</p>
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/40 rounded-xl p-6 text-center">
+          <AlertCircle className="size-8 text-red-400 dark:text-red-500 mx-auto mb-2" />
+          <p className="text-red-700 dark:text-red-400 font-medium">{error?.message}</p>
         </div>
       )}
 
@@ -186,8 +189,8 @@ export default function Transactions({ month }: { month: string }) {
       {!isPending && !error && (
         <>
           {transactions.length === 0 ? (
-            <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
-              <p className="text-slate-400 text-lg">Không tìm thấy giao dịch nào</p>
+            <div className="bg-white dark:bg-[#1a2433] rounded-xl border border-slate-200 dark:border-slate-700 p-12 text-center">
+              <p className="text-slate-400 dark:text-slate-500 text-lg">Không tìm thấy giao dịch nào</p>
             </div>
           ) : (
             <div className="bg-white dark:bg-[#1a2433] rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
@@ -195,32 +198,38 @@ export default function Transactions({ month }: { month: string }) {
               <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-slate-100 bg-slate-50/50">
-                      <th className="text-left font-semibold text-slate-500 uppercase tracking-wider text-xs px-5 py-3">Ngày</th>
-                      <th className="text-left font-semibold text-slate-500 uppercase tracking-wider text-xs px-5 py-3">Mô tả</th>
-                      <th className="text-left font-semibold text-slate-500 uppercase tracking-wider text-xs px-5 py-3">Danh mục</th>
-                      <th className="text-left font-semibold text-slate-500 uppercase tracking-wider text-xs px-5 py-3">Hũ</th>
-                      <th className="text-left font-semibold text-slate-500 uppercase tracking-wider text-xs px-5 py-3">Loại</th>
-                      <th className="text-right font-semibold text-slate-500 uppercase tracking-wider text-xs px-5 py-3">Số tiền</th>
-                      <th className="text-left font-semibold text-slate-500 uppercase tracking-wider text-xs px-5 py-3">Trạng thái</th>
+                    <tr className="border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-[#0c1222]/50">
+                      <th className="text-left font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-xs px-5 py-3">Ngày</th>
+                      <th className="text-left font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-xs px-5 py-3">Mô tả</th>
+                      <th className="text-left font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-xs px-5 py-3">Danh mục</th>
+                      <th className="text-left font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-xs px-5 py-3">Hũ</th>
+                      <th className="text-left font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-xs px-5 py-3">Loại</th>
+                      <th className="text-right font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-xs px-5 py-3">Số tiền</th>
+                      <th className="text-left font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-xs px-5 py-3">Trạng thái</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-50">
-                    {transactions.map((tx, idx) => (
+                  <tbody className="divide-y divide-slate-50 dark:divide-slate-700/60">
+                    {transactions.map((tx, idx) => {
+                      const isSelected = selectedTx === tx;
+                      return (
                       <tr
                         key={tx.idempotency_key ?? idx}
                         onClick={() => setSelectedTx(tx)}
-                        className="hover:bg-slate-50 cursor-pointer transition-colors"
+                        className={`cursor-pointer transition-colors ${
+                          isSelected
+                            ? 'bg-blue-50 dark:bg-blue-900/20'
+                            : 'hover:bg-slate-50 dark:hover:bg-slate-700/40'
+                        }`}
                       >
                         <td className="px-5 py-3.5 whitespace-nowrap">
-                          <div className="text-slate-900 font-medium">{tx.date ?? '—'}</div>
-                          <div className="text-xs text-slate-400">{tx.time ?? ''}</div>
+                          <div className="text-slate-900 dark:text-white font-medium">{tx.date ?? '—'}</div>
+                          <div className="text-xs text-slate-400 dark:text-slate-500">{tx.time ?? ''}</div>
                         </td>
                         <td className="px-5 py-3.5">
-                          <span className="text-slate-900 font-medium truncate block max-w-[250px]">{tx.description ?? '—'}</span>
+                          <span className="text-slate-900 dark:text-white font-medium truncate block max-w-[250px]">{tx.description ?? '—'}</span>
                         </td>
                         <td className="px-5 py-3.5">
-                          <span className="text-slate-600">{tx.category ?? '—'}</span>
+                          <span className="text-slate-600 dark:text-slate-300">{tx.category ?? '—'}</span>
                         </td>
                         <td className="px-5 py-3.5">
                           {tx.jar ? (
@@ -277,28 +286,29 @@ export default function Transactions({ month }: { month: string }) {
                           </span>
                         </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
 
               {/* Mobile list */}
-              <div className="md:hidden divide-y divide-slate-100">
+              <div className="md:hidden divide-y divide-slate-100 dark:divide-slate-700/60">
                 {transactions.map((tx, idx) => (
                   <div
                     key={tx.idempotency_key ?? idx}
                     onClick={() => setSelectedTx(tx)}
-                    className="flex items-center gap-3 px-4 py-3.5 cursor-pointer hover:bg-slate-50 transition-colors"
+                    className="flex items-center gap-3 px-4 py-3.5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/40 transition-colors"
                   >
                     <div className={`size-10 rounded-full flex items-center justify-center shrink-0 ${
-                      tx.flow === 'income' ? 'bg-green-100' :
-                      tx.flow === 'expense' ? 'bg-red-100' : 'bg-blue-100'
+                      tx.flow === 'income' ? 'bg-green-100 dark:bg-green-900/30' :
+                      tx.flow === 'expense' ? 'bg-red-100 dark:bg-red-900/30' : 'bg-blue-100 dark:bg-blue-900/30'
                     }`}>
                       {flowIcon(tx.flow)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-slate-900 truncate">{tx.description ?? '—'}</p>
-                      <p className="text-xs text-slate-400">{tx.category ?? ''} · {tx.date ?? ''}</p>
+                      <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{tx.description ?? '—'}</p>
+                      <p className="text-xs text-slate-400 dark:text-slate-500">{tx.category ?? ''} · {tx.date ?? ''}</p>
                     </div>
                     <div className="text-right shrink-0">
                       <p className={`text-sm font-semibold ${
@@ -318,14 +328,14 @@ export default function Transactions({ month }: { month: string }) {
           {/* Pagination */}
           {totalPages > 1 && (
             <div className="flex items-center justify-between">
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-slate-500 dark:text-slate-400">
                 Trang {page} / {totalPages} ({meta?.total} kết quả)
               </p>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page === 1}
-                  className="p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  className="p-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-[#1a2433] text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/60 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
                   <ChevronLeft className="size-4" />
                 </button>
@@ -348,7 +358,7 @@ export default function Transactions({ month }: { month: string }) {
                       className={`size-9 rounded-lg text-sm font-medium transition-colors ${
                         page === pageNum
                           ? 'bg-blue-600 text-white'
-                          : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
+                          : 'bg-white dark:bg-[#1a2433] border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/60'
                       }`}
                     >
                       {pageNum}
@@ -358,7 +368,7 @@ export default function Transactions({ month }: { month: string }) {
                 <button
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                   disabled={page === totalPages}
-                  className="p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  className="p-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-[#1a2433] text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/60 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
                   <ChevronRight className="size-4" />
                 </button>
@@ -368,9 +378,16 @@ export default function Transactions({ month }: { month: string }) {
         </>
       )}
 
-      {/* Transaction Detail Drawer */}
+      </div>
+
+      {/* Desktop inline detail panel */}
+      <TxDetailPanel tx={selectedTx} />
+
+      {/* Mobile drawer (hidden on lg+) */}
       {selectedTx && (
-        <TransactionDetails tx={selectedTx} onClose={() => setSelectedTx(null)} />
+        <div className="lg:hidden">
+          <TransactionDetails tx={selectedTx} onClose={() => setSelectedTx(null)} />
+        </div>
       )}
     </div>
   );

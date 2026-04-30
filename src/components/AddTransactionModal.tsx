@@ -75,8 +75,9 @@ export default function AddTransactionModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="add-tx-title"
-        className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[min(480px,calc(100vw-32px))] max-h-[calc(100vh-32px)] overflow-y-auto bg-white dark:bg-[#1a2433] rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-700"
+        className="fixed inset-x-0 bottom-0 top-auto z-50 max-h-[92vh] overflow-y-auto rounded-t-[28px] border border-slate-100 bg-white shadow-2xl dark:border-slate-700 dark:bg-[#1a2433] md:left-1/2 md:top-1/2 md:bottom-auto md:w-[min(480px,calc(100vw-32px))] md:max-h-[calc(100vh-32px)] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-2xl"
       >
+        <div className="mx-auto mt-3 h-1.5 w-12 rounded-full bg-slate-200 dark:bg-slate-700 md:hidden" />
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-700">
           <h3

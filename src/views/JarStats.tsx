@@ -48,7 +48,7 @@ export default function JarStats({ jarSummaries, totalExpense }: JarStatsProps) 
         </div>
         
         {chartData.length === 0 ? (
-          <div className="h-[300px] flex items-center justify-center text-slate-400">
+          <div className="h-[300px] flex items-center justify-center text-slate-400 dark:text-slate-500">
             Không có dữ liệu
           </div>
         ) : (
@@ -105,7 +105,9 @@ export default function JarStats({ jarSummaries, totalExpense }: JarStatsProps) 
                 </div>
                 <div className="flex flex-col items-start md:items-end justify-center">
                   <div className={`px-3 py-1 rounded-full text-sm font-bold flex items-center gap-1 ${
-                    isPositiveNet ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
+                    isPositiveNet
+                      ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300'
+                      : 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300'
                   }`}>
                     {isPositiveNet ? <TrendingUp className="size-4" /> : <TrendingDown className="size-4" />}
                     {expensePercent}%

@@ -304,11 +304,11 @@ function EditablePercent({
         autoFocus
         onKeyDown={e => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') setEditing(false); }}
       />
-      <span className="text-xs text-slate-500">%</span>
-      <button onClick={handleSave} disabled={isSaving} className="text-green-600 hover:text-green-700 cursor-pointer">
+      <span className="text-xs text-slate-500 dark:text-slate-400">%</span>
+      <button onClick={handleSave} disabled={isSaving} className="text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 cursor-pointer">
         <Check className="size-3.5" />
       </button>
-      <button onClick={() => setEditing(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
+      <button onClick={() => setEditing(false)} className="text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 cursor-pointer">
         <X className="size-3.5" />
       </button>
     </div>
@@ -934,7 +934,7 @@ function PlannedExpenseSection({
 
 // ── Main component ────────────────────────────────────────────
 
-export default function BudgetPlan({ month }: { month: string }) {
+export default function BudgetPlan({ month, hideHeader = false }: { month: string; hideHeader?: boolean }) {
   const [expandedJar, setExpandedJar] = useState<string | null>(null);
   const [ensuredPeriodId, setEnsuredPeriodId] = useState<number | null>(null);
   const [optimisticWorkspaceJars, setOptimisticWorkspaceJars] = useState<BudgetWorkspaceJar[] | null>(null);
@@ -1095,36 +1095,47 @@ export default function BudgetPlan({ month }: { month: string }) {
   return (
     <div className="flex flex-col gap-6 max-w-7xl mx-auto">
       {/* Page header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-        <div className="flex flex-col gap-1">
-          <h2 className="text-slate-900 dark:text-white text-3xl font-bold tracking-tight">
-            Ngân sách tháng
-          </h2>
-        </div>
-        <div className="flex items-center gap-2">
-          {budgetStatus && budgetStatus.has_period && budgetStatus.period_status === 'open' && (
-            <button
-              onClick={() => {
-                if (budgetStatus.unassigned !== 0) {
-                  alert(`Chưa phân bổ hết: ${formatCurrency(budgetStatus.unassigned)} còn dư. Hãy phân bổ hết trước khi đóng tháng.`);
-                  return;
-                }
-                if (effectivePeriodId) closePeriodMutation.mutate(effectivePeriodId);
-              }}
-              disabled={closePeriodMutation.isPending || !effectivePeriodId}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 disabled:opacity-50"
-            >
-              {closePeriodMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Lock className="size-4" />}
-              Đóng tháng
-            </button>
-          )}
+      {!hideHeader && (
+        <div className="rounded-[28px] border border-slate-200/80 bg-white/90 p-5 shadow-sm backdrop-blur-sm dark:border-slate-700/80 dark:bg-[#111827]/85 md:p-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div className="flex flex-col gap-1.5">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400 dark:text-slate-500">
+                Budget Workspace
+              </span>
+              <h2 className="text-slate-900 dark:text-white text-3xl font-bold tracking-tight">
+                Ngân sách tháng
+              </h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Phân bổ thu nhập, gài khoản dự kiến và theo dõi thực chi theo từng hũ trong cùng một workspace.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+            {budgetStatus && budgetStatus.has_period && budgetStatus.period_status === 'open' && (
+              <button
+                onClick={() => {
+                  if (budgetStatus.unassigned !== 0) {
+                    alert(`Chưa phân bổ hết: ${formatCurrency(budgetStatus.unassigned)} còn dư. Hãy phân bổ hết trước khi đóng tháng.`);
+                    return;
+                  }
+                  if (effectivePeriodId) closePeriodMutation.mutate(effectivePeriodId);
+                }}
+                disabled={closePeriodMutation.isPending || !effectivePeriodId}
+                className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50"
+              >
+                {closePeriodMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Lock className="size-4" />}
+                Đóng tháng
+              </button>
+            )}
+          </div>
         </div>
       </div>
+      )}
 
       {/* Allocation Status Bar */}
       {budgetStatus && (
-        <div className="bg-white dark:bg-[#1a2433] rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-4">
-          <div className="flex flex-col gap-3">
+        <div className="relative overflow-hidden rounded-[24px] border border-slate-200/80 bg-white/90 p-4 shadow-sm dark:border-slate-700/80 dark:bg-[#111827]/85">
+          <div className="absolute right-0 top-0 h-24 w-24 translate-x-8 -translate-y-8 rounded-full bg-blue-50 dark:bg-blue-500/10" />
+          <div className="relative flex flex-col gap-3">
             <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between text-sm">
               <span className="font-medium text-slate-700 dark:text-slate-200">Trạng thái phân bổ</span>
               <span className={cn(
@@ -1476,7 +1487,7 @@ export default function BudgetPlan({ month }: { month: string }) {
           return (
             <div
               key={jar.key}
-              className="bg-white dark:bg-[#1a2433] rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden transition-shadow hover:shadow-md"
+              className="bg-white dark:bg-[#1a2433] rounded-2xl border border-slate-200/90 dark:border-slate-700 shadow-sm overflow-hidden transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md dark:hover:border-slate-600 dark:hover:shadow-black/20"
             >
               {/* Card header */}
               <div className="p-5">

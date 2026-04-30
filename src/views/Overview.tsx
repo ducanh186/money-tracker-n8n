@@ -6,6 +6,7 @@ import { ExpenseStructureChart } from '../components/ExpenseStructureChart';
 import OverviewSidebar from '../components/OverviewSidebar';
 import HeroCard from '../components/HeroCard';
 import JarMiniGrid from '../components/JarMiniGrid';
+import { getJar, JAR_ORDER } from '../lib/jars';
 
 const flowIcon = (flow: string | null) => {
   if (flow === 'income') return ArrowUpCircle;
@@ -45,6 +46,13 @@ export default function Overview({ month }: { month: string }) {
   const summary = summaryRes?.data;
   const recentTxs = summary?.recent_transactions ?? [];
   const syncStatus = syncRes?.data;
+  const expenseByJar = summary?.expense_by_jar ?? {};
+  const totalJarExpense = Object.values(expenseByJar).reduce((sum, value) => sum + Math.abs(value), 0);
+  const topJars = JAR_ORDER
+    .map((key) => ({ key, amount: Math.abs(expenseByJar[key] ?? 0) }))
+    .filter((item) => item.amount > 0)
+    .sort((a, b) => b.amount - a.amount)
+    .slice(0, 3);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 max-w-7xl mx-auto">
@@ -145,6 +153,51 @@ export default function Overview({ month }: { month: string }) {
           </div>
         </div>
       )}
+
+      <div className="lg:hidden flex flex-col gap-3 mt-1">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-bold text-slate-900 dark:text-white">Top ăn tiền</h3>
+        </div>
+
+        <div className="rounded-2xl bg-white dark:bg-[#1a2433] border border-slate-100 dark:border-slate-700 shadow-sm p-4">
+          {topJars.length === 0 ? (
+            <p className="text-sm text-slate-400 dark:text-slate-500 text-center py-4">Chưa có chi tiêu theo hũ trong tháng này</p>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {topJars.map((item) => {
+                const jar = getJar(item.key);
+                if (!jar) return null;
+                const pct = totalJarExpense > 0 ? Math.round((item.amount / totalJarExpense) * 100) : 0;
+                return (
+                  <div key={item.key} className="rounded-xl bg-slate-50 dark:bg-[#0c1222] border border-slate-100 dark:border-slate-700 p-3">
+                    <div className="flex items-center justify-between gap-3 mb-2">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <span
+                          className="inline-flex size-10 shrink-0 items-center justify-center rounded-full"
+                          style={{ backgroundColor: jar.bg_light, color: jar.hex_light }}
+                        >
+                          <jar.icon className="size-4.5" />
+                        </span>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">{jar.label_vi}</p>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400">{jar.key}</p>
+                        </div>
+                      </div>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{formatCurrency(item.amount)}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
+                        <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: jar.hex_light }} />
+                      </div>
+                      <span className="w-9 text-right text-[11px] text-slate-500 dark:text-slate-400">{pct}%</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
 
       <div className="lg:hidden flex flex-col gap-4 mt-4">
         <div className="flex items-center justify-between">

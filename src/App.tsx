@@ -5,12 +5,14 @@
 
 import { useState, useEffect } from 'react';
 import TopBar from './components/TopBar';
+import MobileAppShell from './components/MobileAppShell';
 import Overview from './views/Overview';
 import Transactions from './views/Transactions';
 import Jars from './views/Jars';
 import BudgetPlan from './views/BudgetPlan';
 import Goals from './views/Goals';
 import Debts from './views/Debts';
+import MobileMore from './views/MobileMore';
 import UiPlayground from './views/UiPlayground';
 import AddTransactionModal from './components/AddTransactionModal';
 import { getCurrentMonth } from './lib/api';
@@ -25,10 +27,25 @@ function useHashRoute(): string {
   return hash;
 }
 
+function useIsMobileBreakpoint(): boolean {
+  const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 1023px)').matches);
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 1023px)');
+    const onChange = () => setIsMobile(media.matches);
+    onChange();
+    media.addEventListener('change', onChange);
+    return () => media.removeEventListener('change', onChange);
+  }, []);
+
+  return isMobile;
+}
+
 export default function App() {
   const hash = useHashRoute();
   const [currentView, setCurrentView] = useState('overview');
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
+  const isMobile = useIsMobileBreakpoint();
   const [darkMode, setDarkMode] = useState(() => {
     const saved = localStorage.getItem('darkMode');
     if (saved !== null) return saved === 'true';
@@ -39,6 +56,12 @@ export default function App() {
     document.documentElement.classList.toggle('dark', darkMode);
     localStorage.setItem('darkMode', String(darkMode));
   }, [darkMode]);
+
+  useEffect(() => {
+    if (!isMobile && currentView === 'more') {
+      setCurrentView('overview');
+    }
+  }, [currentView, isMobile]);
 
   // Phase A: dev playground for UI primitives. Access via #/__ui
   if (hash === '#/__ui' || hash === '#__ui') {
@@ -57,6 +80,46 @@ export default function App() {
     }
   };
 
+  const renderCurrentView = (mobile = false) => {
+    if (currentView === 'overview') return <Overview month={selectedMonth} />;
+    if (currentView === 'transactions') return <Transactions month={selectedMonth} hideHeader={mobile} />;
+    if (currentView === 'jars') return <Jars month={selectedMonth} hideHeader={mobile} />;
+    if (currentView === 'budget') return <BudgetPlan month={selectedMonth} hideHeader={mobile} />;
+    if (currentView === 'goals') return <Goals month={selectedMonth} />;
+    if (currentView === 'debts') return <Debts month={selectedMonth} />;
+    if (currentView === 'more') {
+      return (
+        <MobileMore
+          monthLabel={selectedMonth}
+          onNavigate={setCurrentView}
+          onOpenInsights={() => setCurrentView('overview')}
+        />
+      );
+    }
+    return <Overview month={selectedMonth} />;
+  };
+
+  if (isMobile) {
+    return (
+      <>
+        <MobileAppShell
+          currentView={currentView}
+          setCurrentView={setCurrentView}
+          selectedMonth={selectedMonth}
+          onMonthChange={setSelectedMonth}
+          darkMode={darkMode}
+          toggleDarkMode={() => setDarkMode(!darkMode)}
+          onOpenAdd={() => {
+            window.location.hash = '#/add';
+          }}
+        >
+          {renderCurrentView(true)}
+        </MobileAppShell>
+        <AddTransactionModal open={addModalOpen} onClose={closeAddModal} />
+      </>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#0c1222] text-slate-900 dark:text-slate-200 font-sans transition-colors duration-200">
       <TopBar
@@ -68,12 +131,7 @@ export default function App() {
         toggleDarkMode={() => setDarkMode(!darkMode)}
       />
       <main className="max-w-7xl mx-auto px-4 md:px-8 py-6">
-        {currentView === 'overview' && <Overview month={selectedMonth} />}
-        {currentView === 'transactions' && <Transactions month={selectedMonth} />}
-        {currentView === 'jars' && <Jars month={selectedMonth} />}
-        {currentView === 'budget' && <BudgetPlan month={selectedMonth} />}
-        {currentView === 'goals' && <Goals month={selectedMonth} />}
-        {currentView === 'debts' && <Debts month={selectedMonth} />}
+        {renderCurrentView(false)}
       </main>
       <AddTransactionModal open={addModalOpen} onClose={closeAddModal} />
     </div>
