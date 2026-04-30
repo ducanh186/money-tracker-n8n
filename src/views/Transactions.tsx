@@ -224,15 +224,24 @@ export default function Transactions({ month }: { month: string }) {
                         </td>
                         <td className="px-5 py-3.5">
                           {tx.jar ? (
-                            <span className="inline-flex items-center gap-1 text-slate-600 dark:text-slate-300">
-                              {(() => {
-                                const jb = jarBudgetMap.get(tx.jar);
-                                if (!jb) return <CircleDot className="size-3 text-slate-400" />;
-                                if (jb.available < 0) return <CircleDot className="size-3 text-red-500" />;
-                                return <CircleDot className="size-3 text-green-500" />;
-                              })()}
-                              {tx.jar}
-                            </span>
+                            tx.jar.toUpperCase() === 'LOAN' ? (
+                              <span
+                                className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700 dark:bg-amber-500/20 dark:text-amber-300"
+                                title="Vay/Trả nợ — không tính vào kế hoạch hũ"
+                              >
+                                💳 LOAN
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-slate-600 dark:text-slate-300">
+                                {(() => {
+                                  const jb = jarBudgetMap.get(tx.jar);
+                                  if (!jb) return <CircleDot className="size-3 text-slate-400" />;
+                                  if (jb.available < 0) return <CircleDot className="size-3 text-red-500" />;
+                                  return <CircleDot className="size-3 text-green-500" />;
+                                })()}
+                                {tx.jar}
+                              </span>
+                            )
                           ) : (
                             <span className="inline-flex items-center gap-1 text-slate-400 italic">
                               <CircleDot className="size-3 text-slate-300" />

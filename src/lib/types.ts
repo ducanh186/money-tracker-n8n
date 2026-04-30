@@ -86,12 +86,21 @@ export interface BudgetPlanSummary {
   usage_pct: number;
 }
 
+export interface LoanSummary {
+  in: number;
+  out: number;
+  repayment: number;
+  recovery: number;
+  net_owed: number;
+}
+
 export interface BudgetPlanData {
   month: string;
   base_income: number;
   sheet_income: number;
   jars: BudgetJar[];
   summary: BudgetPlanSummary;
+  loan_summary?: LoanSummary;
   thresholds: { ok_max: number; warn_max: number };
 }
 

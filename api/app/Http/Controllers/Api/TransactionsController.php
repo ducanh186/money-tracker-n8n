@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Contracts\TransactionsRepositoryInterface;
 use App\Http\Resources\TransactionResource;
 use App\Models\Jar;
+use App\Support\TransactionFilters;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -198,6 +199,10 @@ class TransactionsController extends Controller
         $expenseVnd = 0;
 
         foreach ($rows as $row) {
+            // Loan rows are excluded from income/expense totals.
+            if (TransactionFilters::isLoan($row)) {
+                continue;
+            }
             $amountK   = TransactionResource::parseNumeric($row['amount'] ?? null);
             $amountVnd = abs($amountK) * 1000;
             $flow      = mb_strtolower(trim($row['flow'] ?? ''));
@@ -209,7 +214,7 @@ class TransactionsController extends Controller
             }
         }
 
-        // Ending balance: pick the latest row by datetime
+        // Ending balance: pick the latest row by datetime (loans included — bank balance is bank balance)
         $endingBalanceVnd = null;
         $latestDatetime   = '';
 

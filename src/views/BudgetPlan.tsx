@@ -1420,6 +1420,36 @@ export default function BudgetPlan({ month }: { month: string }) {
         );
       })()}
 
+      {/* Loan summary banner — vay/trả nợ không tính vào kế hoạch hũ */}
+      {data?.data.loan_summary && (
+        (data.data.loan_summary.in + data.data.loan_summary.out + data.data.loan_summary.repayment + data.data.loan_summary.recovery) > 0
+      ) && (() => {
+        const ls = data.data.loan_summary!;
+        const total = ls.in + ls.repayment + ls.out + ls.recovery;
+        const owed = Math.max(0, ls.net_owed);
+        const lent = Math.max(0, -ls.net_owed);
+        return (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span>💳</span>
+                <span className="font-semibold">Đã loại {formatCurrency(total)} vay/trả khỏi kế hoạch hũ</span>
+              </div>
+              <div className="flex flex-wrap items-center gap-3 text-xs">
+                {owed > 0 && <span>Đang nợ: <b>{formatCurrency(owed)}</b></span>}
+                {lent > 0 && <span>Đang cho vay: <b>{formatCurrency(lent)}</b></span>}
+              </div>
+            </div>
+            <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-amber-800/80 dark:text-amber-300/80">
+              <span>Vay vào: {formatCurrency(ls.in)}</span>
+              <span>Trả nợ: {formatCurrency(ls.repayment)}</span>
+              <span>Cho vay: {formatCurrency(ls.out)}</span>
+              <span>Thu nợ: {formatCurrency(ls.recovery)}</span>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Jar cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {jars.map((jar) => {

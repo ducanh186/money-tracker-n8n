@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Contracts\TransactionsRepositoryInterface;
 use App\Models\BudgetSetting;
 use App\Models\Jar;
+use App\Support\TransactionFilters;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -59,9 +60,20 @@ class BudgetPlanController extends Controller
         }
 
         // Compute actual income from sheet transactions
+        // Loan transactions (jar=LOAN) are excluded from the budget plan.
         $sheetIncome = 0;
         $actualByJar = [];
+        $loanSummary = ['in' => 0, 'out' => 0, 'repayment' => 0, 'recovery' => 0];
         foreach ($rows as $row) {
+            if (TransactionFilters::isLoan($row)) {
+                $cat = trim((string)($row['category'] ?? ''));
+                $amtVnd = abs($this->parseNumeric($row['amount'] ?? null)) * 1000;
+                if ($cat === 'Loan In')        $loanSummary['in']        += $amtVnd;
+                elseif ($cat === 'Loan Repayment') $loanSummary['repayment'] += $amtVnd;
+                elseif ($cat === 'Loan Out')   $loanSummary['out']       += $amtVnd;
+                elseif ($cat === 'Loan Recovery') $loanSummary['recovery']  += $amtVnd;
+                continue;
+            }
             $flow = mb_strtolower(trim($row['flow'] ?? ''));
             if ($flow === 'income') {
                 $amountK   = $this->parseNumeric($row['amount'] ?? null);
@@ -77,6 +89,8 @@ class BudgetPlanController extends Controller
                 $actualByJar[$jarKey] = ($actualByJar[$jarKey] ?? 0) + $amountVnd;
             }
         }
+        $loanSummary['net_owed'] = ($loanSummary['in'] - $loanSummary['repayment'])
+                                 - ($loanSummary['out'] - $loanSummary['recovery']);
 
         // base_income: query param > DB setting > sheet income > config fallback
         if ($overrideIncome !== null) {
@@ -144,6 +158,7 @@ class BudgetPlanController extends Controller
                         ? round(($totalActual / $totalPlanned) * 100, 2)
                         : 0,
                 ],
+                'loan_summary'  => $loanSummary,
                 'thresholds'    => $thresholds,
             ],
         ];

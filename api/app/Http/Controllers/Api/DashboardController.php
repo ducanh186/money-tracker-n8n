@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\BudgetPeriod;
 use App\Models\Fund;
 use App\Models\Jar;
+use App\Support\TransactionFilters;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -64,6 +65,18 @@ class DashboardController extends Controller
         $recentTxs = [];
 
         foreach ($rows as $row) {
+            // Track ending balance for ALL rows (including loans) — bank balance doesn't care about classification.
+            $dt = $row['datetime'] ?? '';
+            if ($dt > $latestDatetime) {
+                $latestDatetime = $dt;
+                $endingBalanceVnd = $this->parseNumeric($row['balance'] ?? null) * 1000;
+            }
+
+            // Loan rows are excluded from income/expense aggregates.
+            if (TransactionFilters::isLoan($row)) {
+                continue;
+            }
+
             $amountK = $this->parseNumeric($row['amount'] ?? null);
             $amountVnd = abs($amountK) * 1000;
             $flow = mb_strtolower(trim($row['flow'] ?? ''));
@@ -79,13 +92,6 @@ class DashboardController extends Controller
                     $byJar[$jarLabel] = 0;
                 }
                 $byJar[$jarLabel] += $amountVnd;
-            }
-
-            // Track ending balance
-            $dt = $row['datetime'] ?? '';
-            if ($dt > $latestDatetime) {
-                $latestDatetime = $dt;
-                $endingBalanceVnd = $this->parseNumeric($row['balance'] ?? null) * 1000;
             }
         }
 
@@ -187,6 +193,9 @@ class DashboardController extends Controller
         $totalExpense = 0;
         $expenseByJar = [];
         foreach ($rows as $row) {
+            if (TransactionFilters::isLoan($row)) {
+                continue;
+            }
             $flow = mb_strtolower(trim($row['flow'] ?? ''));
             $amountK = $this->parseNumeric($row['amount'] ?? null);
             $amountVnd = abs($amountK) * 1000;
