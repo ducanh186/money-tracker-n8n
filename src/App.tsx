@@ -11,9 +11,21 @@ import Jars from './views/Jars';
 import BudgetPlan from './views/BudgetPlan';
 import Goals from './views/Goals';
 import Debts from './views/Debts';
+import UiPlayground from './views/UiPlayground';
 import { getCurrentMonth } from './lib/api';
 
+function useHashRoute(): string {
+  const [hash, setHash] = useState(() => window.location.hash);
+  useEffect(() => {
+    const onChange = () => setHash(window.location.hash);
+    window.addEventListener('hashchange', onChange);
+    return () => window.removeEventListener('hashchange', onChange);
+  }, []);
+  return hash;
+}
+
 export default function App() {
+  const hash = useHashRoute();
   const [currentView, setCurrentView] = useState('overview');
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
   const [darkMode, setDarkMode] = useState(() => {
@@ -26,6 +38,15 @@ export default function App() {
     document.documentElement.classList.toggle('dark', darkMode);
     localStorage.setItem('darkMode', String(darkMode));
   }, [darkMode]);
+
+  // Phase A: dev playground for UI primitives. Access via #/__ui
+  if (hash === '#/__ui' || hash === '#__ui') {
+    return (
+      <div className="min-h-screen bg-[var(--color-surface-alt)] text-[var(--color-text-primary)] font-sans">
+        <UiPlayground />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#0c1222] text-slate-900 dark:text-slate-200 font-sans transition-colors duration-200">
