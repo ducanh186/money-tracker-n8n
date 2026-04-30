@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Money Tracker — Phase 1 Redesign</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="tokens.css" />
+<style>
+  body { background: #f0f3f8; font-family: 'Inter', system-ui, sans-serif; }
+  .canvas-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 48px;
+    padding: 40px 24px 80px;
+    align-items: center;
+  }
+  .canvas-section {
+    width: 100%;
+    max-width: 1500px;
+  }
+  .canvas-section h2 {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #6b7585;
+    margin: 0 0 6px;
+  }
+  .canvas-section p {
+    font-size: 14px;
+    color: #6b7585;
+    margin: 0 0 24px;
+    max-width: 600px;
+  }
+  .canvas-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 32px;
+    align-items: flex-start;
+    justify-content: center;
+  }
+  .canvas-hero {
+    text-align: center;
+    padding: 24px 0 8px;
+  }
+  .canvas-hero h1 {
+    font-size: 32px;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0 0 6px;
+    letter-spacing: -0.02em;
+  }
+  .canvas-hero .sub {
+    font-size: 14px;
+    color: #6b7585;
+    max-width: 560px;
+    margin: 0 auto;
+  }
+  .canvas-hero .meta {
+    font-size: 11px;
+    color: #99a3b3;
+    margin-top: 8px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel" src="jars.jsx"></script>
+<script type="text/babel" src="data.jsx"></script>
+<script type="text/babel" src="screens-home.jsx"></script>
+<script type="text/babel" src="screens-rest.jsx"></script>
+<script type="text/babel" src="app-shell.jsx"></script>
+
+<script type="text/babel">
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "theme": "earthy",
+  "accent": "slate",
+  "density": "compact",
+  "fontScale": 1.05,
+  "showVariations": true
+}/*EDITMODE-END*/;
+
+function App() {
+  const [tweaks, setTweak] = useTweaks(TWEAK_DEFAULTS);
+
+  // Apply font scale globally
+  React.useEffect(() => {
+    document.documentElement.style.setProperty('font-size', `${16 * tweaks.fontScale}px`);
+  }, [tweaks.fontScale]);
+
+  // Apply accent (modulates --color-primary-*)
+  React.useEffect(() => {
+    const accents = {
+      blue:   { 500: '#3b6ff5', 600: '#2453e6', 700: '#1c41cc', 300: '#93b6fc', 100: '#dbe7fe', 50: '#eff5ff' },
+      green:  { 500: '#10b981', 600: '#059669', 700: '#047857', 300: '#6ee7b7', 100: '#d1fae5', 50: '#ecfdf5' },
+      indigo: { 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca', 300: '#a5b4fc', 100: '#e0e7ff', 50: '#eef2ff' },
+      slate:  { 500: '#475569', 600: '#334155', 700: '#1e293b', 300: '#94a3b8', 100: '#e2e8f0', 50: '#f1f5f9' },
+    };
+    const a = accents[tweaks.accent] || accents.blue;
+    Object.entries(a).forEach(([k, v]) => document.documentElement.style.setProperty(`--color-primary-${k}`, v));
+  }, [tweaks.accent]);
+
+  return (
+    <>
+      <div data-theme={tweaks.theme === 'default' ? null : tweaks.theme} className={`mt-app mt-density-${tweaks.density}`} style={{ minHeight: '100vh', background: tweaks.theme === 'dark' ? '#0a0f1c' : tweaks.theme === 'earthy' ? '#f6f0e6' : '#f0f3f8', color: 'var(--color-text-primary)' }}>
+        <div className="canvas-hero">
+          <h1>Money Tracker — Redesign Phase 1</h1>
+          <p className="sub">Hi-fi clickable prototype theo CLAUDE.UI.SPEC.md. Bấm tab dưới + nút <strong>+</strong> để khám phá. Dùng <strong>Tweaks</strong> để đổi theme, accent, density.</p>
+          <p className="meta">Banking quiet · Vietnamese · Mobile 375 × 812</p>
+        </div>
+
+        <div className="canvas-grid">
+
+          {/* ─── PRIMARY: live prototype ─── */}
+          <div className="canvas-section">
+            <h2>Prototype · Mobile</h2>
+            <p>App hoạt động được: chuyển tab Home / Giao dịch / Hũ / Khác (→ Kế hoạch, Phân tích), bấm <strong>+</strong> để mở Quick Capture (numpad VND), hero card có toggle 3 chế độ.</p>
+            <div className="canvas-row">
+              <MobileApp initialView="home" theme={tweaks.theme === 'default' ? 'default' : tweaks.theme} density={tweaks.density} label="Live prototype — bấm để khám phá" />
+            </div>
+          </div>
+
+          {/* ─── 6 SCREENS STATIC ─── */}
+          <div className="canvas-section">
+            <h2>6 Màn hình · Spec</h2>
+            <p>Snapshot từng screen theo wireframe Section 4. Mỗi cái có shell điều hướng riêng để xem state.</p>
+            <div className="canvas-row">
+              <MobileApp initialView="home" theme={tweaks.theme === 'default' ? 'default' : tweaks.theme} density={tweaks.density} label="① Home" />
+              <MobileApp initialView="tx" theme={tweaks.theme === 'default' ? 'default' : tweaks.theme} density={tweaks.density} label="③ Giao dịch" />
+              <MobileApp initialView="jars" theme={tweaks.theme === 'default' ? 'default' : tweaks.theme} density={tweaks.density} label="④ Hũ — phân bổ %" />
+              <MobileApp initialView="budget" theme={tweaks.theme === 'default' ? 'default' : tweaks.theme} density={tweaks.density} label="⑤ Kế hoạch chi tiêu (3 tabs)" />
+            </div>
+          </div>
+
+          {/* ─── VARIATIONS ─── */}
+          {tweaks.showVariations && (
+            <div className="canvas-section">
+              <h2>Variations · Visual direction</h2>
+              <p>Spec mặc định là <em>Refined Blue</em>. Đây là 2 hướng khác để so sánh: <em>Warmer Earthy</em> (ấm, giấy) và <em>Dark-first</em> (đêm, banking pro). Cả 3 dùng cùng layout & tokens — chỉ đổi palette.</p>
+              <div className="canvas-row">
+                <MobileApp initialView="home" theme="default" density={tweaks.density} label="A · Refined Blue (spec)" />
+                <MobileApp initialView="home" theme="earthy" density={tweaks.density} label="B · Warmer Earthy" />
+                <MobileApp initialView="home" theme="dark" density={tweaks.density} label="C · Dark-first" />
+              </div>
+            </div>
+          )}
+
+        </div>
+      </div>
+
+      <TweaksPanel title="Tweaks">
+        <TweakSection title="Theme">
+          <TweakRadio
+            value={tweaks.theme}
+            onChange={v => setTweak('theme', v)}
+            options={[
+              { value: 'default', label: 'Light' },
+              { value: 'earthy', label: 'Earthy' },
+              { value: 'dark', label: 'Dark' },
+            ]}
+          />
+        </TweakSection>
+        <TweakSection title="Accent">
+          <TweakRadio
+            value={tweaks.accent}
+            onChange={v => setTweak('accent', v)}
+            options={[
+              { value: 'blue', label: 'Blue' },
+              { value: 'indigo', label: 'Indigo' },
+              { value: 'green', label: 'Green' },
+              { value: 'slate', label: 'Slate' },
+            ]}
+          />
+        </TweakSection>
+        <TweakSection title="Density">
+          <TweakRadio
+            value={tweaks.density}
+            onChange={v => setTweak('density', v)}
+            options={[
+              { value: 'compact', label: 'Compact' },
+              { value: 'comfort', label: 'Comfort' },
+            ]}
+          />
+        </TweakSection>
+        <TweakSection title="Font scale">
+          <TweakSlider value={tweaks.fontScale} onChange={v => setTweak('fontScale', v)} min={0.85} max={1.15} step={0.05} formatValue={v => `${Math.round(v * 100)}%`} />
+        </TweakSection>
+        <TweakSection title="Variations">
+          <TweakToggle checked={tweaks.showVariations} onChange={v => setTweak('showVariations', v)} label="Hiện 3 hướng visual" />
+        </TweakSection>
+      </TweaksPanel>
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
