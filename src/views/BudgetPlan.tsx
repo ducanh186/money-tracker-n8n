@@ -1201,7 +1201,7 @@ export default function BudgetPlan({ month, hideHeader = false }: { month: strin
       {/* Summary cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* BASE INCOME — read-only from Sheet */}
-        <div className="relative overflow-hidden rounded-xl bg-white dark:bg-[#1a2433] p-6 shadow-sm border border-slate-100 dark:border-slate-700">
+        <div className="relative overflow-hidden rounded-[24px] border border-slate-200/80 bg-white/90 p-6 shadow-sm backdrop-blur-sm dark:border-slate-700/80 dark:bg-[#111827]/85">
           <div className="absolute right-0 top-0 h-24 w-24 translate-x-8 -translate-y-8 rounded-full bg-blue-50 dark:bg-blue-500/10" />
           <div className="relative z-10 flex flex-col gap-1">
             <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Thu nhập gốc</span>
@@ -1216,7 +1216,7 @@ export default function BudgetPlan({ month, hideHeader = false }: { month: strin
         </div>
 
         {/* TOTAL PLANNED — editable */}
-        <div className="relative overflow-hidden rounded-xl bg-white dark:bg-[#1a2433] p-6 shadow-sm border border-slate-100 dark:border-slate-700">
+        <div className="relative overflow-hidden rounded-[24px] border border-slate-200/80 bg-white/90 p-6 shadow-sm backdrop-blur-sm dark:border-slate-700/80 dark:bg-[#111827]/85">
           <div className="absolute right-0 top-0 h-24 w-24 translate-x-8 -translate-y-8 rounded-full bg-green-50 dark:bg-green-500/10" />
           <div className="relative z-10 flex flex-col gap-1">
             <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Tổng kế hoạch</span>
@@ -1254,7 +1254,7 @@ export default function BudgetPlan({ month, hideHeader = false }: { month: strin
                     }
                     setEditingPlan(false);
                   }}
-                  className="text-green-600 hover:text-green-700 cursor-pointer"
+                  className="cursor-pointer text-green-600 transition-colors hover:text-green-700 dark:text-green-400 dark:hover:text-green-300"
                 >
                   <Check className="size-5" />
                 </button>
@@ -1264,7 +1264,7 @@ export default function BudgetPlan({ month, hideHeader = false }: { month: strin
                     updateSettingMutation.mutate({ month, baseIncomeOverride: null });
                     setEditingPlan(false);
                   }}
-                  className="text-slate-400 hover:text-slate-600 cursor-pointer"
+                  className="cursor-pointer text-slate-400 transition-colors hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
                 >
                   <X className="size-4" />
                 </button>
@@ -1279,7 +1279,7 @@ export default function BudgetPlan({ month, hideHeader = false }: { month: strin
                     setPlanValue(String(plan.base_income));
                     setEditingPlan(true);
                   }}
-                  className="text-slate-400 hover:text-blue-500 cursor-pointer"
+                  className="cursor-pointer text-slate-400 transition-colors hover:text-blue-500 dark:text-slate-500 dark:hover:text-blue-400"
                   title="Sửa tổng kế hoạch"
                 >
                   <Pencil className="size-4" />
@@ -1293,7 +1293,7 @@ export default function BudgetPlan({ month, hideHeader = false }: { month: strin
           </div>
         </div>
 
-        <div className="relative overflow-hidden rounded-xl bg-white dark:bg-[#1a2433] p-6 shadow-sm border border-slate-100 dark:border-slate-700">
+        <div className="relative overflow-hidden rounded-[24px] border border-slate-200/80 bg-white/90 p-6 shadow-sm backdrop-blur-sm dark:border-slate-700/80 dark:bg-[#111827]/85">
           <div className="absolute right-0 top-0 h-24 w-24 translate-x-8 -translate-y-8 rounded-full bg-red-50 dark:bg-red-500/10" />
           <div className="relative z-10 flex flex-col gap-1">
             <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Đã chi thực tế</span>
@@ -1307,7 +1307,7 @@ export default function BudgetPlan({ month, hideHeader = false }: { month: strin
           </div>
         </div>
 
-        <div className={`relative overflow-hidden rounded-xl p-6 shadow-sm border ${summary.total_remaining >= 0 ? 'bg-gradient-to-br from-emerald-600 to-emerald-800 text-white' : 'bg-gradient-to-br from-red-600 to-red-800 text-white'}`}>
+        <div className={`relative overflow-hidden rounded-[24px] border p-6 shadow-sm ${summary.total_remaining >= 0 ? 'border-emerald-500/40 bg-gradient-to-br from-emerald-600 to-emerald-800 text-white' : 'border-red-500/40 bg-gradient-to-br from-red-600 to-red-800 text-white'}`}>
           <div className="absolute right-0 top-0 h-32 w-32 translate-x-8 -translate-y-8 rounded-full bg-white/10" />
           <div className="relative z-10 flex flex-col gap-1">
             <span className="text-sm font-medium text-white/80">Còn lại</span>
@@ -1335,7 +1335,7 @@ export default function BudgetPlan({ month, hideHeader = false }: { month: strin
           : 0;
 
         return (
-          <div className="bg-gradient-to-r from-indigo-50 to-violet-50 dark:from-indigo-500/10 dark:to-violet-500/10 rounded-xl border border-indigo-200 dark:border-indigo-500/30 shadow-sm overflow-hidden">
+          <div className="overflow-hidden rounded-[24px] border border-indigo-200/80 bg-gradient-to-r from-indigo-50 to-violet-50 shadow-sm dark:border-indigo-500/30 dark:from-indigo-500/10 dark:to-violet-500/10">
             <div className="p-5">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
@@ -1416,7 +1416,7 @@ export default function BudgetPlan({ month, hideHeader = false }: { month: strin
                           )}
                         </div>
                         <div className="flex items-center gap-3 shrink-0">
-                          <span className="text-xs text-slate-400">{pct}%</span>
+                          <span className="text-xs text-slate-400 dark:text-slate-500">{pct}%</span>
                           <span className="font-bold text-slate-700 dark:text-slate-200">
                             {formatCurrency(fund.monthly_actual)} / {formatCurrency(fund.monthly_planned)}
                           </span>
