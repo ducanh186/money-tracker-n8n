@@ -4,22 +4,20 @@ import { useDashboardSummary } from '../lib/hooks';
 import { useDarkMode } from '../lib/hooks';
 import { formatMonthLabel } from '../lib/api';
 import { Loader2 } from 'lucide-react';
+import { getJar } from '../lib/jars';
+import type { JarKey } from '../lib/jars';
 
-// Per-jar key colors — bright, distinct, elegant on dark bg
-const JAR_COLORS: Record<string, string> = {
-  NEC:  '#38bdf8', // sky  — Thiết yếu
-  EDU:  '#a78bfa', // violet — Giáo dục
-  LTSS: '#34d399', // emerald — Tiết kiệm dài hạn
-  PLAY: '#fb923c', // orange — Hưởng thụ
-  FFA:  '#fbbf24', // amber — Tự do tài chính
-  GIVE: '#f472b6', // pink — Cho đi
-};
-
-// Fallback palette for custom jars
+// Fallback palette for custom jars (non-standard jar keys from API)
 const FALLBACK_PALETTE = [
   '#60a5fa', '#c084fc', '#4ade80', '#facc15',
   '#f87171', '#22d3ee', '#e879f9', '#a3e635',
 ];
+
+function jarColorFor(name: string, mode: 'light' | 'dark', index: number): string {
+  const jar = getJar(name as JarKey);
+  if (jar) return mode === 'dark' ? jar.hex_dark : jar.hex_light;
+  return FALLBACK_PALETTE[index % FALLBACK_PALETTE.length];
+}
 
 const formatShort = (value: number) => {
   if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
@@ -58,14 +56,14 @@ export function ExpenseStructureChart({ month }: { month: string }) {
         return {
           name,
           value: absValue,
-          color: JAR_COLORS[name] ?? FALLBACK_PALETTE[index % FALLBACK_PALETTE.length],
+          color: jarColorFor(name, isDark ? 'dark' : 'light', index),
           pct: 0, // filled after tot is known
         };
       });
     // fill pct now that tot is known
     items.forEach(item => { item.pct = tot > 0 ? Math.round((item.value / tot) * 100) : 0; });
     return { chartData: items, total: tot };
-  }, [summaryRes]);
+  }, [summaryRes, isDark]);
 
   const bgColor = isDark ? '#0f172a' : '#ffffff';
   const borderColor = isDark ? '#334155' : '#e2e8f0';

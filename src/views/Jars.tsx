@@ -1,9 +1,10 @@
 import { useState, useMemo } from 'react';
 import { Wallet, Loader2, AlertCircle, ChevronDown, ChevronUp, PiggyBank, Plus, X } from 'lucide-react';
 import { formatCurrency, formatSignedAmount } from '../lib/utils';
-import { useTransactions, useBudgetStatus, useFunds, useJars, useCreateFund } from '../lib/hooks';
+import { useTransactions, useBudgetStatus, useFunds, useJars, useCreateFund, useDarkMode } from '../lib/hooks';
 import type { Transaction, BudgetStatusJarMetric, Fund, CreateFundPayload } from '../lib/types';
 import JarStats from './JarStats';
+import { getJar } from '../lib/jars';
 
 /** Aggregate amounts per jar from a list of transactions. */
 interface JarSummary {
@@ -36,32 +37,27 @@ function aggregateByJar(transactions: Transaction[]): Map<string, Omit<JarSummar
   return map;
 }
 
-// Keyed by jar short-code (NEC, PLAY, etc.)
-const JAR_COLORS: Record<string, string> = {
-  NEC:  'bg-sky-500',
-  EDU:  'bg-violet-500',
-  LTSS: 'bg-emerald-500',
-  PLAY: 'bg-orange-500',
-  FFA:  'bg-amber-500',
-  GIVE: 'bg-pink-500',
-};
-
-const JAR_ICON_BG: Record<string, string> = {
-  NEC:  'bg-sky-100 text-sky-600 dark:bg-sky-900/30 dark:text-sky-400',
-  EDU:  'bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400',
-  LTSS: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400',
-  PLAY: 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400',
-  FFA:  'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400',
-  GIVE: 'bg-pink-100 text-pink-600 dark:bg-pink-900/30 dark:text-pink-400',
-};
-
-function getJarColor(key: string): string {
-  return JAR_COLORS[key] ?? 'bg-slate-500';
+// Jar progress bar fill — uses jars.ts hex via inline style
+function jarBarStyle(key: string, isDark: boolean): React.CSSProperties {
+  const jar = getJar(key);
+  if (!jar) return { backgroundColor: '#64748b' /* slate-500 fallback */ };
+  return { backgroundColor: isDark ? jar.hex_dark : jar.hex_light };
 }
 
-function getJarIconBg(key: string, selected: boolean): string {
-  if (selected) return 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400';
-  return JAR_ICON_BG[key] ?? 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400';
+// Jar icon container — uses jars.ts hex via inline style
+function jarIconStyle(key: string, selected: boolean, isDark: boolean): React.CSSProperties {
+  if (selected) {
+    return {
+      backgroundColor: isDark ? 'rgba(96, 143, 248, 0.18)' : '#dbe7fe',
+      color: isDark ? '#608ff8' : '#2453e6',
+    };
+  }
+  const jar = getJar(key);
+  if (!jar) return { backgroundColor: 'var(--color-surface-sunken)', color: 'var(--color-text-muted)' };
+  return {
+    backgroundColor: isDark ? jar.bg_dark : jar.bg_light,
+    color: isDark ? jar.hex_dark : jar.hex_light,
+  };
 }
 
 function CreateFundForm({ onClose }: { onClose: () => void }) {
@@ -210,6 +206,7 @@ export default function Jars({ month }: { month: string }) {
   const [selectedJar, setSelectedJar] = useState<JarSummary | null>(null);
   const [expandedFundsJar, setExpandedFundsJar] = useState<string | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const isDark = useDarkMode();
 
   // Fetch ALL transactions for the month (large pageSize to get everything)
   const { data, isPending, error } = useTransactions({ month, pageSize: 200, sort: 'datetime_desc' });
@@ -398,7 +395,7 @@ export default function Jars({ month }: { month: string }) {
                       {isSelected && <div className="absolute right-0 top-0 h-full w-1.5 bg-blue-500 rounded-l-sm rounded-r-xl"></div>}
                       
                       <div className="flex items-center gap-4 flex-1">
-                        <div className={`flex items-center justify-center rounded-lg shrink-0 size-12 ${getJarIconBg(jar.jar, isSelected)}`}>
+                        <div className="flex items-center justify-center rounded-lg shrink-0 size-12" style={jarIconStyle(jar.jar, isSelected, isDark)}>
                           <Wallet className="size-6" />
                         </div>
                         <div className="flex flex-col justify-center flex-1">
@@ -436,9 +433,13 @@ export default function Jars({ month }: { month: string }) {
                       <div className="shrink-0 flex flex-col items-end gap-1">
                         <div className="flex flex-col items-end gap-1">
                           <div className="w-24 h-2 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
-                            <div className={`h-full rounded-full ${
-                              metrics && metrics.available < 0 ? 'bg-red-500' : getJarColor(jar.jar)
-                            }`} style={{ width: `${Math.min(100, percent)}%` }}></div>
+                            <div
+                              className="h-full rounded-full"
+                              style={{
+                                ...(metrics && metrics.available < 0 ? { backgroundColor: '#ef4444' } : jarBarStyle(jar.jar, isDark)),
+                                width: `${Math.min(100, percent)}%`,
+                              }}
+                            ></div>
                           </div>
                           <span className={`text-xs font-medium ${isSelected ? 'text-blue-600' : 'text-slate-500 dark:text-slate-400'}`}>
                             {percent}% chi
@@ -485,7 +486,7 @@ export default function Jars({ month }: { month: string }) {
           {selectedJar && (
             <div className="w-full lg:w-[400px] bg-white dark:bg-[#1a2433] rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col p-6 h-fit sticky top-6">
               <div className="flex items-center gap-3 mb-6">
-                <div className={`size-10 rounded-full flex items-center justify-center ${getJarIconBg(selectedJar.jar, true)}`}>
+                <div className="size-10 rounded-full flex items-center justify-center" style={jarIconStyle(selectedJar.jar, true, isDark)}>
                   <Wallet className="size-5" />
                 </div>
                 <div>
@@ -560,7 +561,13 @@ export default function Jars({ month }: { month: string }) {
                     <span className="font-medium text-slate-900">{Math.round((selectedJar.expense / totalExpense) * 100)}%</span>
                   </div>
                   <div className="h-3 w-full bg-slate-200 rounded-full overflow-hidden">
-                    <div className={`h-full rounded-full ${getJarColor(selectedJar.jar)}`} style={{ width: `${Math.round((selectedJar.expense / totalExpense) * 100)}%` }}></div>
+                    <div
+                      className="h-full rounded-full"
+                      style={{
+                        ...jarBarStyle(selectedJar.jar, isDark),
+                        width: `${Math.round((selectedJar.expense / totalExpense) * 100)}%`,
+                      }}
+                    ></div>
                   </div>
                 </div>
               )}
