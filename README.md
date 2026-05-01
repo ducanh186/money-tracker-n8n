@@ -108,4 +108,4 @@ Services:
 
 - Root `README.md` is now the primary quick-start doc.
 - `mobile_app/README.md` contains mobile-specific commands.
-- Use `AGENTS.md` as the repo operating guide for implementation details.
+- For implementation details, trust the current code under `src/`, `api/`, `deploy/`, and `database/migrations/`.

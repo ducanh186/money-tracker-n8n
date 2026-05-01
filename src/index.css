@@ -5,7 +5,7 @@
 
 /* ============================================
    PHASE A — DESIGN TOKENS (Tailwind v4 @theme)
-   Per CLAUDE.UI.SPEC.md Section 1.
+  Shared design token layer for the redesigned UI.
    Generates utilities: bg-primary-{50..950}, bg-surface, text-primary, etc.
    ============================================ */
 

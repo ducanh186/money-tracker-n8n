@@ -26,6 +26,11 @@ tunel.bat
 rule_deploy.md
 al-admin_accessKeys.csv
 tracking_money*.json
+/AGENTS.md
+/CLAUDE.UI.md
+/CLAUDE.UI.SPEC.md
+/fix.md
+/SPENDING_MANAGEMENT_LOGIC.md
 
 # EC2 scheduler temp files
 deploy/ec2-scheduler/ec2-policy.json
