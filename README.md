@@ -1,20 +1,111 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Money Tracker n8n
 
-# Run and deploy your AI Studio app
+Full-stack personal finance app with a React web client, Laravel API, n8n automation, and a Flutter Android app.
 
-This contains everything you need to run your app locally.
+## Stack
 
-View your app in AI Studio: https://ai.studio/apps/11157eee-5494-4fc4-a7f6-af1551903be3
+- Web desktop: React 19 + TypeScript + Vite in `src/`
+- API: Laravel in `api/`
+- Mobile: Flutter Android app in `mobile_app/`
+- Automation: n8n in `n8n/`
+- Production runtime: Docker Compose in `deploy/`
 
-## Run Locally
+## Current Product Shape
 
-**Prerequisites:**  Node.js
+- Web uses `/api` and reads from the Laravel backend.
+- Backend combines Google Sheets as the read model with Eloquent tables for planning data.
+- Mobile app now uses the production API by default and includes working tabs for overview, transactions, jars, and quick actions.
+- Production hosts the web and API behind nginx and Cloudflare Tunnel.
 
+## Repository Layout
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+```text
+.
+|- src/                React web app
+|- api/                Laravel API
+|- mobile_app/         Flutter Android app
+|- deploy/             Production Docker Compose + nginx
+|- n8n/                Local n8n stack
+`- public/             Static public assets
+```
+
+## Local Development
+
+### Web
+
+```powershell
+npm install
+npm run dev
+```
+
+Useful commands:
+
+```powershell
+npm run build
+npm run lint
+npm run clean
+```
+
+### API
+
+```powershell
+Set-Location .\api
+composer install
+php artisan migrate
+php artisan serve
+```
+
+Useful commands:
+
+```powershell
+php artisan test
+php artisan route:list
+```
+
+### Mobile Android
+
+```powershell
+Set-Location .\mobile_app
+powershell -ExecutionPolicy Bypass -File .\build-debug-apk.ps1
+```
+
+Build against a custom API:
+
+```powershell
+Set-Location .\mobile_app
+powershell -ExecutionPolicy Bypass -File .\build-debug-apk.ps1 -ApiBaseUrl https://your-host.example/api
+```
+
+Build and install to an attached device:
+
+```powershell
+Set-Location .\mobile_app
+powershell -ExecutionPolicy Bypass -File .\build-debug-apk.ps1 -Install -DeviceId <adb-device-id>
+```
+
+For cloning the mobile shell into another product, start with `mobile_app/CLONE_BLUEPRINT.md`.
+
+## Key API Endpoints
+
+- `/api/health`
+- `/api/health/deep`
+- `/api/dashboard/summary?month=May-2026`
+- `/api/budget-status?month=May-2026`
+- `/api/transactions`
+
+## Production Stack
+
+Production source of truth is `deploy/docker-compose.yml`.
+
+Services:
+
+- `almoney_nginx`
+- `almoney_api`
+- `almoney_n8n`
+- `almoney_cloudflared`
+
+## Notes
+
+- Root `README.md` is now the primary quick-start doc.
+- `mobile_app/README.md` contains mobile-specific commands.
+- Use `AGENTS.md` as the repo operating guide for implementation details.

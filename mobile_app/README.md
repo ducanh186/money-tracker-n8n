@@ -9,7 +9,7 @@ Flutter Android client for the Money Tracker backend.
 - Data boundary: `MoneyRepository`
 - Network entrypoint: `ApiClient`
 - Default production API: `https://almoneytracker.live/api`
-- Current UI status: overview is wired to the live API, other tabs are placeholders
+- Current UI status: overview, transactions, jars, and more tabs render app data or actions from the current mobile shell
 
 ## Docker Or Clone
 

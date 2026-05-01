@@ -5,6 +5,8 @@ coverage/
 .DS_Store
 .claude/
 .claudeignore
+.copilot-tmp/
+.sunlint-cache/
 *.log
 .env*
 !.env.example
