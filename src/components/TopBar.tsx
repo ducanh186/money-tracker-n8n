@@ -17,6 +17,12 @@ export default function TopBar({ currentView, setCurrentView, selectedMonth, onM
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const months = getRecentMonths(12);
   const { data: budgetStatus } = useBudgetStatus(selectedMonth);
+  const expectedIncome = budgetStatus?.expected_income_vnd ?? budgetStatus?.income ?? 0;
+  const actualIncome = budgetStatus?.actual_income_vnd ?? budgetStatus?.sheet_income ?? 0;
+  const accountBalance = budgetStatus?.account_balance_vnd ?? budgetStatus?.ending_balance_vnd ?? 0;
+  const availableToSpend = budgetStatus?.available_to_spend_vnd ?? budgetStatus?.available_to_spend ?? 0;
+  const leftToBudget = budgetStatus?.left_to_budget_vnd ?? budgetStatus?.unassigned ?? 0;
+  const hasBudgetPlan = budgetStatus?.has_period ?? true;
 
   const navItems = [
     { id: 'overview', label: 'Tổng quan', icon: PieChart },
@@ -35,9 +41,11 @@ export default function TopBar({ currentView, setCurrentView, selectedMonth, onM
           <div className="flex items-center gap-5">
             {/* Logo */}
             <div className="flex items-center gap-2.5 shrink-0">
-              <div className="bg-blue-600 text-white rounded-lg size-8 flex items-center justify-center font-bold text-sm">
-                💰
-              </div>
+              <img
+                src="/assets/money-tracker-logo.png"
+                alt="Money Tracker"
+                className="size-8 rounded-lg object-cover"
+              />
               <span className="hidden xl:block text-sm font-semibold text-slate-900 dark:text-white">
                 Money Tracker
               </span>
@@ -161,8 +169,16 @@ export default function TopBar({ currentView, setCurrentView, selectedMonth, onM
         <div className="border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-[#0c1222]">
           <div className="mx-auto flex max-w-[1440px] items-center gap-4 overflow-x-auto px-4 py-1.5 text-xs md:gap-6 md:px-6 xl:px-8">
             <div className="flex items-center gap-1.5 shrink-0">
-              <span className="text-slate-500 dark:text-slate-400">Thu nhập:</span>
-              <span className="font-semibold text-slate-700 dark:text-slate-200">{formatCurrency(budgetStatus.income)}</span>
+              <span className="text-slate-500 dark:text-slate-400">Số dư:</span>
+              <span className="font-semibold text-slate-700 dark:text-slate-200">{formatCurrency(accountBalance)}</span>
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="text-slate-500 dark:text-slate-400">Dự kiến:</span>
+              <span className="font-semibold text-slate-700 dark:text-slate-200">{formatCurrency(expectedIncome)}</span>
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="text-slate-500 dark:text-slate-400">Thực thu:</span>
+              <span className="font-semibold text-emerald-600 dark:text-emerald-400">{formatCurrency(actualIncome)}</span>
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
               <span className="text-slate-500 dark:text-slate-400">Đã phân bổ:</span>
@@ -172,22 +188,34 @@ export default function TopBar({ currentView, setCurrentView, selectedMonth, onM
               <span className="text-slate-500 dark:text-slate-400">Chưa phân bổ:</span>
               <span className={cn(
                 "font-semibold",
-                budgetStatus.unassigned === 0
+                leftToBudget === 0
                   ? "text-green-600 dark:text-green-400"
                   : "text-red-600 dark:text-red-400"
               )}>
-                {formatCurrency(budgetStatus.unassigned)}
+                {formatCurrency(leftToBudget)}
               </span>
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
               <span className="text-slate-500 dark:text-slate-400">Còn chi được:</span>
               <span className={cn(
                 'font-semibold',
-                budgetStatus.available_to_spend >= 0
+                availableToSpend >= 0
                   ? 'text-emerald-600 dark:text-emerald-400'
                   : 'text-red-600 dark:text-red-400'
-              )}>{formatCurrency(budgetStatus.available_to_spend)}</span>
+              )}>{formatCurrency(availableToSpend)}</span>
             </div>
+            {!hasBudgetPlan && (
+              <div className="flex items-center gap-1.5 shrink-0 text-amber-600 dark:text-amber-400">
+                <AlertTriangle className="size-3.5" />
+                <span className="font-medium">Chưa lập kế hoạch tháng này</span>
+              </div>
+            )}
+            {budgetStatus.reserved_vnd != null && budgetStatus.reserved_vnd > 0 && (
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span className="text-slate-500 dark:text-slate-400">Giữ trước:</span>
+                <span className="font-semibold text-indigo-600 dark:text-indigo-400">{formatCurrency(budgetStatus.reserved_vnd)}</span>
+              </div>
+            )}
             {budgetStatus.overspent_jars && budgetStatus.overspent_jars.length > 0 && (
               <div className="flex items-center gap-1.5 shrink-0 text-amber-600 dark:text-amber-400">
                 <AlertTriangle className="size-3.5" />

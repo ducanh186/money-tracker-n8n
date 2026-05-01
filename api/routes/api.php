@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AccountController;
+use App\Http\Controllers\Api\BalanceController;
 use App\Http\Controllers\Api\BudgetLineController;
 use App\Http\Controllers\Api\BudgetPeriodController;
 use App\Http\Controllers\Api\BudgetPlanController;
@@ -10,6 +11,7 @@ use App\Http\Controllers\Api\DebtController;
 use App\Http\Controllers\Api\FundController;
 use App\Http\Controllers\Api\GoalController;
 use App\Http\Controllers\Api\JarController;
+use App\Http\Controllers\Api\MonthlySummaryController;
 use App\Http\Controllers\Api\RecurringBillController;
 use App\Http\Controllers\Api\ScenarioController;
 use App\Http\Controllers\Api\TransactionsController;
@@ -124,6 +126,9 @@ Route::prefix('transactions')->group(function () {
 });
 
 Route::get('/budget-plan', BudgetPlanController::class);
+Route::get('/balances', [BalanceController::class, 'month']);
+Route::get('/balances/as-of', [BalanceController::class, 'asOf']);
+Route::get('/monthly-summary', MonthlySummaryController::class);
 
 // ══════════════════════════════════════════════════════════════════════
 // Dashboard summary + Sync (cache-first read model)

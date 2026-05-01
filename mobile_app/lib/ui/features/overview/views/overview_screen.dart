@@ -127,16 +127,21 @@ class _HeroCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final status = data.budgetStatus;
-    final savingsRate = status.income > 0
-        ? (((status.income - status.totalSpent) / status.income) * 100).round()
+    final expectedIncome = status.expectedIncomeVnd;
+    final actualIncome = status.actualIncomeVnd;
+    final savingsBase = actualIncome > 0 ? actualIncome : expectedIncome;
+    final savingsRate = expectedIncome > 0
+        ? (((savingsBase - status.totalSpent) / expectedIncome) * 100).round()
         : 0;
     final bigValue = switch (mode) {
-      _HeroMode.remaining => status.availableToSpend,
+      _HeroMode.remaining =>
+        status.hasPeriod ? status.availableToSpend : status.accountBalanceVnd,
       _HeroMode.spent => status.totalSpent,
       _HeroMode.savings => savingsRate,
     };
     final label = switch (mode) {
-      _HeroMode.remaining => 'Còn chi được',
+      _HeroMode.remaining =>
+        status.hasPeriod ? 'Còn chi được' : 'Số dư tài khoản',
       _HeroMode.spent => 'Đã chi tháng này',
       _HeroMode.savings => 'Tỷ lệ tiết kiệm',
     };
@@ -173,7 +178,9 @@ class _HeroCard extends StatelessWidget {
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                   fontSize: 38,
                   color:
-                      mode == _HeroMode.remaining && status.availableToSpend < 0
+                      mode == _HeroMode.remaining &&
+                          status.hasPeriod &&
+                          status.availableToSpend < 0
                       ? Colors.red.shade600
                       : Theme.of(context).colorScheme.onSurface,
                 ),
@@ -181,7 +188,9 @@ class _HeroCard extends StatelessWidget {
             ),
                 const SizedBox(height: 10),
             Text(
-                  'Thu ${formatCompactCurrency(status.income)} · Chi ${formatCompactCurrency(status.totalSpent)}',
+              status.hasPeriod
+                  ? 'Dự kiến ${formatCompactCurrency(expectedIncome)} · Thực thu ${formatCompactCurrency(actualIncome)} · Chi ${formatCompactCurrency(status.totalSpent)}'
+                  : 'Chưa lập kế hoạch tháng này · Thực thu ${formatCompactCurrency(actualIncome)} · Chi ${formatCompactCurrency(status.totalSpent)}',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),

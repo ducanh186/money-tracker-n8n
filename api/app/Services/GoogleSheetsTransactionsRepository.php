@@ -84,6 +84,14 @@ class GoogleSheetsTransactionsRepository implements TransactionsRepositoryInterf
         });
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    public function all(): array
+    {
+        return $this->fetchAllDataRows();
+    }
+
     // ------------------------------------------------------------------
     // Google Sheets client setup
     // ------------------------------------------------------------------

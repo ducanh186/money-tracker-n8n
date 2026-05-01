@@ -62,7 +62,13 @@ const txSignedAmount = (amount: number, flow: string | null): number => {
   return 0;
 };
 
-export default function Overview({ month }: { month: string }) {
+export default function Overview({
+  month,
+  hideDesktopAnalytics = false,
+}: {
+  month: string;
+  hideDesktopAnalytics?: boolean;
+}) {
   // Lightweight summary endpoint — no full transaction list
   const { data: summaryRes, isPending, error } = useDashboardSummary(month);
   const { data: syncRes } = useSyncStatus();
@@ -148,14 +154,16 @@ export default function Overview({ month }: { month: string }) {
       <JarMiniGrid month={month} />
 
       {/* Charts */}
-      <div className="hidden lg:grid grid-cols-1 lg:grid-cols-5 gap-4">
-        <div className="lg:col-span-3">
-          <IncomeExpenseChart currentMonth={month} />
+      {!hideDesktopAnalytics && (
+        <div className="hidden lg:grid grid-cols-1 lg:grid-cols-5 gap-4">
+          <div className="min-w-0 lg:col-span-3">
+            <IncomeExpenseChart currentMonth={month} />
+          </div>
+          <div className="min-w-0 lg:col-span-2">
+            <ExpenseStructureChart month={month} />
+          </div>
         </div>
-        <div className="lg:col-span-2">
-          <ExpenseStructureChart month={month} />
-        </div>
-      </div>
+      )}
 
       {/* Investment Summary */}
       {investmentSummary && plannedMonthlyInvestment > 0 && (
@@ -325,7 +333,7 @@ export default function Overview({ month }: { month: string }) {
         )}
       </div>
       </div>
-      <OverviewSidebar month={month} />
+      {!hideDesktopAnalytics && <OverviewSidebar month={month} />}
     </div>
   );
 }

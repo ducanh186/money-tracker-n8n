@@ -20,6 +20,8 @@ import {
   fetchJars,
   updateJar,
   fetchBudgetStatus,
+  fetchBalances,
+  fetchMonthlySummary,
   fetchFunds,
   createFund,
   updateFund,
@@ -159,6 +161,8 @@ export function useUpdateBudgetSetting() {
       queryClient.invalidateQueries({ queryKey: ['budget-setting', variables.month] });
       queryClient.invalidateQueries({ queryKey: ['budget-plan'] });
       queryClient.invalidateQueries({ queryKey: ['budget-status'] });
+      queryClient.invalidateQueries({ queryKey: ['monthly-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['balances'] });
     },
   });
 }
@@ -192,6 +196,9 @@ export function useTriggerSync() {
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       queryClient.invalidateQueries({ queryKey: ['budget-plan'] });
       queryClient.invalidateQueries({ queryKey: ['sync-status'] });
+      queryClient.invalidateQueries({ queryKey: ['budget-status'] });
+      queryClient.invalidateQueries({ queryKey: ['monthly-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['balances'] });
     },
   });
 }
@@ -208,6 +215,9 @@ export function useInvalidateAfterWrite() {
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
       queryClient.invalidateQueries({ queryKey: ['budget-plan'] });
+      queryClient.invalidateQueries({ queryKey: ['budget-status'] });
+      queryClient.invalidateQueries({ queryKey: ['monthly-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['balances'] });
     },
     /** Invalidate a specific query family */
     invalidate: (key: string) => {
@@ -391,6 +401,32 @@ export function useBudgetStatus(month: string) {
   return useQuery({
     queryKey: ['budget-status', month],
     queryFn: () => fetchBudgetStatus(month),
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+    refetchInterval: 60_000,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: false,
+    retry: MAX_RETRIES,
+  });
+}
+
+export function useBalances(month: string) {
+  return useQuery({
+    queryKey: ['balances', month],
+    queryFn: () => fetchBalances(month),
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+    refetchInterval: 60_000,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: false,
+    retry: MAX_RETRIES,
+  });
+}
+
+export function useMonthlySummary(month: string) {
+  return useQuery({
+    queryKey: ['monthly-summary', month],
+    queryFn: () => fetchMonthlySummary(month),
     staleTime: 60_000,
     gcTime: 5 * 60_000,
     refetchInterval: 60_000,

@@ -236,6 +236,7 @@ class PlannedExpenseAutoCleanupService
                     ->update([
                         'committed_amount' => (int) BudgetLine::query()
                             ->where('jar_allocation_id', $allocationId)
+                            ->whereIn('type', BudgetLine::RESERVED_TYPES)
                             ->sum('planned_amount'),
                     ]);
             }

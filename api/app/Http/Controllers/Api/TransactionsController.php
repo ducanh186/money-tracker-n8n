@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Contracts\TransactionsRepositoryInterface;
 use App\Http\Resources\TransactionResource;
 use App\Models\Jar;
+use App\Support\MoneyAmount;
 use App\Support\TransactionFilters;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -203,9 +204,8 @@ class TransactionsController extends Controller
             if (TransactionFilters::isLoan($row)) {
                 continue;
             }
-            $amountK   = TransactionResource::parseNumeric($row['amount'] ?? null);
-            $amountVnd = abs($amountK) * 1000;
-            $flow      = mb_strtolower(trim($row['flow'] ?? ''));
+            $amountVnd = MoneyAmount::amountAbsVnd($row);
+            $flow      = MoneyAmount::direction($row);
 
             if ($flow === 'income') {
                 $incomeVnd += $amountVnd;
@@ -222,7 +222,7 @@ class TransactionsController extends Controller
             $dt = $row['datetime'] ?? '';
             if ($dt > $latestDatetime) {
                 $latestDatetime   = $dt;
-                $endingBalanceVnd = TransactionResource::parseNumeric($row['balance'] ?? null) * 1000;
+                $endingBalanceVnd = MoneyAmount::balanceVnd($row['balance'] ?? null);
             }
         }
 
@@ -271,7 +271,15 @@ class TransactionsController extends Controller
 
         $map = [];
 
-        foreach (Jar::query()->select(['key', 'label'])->get() as $jar) {
+        try {
+            $jars = Jar::query()->select(['key', 'label'])->get();
+        } catch (\Throwable) {
+            $this->jarAliasMap = [];
+
+            return $this->jarAliasMap;
+        }
+
+        foreach ($jars as $jar) {
             $tokens = array_values(array_filter([
                 $this->normalizeToken($jar->key),
                 $this->normalizeToken($jar->label),
@@ -315,10 +323,7 @@ class TransactionsController extends Controller
         $allRows = Cache::get('sheets_all_rows');
 
         if ($allRows === null) {
-            // Force-populate the cache by fetching a dummy month
-            // (the underlying fetchAllDataRows caches everything).
-            $this->repository->getByMonth('__force_cache__');
-            $allRows = Cache::get('sheets_all_rows') ?? [];
+            $allRows = $this->repository->all();
         }
 
         foreach ($allRows as $row) {

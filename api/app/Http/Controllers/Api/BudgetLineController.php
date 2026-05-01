@@ -137,7 +137,9 @@ class BudgetLineController extends Controller
     private function syncJarAllocationMetrics(JarAllocation $allocation): void
     {
         $allocation->update([
-            'committed_amount' => (int) $allocation->budgetLines()->sum('planned_amount'),
+            'committed_amount' => (int) $allocation->budgetLines()
+                ->whereIn('type', BudgetLine::RESERVED_TYPES)
+                ->sum('planned_amount'),
         ]);
     }
 

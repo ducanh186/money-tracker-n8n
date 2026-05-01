@@ -11,4 +11,11 @@ interface TransactionsRepositoryInterface
      * @return array<int, array<string, mixed>>
      */
     public function getByMonth(string $month): array;
+
+    /**
+     * Fetch every data row from the sheet.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function all(): array;
 }

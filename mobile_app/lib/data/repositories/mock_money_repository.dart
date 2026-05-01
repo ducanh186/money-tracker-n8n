@@ -74,16 +74,26 @@ class MockMoneyRepository implements MoneyRepository {
       incomeVnd: 18000000,
       expenseVnd: totalSpent,
       netVnd: 18000000 - totalSpent,
+      accountBalanceVnd: 12000000,
+      endingBalanceVnd: 12000000,
       recentTransactions: transactions,
     );
 
     final budgetStatus = BudgetStatus(
       month: month,
       income: 18000000,
+      expectedIncomeVnd: 18000000,
+      actualIncomeVnd: 18000000,
+      actualExpenseVnd: totalSpent,
       assigned: 18000000,
       unassigned: 0,
+      reservedVnd: 0,
       totalSpent: totalSpent,
       availableToSpend: 18000000 - totalSpent,
+      accountBalanceVnd: 12000000,
+      endingBalanceVnd: 12000000,
+      hasPeriod: true,
+      periodStatus: 'open',
       planningInsightsEnabled: true,
       jars: jars,
     );

@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Contracts\TransactionsRepositoryInterface;
-use App\Models\BudgetSetting;
 use App\Models\Jar;
+use App\Services\MonthlyBudgetSummaryService;
+use App\Support\BudgetMonth;
+use App\Support\MoneyAmount;
 use App\Support\TransactionFilters;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -15,6 +17,7 @@ class BudgetPlanController extends Controller
 {
     public function __construct(
         private readonly TransactionsRepositoryInterface $repository,
+        private readonly MonthlyBudgetSummaryService $monthlySummaryService,
     ) {}
 
     /**
@@ -51,7 +54,11 @@ class BudgetPlanController extends Controller
 
         // Fetch all transactions for the month
         try {
-            $rows = $this->repository->getByMonth($month);
+            $budgetMonth = BudgetMonth::parse($month);
+            $rows = array_values(array_filter(
+                $this->repository->all(),
+                fn (array $row) => MoneyAmount::rowBelongsToMonth($row, $budgetMonth)
+            ));
         } catch (\Throwable $e) {
             return response()->json([
                 'error'   => 'sheets_error',
@@ -67,43 +74,34 @@ class BudgetPlanController extends Controller
         foreach ($rows as $row) {
             if (TransactionFilters::isLoan($row)) {
                 $cat = trim((string)($row['category'] ?? ''));
-                $amtVnd = abs($this->parseNumeric($row['amount'] ?? null)) * 1000;
+                $amtVnd = MoneyAmount::amountAbsVnd($row);
                 if ($cat === 'Loan In')        $loanSummary['in']        += $amtVnd;
                 elseif ($cat === 'Loan Repayment') $loanSummary['repayment'] += $amtVnd;
                 elseif ($cat === 'Loan Out')   $loanSummary['out']       += $amtVnd;
                 elseif ($cat === 'Loan Recovery') $loanSummary['recovery']  += $amtVnd;
                 continue;
             }
-            $flow = mb_strtolower(trim($row['flow'] ?? ''));
+            $flow = MoneyAmount::direction($row);
             if ($flow === 'income') {
-                $amountK   = $this->parseNumeric($row['amount'] ?? null);
-                $sheetIncome += abs($amountK) * 1000;
+                $sheetIncome += MoneyAmount::amountAbsVnd($row);
             }
             if ($flow === 'expense') {
                 $jarKey = trim($row['jar'] ?? '');
                 if ($jarKey === '') {
                     $jarKey = 'Không phân loại';
                 }
-                $amountK   = $this->parseNumeric($row['amount'] ?? null);
-                $amountVnd = abs($amountK) * 1000;
+                $amountVnd = MoneyAmount::amountAbsVnd($row);
                 $actualByJar[$jarKey] = ($actualByJar[$jarKey] ?? 0) + $amountVnd;
             }
         }
         $loanSummary['net_owed'] = ($loanSummary['in'] - $loanSummary['repayment'])
                                  - ($loanSummary['out'] - $loanSummary['recovery']);
 
-        // base_income: query param > DB setting > sheet income > config fallback
+        // expected income: query param > period/settings/carry-forward/config.
         if ($overrideIncome !== null) {
             $baseIncome = (int) $overrideIncome;
         } else {
-            $dbSetting = BudgetSetting::where('month', $month)->first();
-            if ($dbSetting && $dbSetting->base_income_override !== null) {
-                $baseIncome = (int) $dbSetting->base_income_override;
-            } elseif ($sheetIncome > 0) {
-                $baseIncome = $sheetIncome;
-            } else {
-                $baseIncome = (int) config('budget_plan.base_income', 13_600_000);
-            }
+            $baseIncome = $this->monthlySummaryService->expectedIncomeForMonth($month);
         }
 
         // Get jar percentages from DB (editable)
@@ -149,6 +147,8 @@ class BudgetPlanController extends Controller
                 'month'         => $month,
                 'base_income'   => $baseIncome,
                 'sheet_income'  => $sheetIncome,
+                'expected_income_vnd' => $baseIncome,
+                'actual_income_vnd' => $sheetIncome,
                 'jars'          => $jars,
                 'summary'       => [
                     'total_planned'   => $totalPlanned,
