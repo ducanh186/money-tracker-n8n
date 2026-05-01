@@ -47,7 +47,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      find.text('Danh sách giao dịch sẽ được nối API ở bước tiếp theo.'),
+      find.text('Các giao dịch gần nhất lấy trực tiếp từ API hiện tại.'),
       findsOneWidget,
     );
   });

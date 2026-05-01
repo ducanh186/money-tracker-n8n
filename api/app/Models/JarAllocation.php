@@ -70,7 +70,8 @@ class JarAllocation extends Model
     }
 
     /**
-     * Available = Planned + Rollover - Committed - Spent
+     * Available = Planned + Rollover - Reserved - Spent.
+     * committed_amount is kept for compatibility and now stores reserved lines.
      */
     public function getAvailableAttribute(): int
     {

@@ -112,20 +112,13 @@ class _MoneyTopBar extends StatelessWidget implements PreferredSizeWidget {
       titleSpacing: 16,
       title: Row(
         children: [
-          Container(
-            width: 34,
-            height: 34,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primary,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Text(
-              '₫',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w800,
-              ),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.asset(
+              'assets/branding/money_tracker_logo.png',
+              width: 34,
+              height: 34,
+              fit: BoxFit.cover,
             ),
           ),
           const SizedBox(width: 10),
@@ -387,9 +380,16 @@ class _JarsTab extends StatelessWidget {
               ),
               _StatCard(
                 icon: Icons.pie_chart_outline_rounded,
-                label: 'Còn chi được',
-                value: formatCompactCurrency(data.budgetStatus.availableToSpend),
-                tone: data.budgetStatus.availableToSpend >= 0
+                label: data.budgetStatus.hasPeriod ? 'Còn chi được' : 'Số dư',
+                value: formatCompactCurrency(
+                  data.budgetStatus.hasPeriod
+                      ? data.budgetStatus.availableToSpend
+                      : data.budgetStatus.accountBalanceVnd,
+                ),
+                tone: (data.budgetStatus.hasPeriod
+                            ? data.budgetStatus.availableToSpend
+                            : data.budgetStatus.accountBalanceVnd) >=
+                        0
                     ? Colors.green
                     : Colors.red,
               ),

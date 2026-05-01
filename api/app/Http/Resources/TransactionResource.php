@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Support\MoneyAmount;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -16,30 +17,27 @@ class TransactionResource extends JsonResource
     {
         $row = $this->resource; // associative array from repository
 
-        $amountK = self::parseNumeric($row['amount'] ?? null);
-        $amountVnd = abs($amountK) * 1000;
+        $amountRaw = MoneyAmount::amountRaw($row);
+        $amountSignedVnd = MoneyAmount::amountSignedVnd($row);
+        $amountAbsVnd = MoneyAmount::amountAbsVnd($row);
+        $direction = MoneyAmount::direction($row);
+        $signedAmountVnd = MoneyAmount::signedForBudget($row);
 
-        $flow = mb_strtolower(trim($row['flow'] ?? ''));
-
-        $signedAmountVnd = match ($flow) {
-            'expense'  => -$amountVnd,
-            'income'   => $amountVnd,
-            'transfer' => 0,
-            default    => 0,
-        };
-
-        $balanceRaw = self::parseNumeric($row['balance'] ?? null);
-        // balance is stored in "k" (thousands) just like amount.
-        $balanceVnd = $balanceRaw * 1000;
+        $balanceRaw = MoneyAmount::parseNumeric($row['balance'] ?? null);
+        $balanceVnd = MoneyAmount::balanceVnd($row['balance'] ?? null);
 
         $datetimeIso = self::toIso8601($row['datetime'] ?? null);
 
         return [
             'date'              => $row['date'] ?? null,
             'flow'              => $row['flow'] ?? null,
-            'amount_k'          => $amountK,
-            'amount_vnd'        => $amountVnd,
+            'amount_k'          => $amountRaw,
+            'amount_raw'        => $amountRaw,
+            'amount_vnd'        => $amountAbsVnd,
+            'amount_vnd_signed' => $amountSignedVnd,
+            'amount_vnd_abs'    => $amountAbsVnd,
             'signed_amount_vnd' => $signedAmountVnd,
+            'direction'         => $direction,
             'currency'          => $row['currency'] ?? null,
             'category'          => $row['category'] ?? null,
             'description'       => $row['description'] ?? null,
@@ -66,11 +64,7 @@ class TransactionResource extends JsonResource
      */
     public static function parseNumeric(mixed $value): int
     {
-        if (is_numeric($value)) {
-            return (int) $value;
-        }
-
-        return 0;
+        return MoneyAmount::parseNumeric($value);
     }
 
     /**
@@ -94,15 +88,6 @@ class TransactionResource extends JsonResource
      */
     public static function signedAmountVnd(array $row): int
     {
-        $amountK = self::parseNumeric($row['amount'] ?? null);
-        $amountVnd = abs($amountK) * 1000;
-        $flow = mb_strtolower(trim($row['flow'] ?? ''));
-
-        return match ($flow) {
-            'expense'  => -$amountVnd,
-            'income'   => $amountVnd,
-            'transfer' => 0,
-            default    => 0,
-        };
+        return MoneyAmount::signedForBudget($row);
     }
 }

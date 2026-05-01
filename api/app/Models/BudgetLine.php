@@ -10,6 +10,8 @@ class BudgetLine extends Model
 {
     use HasFactory;
 
+    public const RESERVED_TYPES = ['goal', 'bill', 'debt', 'sinking_fund', 'investment'];
+
     protected $fillable = [
         'jar_allocation_id',
         'name',
@@ -71,5 +73,10 @@ class BudgetLine extends Model
             return 0;
         }
         return round(($this->actual_amount / $this->planned_amount) * 100, 1);
+    }
+
+    public static function isReservedType(?string $type): bool
+    {
+        return in_array($type, self::RESERVED_TYPES, true);
     }
 }

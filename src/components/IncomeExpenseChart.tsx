@@ -224,7 +224,7 @@ export function IncomeExpenseChart({ currentMonth }: { currentMonth: string }) {
   }, [isMonthly, months, range, ...monthQueries.map(q => q.data), ...txQueries.map(q => q.data)]);
 
   return (
-    <div className="bg-white dark:bg-[#1a2433] rounded-xl p-6 border border-slate-100 dark:border-slate-800 shadow-sm h-[400px] flex flex-col">
+    <div className="bg-white dark:bg-[#1a2433] rounded-xl p-6 border border-slate-100 dark:border-slate-800 shadow-sm h-[400px] min-w-0 flex flex-col">
       <div className="flex items-center justify-between mb-4 gap-2 flex-wrap">
         <h3 className="text-slate-900 dark:text-white font-semibold text-lg whitespace-nowrap">
           Thu nhập vs Chi tiêu
@@ -270,7 +270,7 @@ export function IncomeExpenseChart({ currentMonth }: { currentMonth: string }) {
           <Loader2 className="size-6 text-blue-500 animate-spin" />
         </div>
       ) : (
-        <div className="flex-1 w-full">
+        <div className="min-h-0 flex-1 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#334155' : '#e2e8f0'} vertical={false} />

@@ -9,6 +9,10 @@ class Transaction {
     required this.time,
     required this.flow,
     required this.amountVnd,
+    this.amountRaw = 0,
+    this.amountVndSigned = 0,
+    this.amountVndAbs = 0,
+    this.direction,
     required this.description,
     required this.category,
     required this.jar,
@@ -19,6 +23,10 @@ class Transaction {
   final String? time;
   final TransactionFlow? flow;
   final int amountVnd;
+  final int amountRaw;
+  final int amountVndSigned;
+  final int amountVndAbs;
+  final String? direction;
   final String? description;
   final String? category;
   final String? jar;
@@ -30,6 +38,10 @@ class Transaction {
       time: json['time'] as String?,
       flow: _flowFromString(json['flow'] as String?),
       amountVnd: _intFromJson(json['amount_vnd']),
+      amountRaw: _intFromJson(json['amount_raw']),
+      amountVndSigned: _intFromJson(json['amount_vnd_signed']),
+      amountVndAbs: _intFromJson(json['amount_vnd_abs']),
+      direction: json['direction'] as String?,
       description: json['description'] as String?,
       category: json['category'] as String?,
       jar: json['jar'] as String?,
@@ -43,6 +55,8 @@ class DashboardSummary {
     required this.incomeVnd,
     required this.expenseVnd,
     required this.netVnd,
+    required this.accountBalanceVnd,
+    required this.endingBalanceVnd,
     required this.recentTransactions,
   });
 
@@ -50,6 +64,8 @@ class DashboardSummary {
   final int incomeVnd;
   final int expenseVnd;
   final int netVnd;
+  final int accountBalanceVnd;
+  final int endingBalanceVnd;
   final List<Transaction> recentTransactions;
 
   factory DashboardSummary.fromJson(Map<String, Object?> json) {
@@ -64,6 +80,8 @@ class DashboardSummary {
       incomeVnd: _intFromJson(totals['income_vnd']),
       expenseVnd: _intFromJson(totals['expense_vnd']),
       netVnd: _intFromJson(totals['net_vnd']),
+      accountBalanceVnd: _intFromJson(totals['account_balance_vnd']),
+      endingBalanceVnd: _intFromJson(totals['ending_balance_vnd']),
       recentTransactions: recent,
     );
   }
@@ -73,20 +91,36 @@ class BudgetStatus {
   const BudgetStatus({
     required this.month,
     required this.income,
+    required this.expectedIncomeVnd,
+    required this.actualIncomeVnd,
+    required this.actualExpenseVnd,
     required this.assigned,
     required this.unassigned,
+    required this.reservedVnd,
     required this.totalSpent,
     required this.availableToSpend,
+    required this.accountBalanceVnd,
+    required this.endingBalanceVnd,
+    required this.hasPeriod,
+    required this.periodStatus,
     required this.planningInsightsEnabled,
     required this.jars,
   });
 
   final String month;
   final int income;
+  final int expectedIncomeVnd;
+  final int actualIncomeVnd;
+  final int actualExpenseVnd;
   final int assigned;
   final int unassigned;
+  final int reservedVnd;
   final int totalSpent;
   final int availableToSpend;
+  final int accountBalanceVnd;
+  final int endingBalanceVnd;
+  final bool hasPeriod;
+  final String periodStatus;
   final bool planningInsightsEnabled;
   final List<JarMetric> jars;
 
@@ -99,10 +133,18 @@ class BudgetStatus {
     return BudgetStatus(
       month: json['month'] as String? ?? '',
       income: _intFromJson(json['income']),
+      expectedIncomeVnd: _intFromJson(json['expected_income_vnd'] ?? json['income']),
+      actualIncomeVnd: _intFromJson(json['actual_income_vnd'] ?? json['sheet_income']),
+      actualExpenseVnd: _intFromJson(json['actual_expense_vnd'] ?? json['total_spent']),
       assigned: _intFromJson(json['assigned']),
-      unassigned: _intFromJson(json['unassigned']),
-      totalSpent: _intFromJson(json['total_spent']),
-      availableToSpend: _intFromJson(json['available_to_spend']),
+      unassigned: _intFromJson(json['left_to_budget_vnd'] ?? json['unassigned']),
+      reservedVnd: _intFromJson(json['reserved_vnd'] ?? json['committed']),
+      totalSpent: _intFromJson(json['actual_expense_vnd'] ?? json['total_spent']),
+      availableToSpend: _intFromJson(json['available_to_spend_vnd'] ?? json['available_to_spend']),
+      accountBalanceVnd: _intFromJson(json['account_balance_vnd'] ?? json['ending_balance_vnd']),
+      endingBalanceVnd: _intFromJson(json['ending_balance_vnd']),
+      hasPeriod: json['has_period'] != false,
+      periodStatus: json['period_status'] as String? ?? '',
       planningInsightsEnabled: json['planning_insights_enabled'] == true,
       jars: jars,
     );
@@ -115,6 +157,7 @@ class JarMetric {
     required this.label,
     required this.planned,
     required this.spent,
+    this.reserved = 0,
     required this.available,
     required this.color,
     required this.icon,
@@ -124,6 +167,7 @@ class JarMetric {
   final String label;
   final int planned;
   final int spent;
+  final int reserved;
   final int available;
   final Color color;
   final IconData icon;
@@ -140,7 +184,7 @@ class JarMetric {
     final key = json['key'] as String? ?? '';
     final planned = _intFromJson(json['planned']);
     final spent = _intFromJson(json['spent']);
-    final available = _intFromJson(json['available']);
+    final available = _intFromJson(json['available_vnd'] ?? json['available']);
     final definition = jarDefinitions[key] ?? fallbackJarDefinition;
 
     return JarMetric(
@@ -148,6 +192,7 @@ class JarMetric {
       label: json['label'] as String? ?? definition.label,
       planned: planned,
       spent: spent,
+      reserved: _intFromJson(json['reserved_vnd'] ?? json['reserved'] ?? json['committed']),
       available: available,
       color: definition.color,
       icon: definition.icon,

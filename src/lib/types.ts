@@ -5,10 +5,14 @@
 /** A single transaction row as returned by GET /api/transactions */
 export interface Transaction {
   date: string | null;
-  flow: 'income' | 'expense' | 'transfer' | null;
+  flow: 'income' | 'expense' | 'transfer' | string | null;
   amount_k: number;
+  amount_raw: number;
   amount_vnd: number;
+  amount_vnd_signed: number;
+  amount_vnd_abs: number;
   signed_amount_vnd: number;
+  direction: 'income' | 'expense' | 'transfer' | 'refund' | 'adjustment' | string;
   currency: string | null;
   category: string | null;
   description: string | null;
@@ -98,6 +102,8 @@ export interface BudgetPlanData {
   month: string;
   base_income: number;
   sheet_income: number;
+  expected_income_vnd: number;
+  actual_income_vnd: number;
   jars: BudgetJar[];
   summary: BudgetPlanSummary;
   loan_summary?: LoanSummary;
@@ -129,6 +135,8 @@ export interface DashboardSummaryData {
     expense_vnd: number;
     net_vnd: number;
     ending_balance_vnd: number | null;
+    account_balance_vnd?: number | null;
+    opening_balance_vnd?: number | null;
   };
   expense_by_jar: Record<string, number>;
   recent_transactions: {
@@ -136,6 +144,8 @@ export interface DashboardSummaryData {
     time: string | null;
     flow: string | null;
     amount_vnd: number;
+    amount_vnd_signed?: number;
+    amount_vnd_abs?: number;
     description: string | null;
     category: string | null;
     jar: string | null;
@@ -325,11 +335,19 @@ export interface BudgetStatusJarMetric {
   key: string;
   label: string;
   planned: number;
+  budgeted_vnd?: number;
   committed: number;
+  reserved?: number;
+  reserved_vnd?: number;
   spent: number;
+  spent_vnd?: number;
   available: number;
+  available_vnd?: number;
+  remaining_vnd?: number;
   rollover: number;
   funds_count: number;
+  usage_pct?: number;
+  status?: 'OK' | 'WARN' | 'OVER' | string;
 }
 
 export interface OverspentJar {
@@ -340,6 +358,20 @@ export interface OverspentJar {
 
 export interface BudgetStatusData {
   month: string;
+  canonical_month?: string;
+  month_iso?: string;
+  expected_income_vnd?: number;
+  actual_income_vnd?: number;
+  actual_expense_vnd?: number;
+  budgeted_vnd?: number;
+  spent_vnd?: number;
+  reserved_vnd?: number;
+  remaining_vnd?: number;
+  available_to_spend_vnd?: number;
+  left_to_budget_vnd?: number;
+  account_balance_vnd?: number;
+  ending_balance_vnd?: number;
+  opening_balance_vnd?: number;
   income: number;
   sheet_income: number;
   assigned: number;
@@ -356,6 +388,38 @@ export interface BudgetStatusData {
 
 export interface BudgetStatusResponse {
   data: BudgetStatusData;
+}
+
+export interface BalanceAccount {
+  account: string;
+  opening_balance_vnd: number;
+  ending_balance_vnd: number;
+}
+
+export interface BalanceData {
+  month?: string;
+  canonical_month?: string;
+  month_iso?: string;
+  as_of: string;
+  opening_balance_vnd?: number;
+  ending_balance_vnd?: number;
+  account_balance_vnd: number;
+  balance_vnd?: number;
+  source: {
+    type: 'current_month' | 'carry_forward' | 'none' | string;
+    from_transaction_datetime: string | null;
+  };
+  accounts?: BalanceAccount[];
+}
+
+export interface BalanceResponse {
+  data: BalanceData;
+}
+
+export type MonthlySummaryData = BudgetStatusData;
+
+export interface MonthlySummaryResponse {
+  data: MonthlySummaryData;
 }
 
 // ---------------------------------------------------------------

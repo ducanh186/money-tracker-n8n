@@ -25,7 +25,7 @@ class GoalApiTest extends TestCase
             'name'          => 'Kính cận',
             'target_amount' => 1_000_000,
             'jar_id'        => $necJar->id,
-            'deadline'      => '2026-04-01',
+            'deadline'      => '2026-06-01',
             'funding_mode'  => 'fund_over_time',
         ]);
 

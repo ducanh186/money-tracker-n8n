@@ -279,6 +279,40 @@ class TransactionsApiTest extends TestCase
         $this->assertEquals(0, $response->json('data.0.signed_amount_vnd'));
     }
 
+    public function test_index_preserves_raw_signed_amount_fields(): void
+    {
+        $rows = [
+            [
+                'date'            => '2026-02-20',
+                'flow'            => 'expense',
+                'amount'          => -50,
+                'currency'        => 'VND',
+                'category'        => 'Food',
+                'description'     => 'Refundable lunch correction',
+                'account'         => 'Cash',
+                'jar'             => 'NEC',
+                'balance'         => 8200,
+                'month'           => 'Feb-2026',
+                'status'          => 'confirmed',
+                'idempotency_key' => 'txn_signed',
+                'note'            => null,
+                'datetime'        => '2026-02-20 12:30:00',
+                'time'            => '12:30',
+            ],
+        ];
+        $this->mockRepository($rows);
+
+        $response = $this->getJson('/api/transactions?month=Feb-2026');
+
+        $response->assertStatus(200);
+        $row = $response->json('data.0');
+        $this->assertEquals(-50, $row['amount_raw']);
+        $this->assertEquals(-50_000, $row['amount_vnd_signed']);
+        $this->assertEquals(50_000, $row['amount_vnd_abs']);
+        $this->assertEquals(50_000, $row['amount_vnd']);
+        $this->assertEquals('expense', $row['direction']);
+    }
+
     public function test_index_totals(): void
     {
         $this->mockRepository();

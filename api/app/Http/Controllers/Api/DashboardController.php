@@ -4,9 +4,10 @@ namespace App\Http\Controllers\Api;
 
 use App\Contracts\TransactionsRepositoryInterface;
 use App\Http\Controllers\Controller;
-use App\Models\BudgetPeriod;
-use App\Models\Fund;
-use App\Models\Jar;
+use App\Services\BalanceService;
+use App\Services\MonthlyBudgetSummaryService;
+use App\Support\BudgetMonth;
+use App\Support\MoneyAmount;
 use App\Support\TransactionFilters;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -22,6 +23,8 @@ class DashboardController extends Controller
 {
     public function __construct(
         private readonly TransactionsRepositoryInterface $repository,
+        private readonly BalanceService $balanceService,
+        private readonly MonthlyBudgetSummaryService $monthlySummaryService,
     ) {}
 
     /**
@@ -40,14 +43,19 @@ class DashboardController extends Controller
             ], 400);
         }
 
-        $cacheKey = 'dashboard_summary_' . md5($month);
+        $cacheKey = 'dashboard_summary_v2_' . md5($month);
         $cached = Cache::get($cacheKey);
         if ($cached !== null) {
             return response()->json($cached);
         }
 
         try {
-            $rows = $this->repository->getByMonth($month);
+            $budgetMonth = BudgetMonth::parse($month);
+            $rows = array_values(array_filter(
+                $this->repository->all(),
+                fn (array $row) => MoneyAmount::rowBelongsToMonth($row, $budgetMonth)
+            ));
+            $balance = $this->balanceService->forMonth($month);
         } catch (\Throwable $e) {
             return response()->json([
                 'error' => 'sheets_error',
@@ -58,28 +66,18 @@ class DashboardController extends Controller
         // Aggregate totals
         $incomeVnd = 0;
         $expenseVnd = 0;
-        $latestDatetime = '';
-        $endingBalanceVnd = null;
         $byJar = [];
         $txCount = count($rows);
         $recentTxs = [];
 
         foreach ($rows as $row) {
-            // Track ending balance for ALL rows (including loans) — bank balance doesn't care about classification.
-            $dt = $row['datetime'] ?? '';
-            if ($dt > $latestDatetime) {
-                $latestDatetime = $dt;
-                $endingBalanceVnd = $this->parseNumeric($row['balance'] ?? null) * 1000;
-            }
-
             // Loan rows are excluded from income/expense aggregates.
             if (TransactionFilters::isLoan($row)) {
                 continue;
             }
 
-            $amountK = $this->parseNumeric($row['amount'] ?? null);
-            $amountVnd = abs($amountK) * 1000;
-            $flow = mb_strtolower(trim($row['flow'] ?? ''));
+            $amountVnd = MoneyAmount::amountAbsVnd($row);
+            $flow = MoneyAmount::direction($row);
 
             if ($flow === 'income') {
                 $incomeVnd += $amountVnd;
@@ -98,12 +96,13 @@ class DashboardController extends Controller
         // Get 5 most recent transactions (lightweight)
         usort($rows, fn($a, $b) => strcmp($b['datetime'] ?? '', $a['datetime'] ?? ''));
         foreach (array_slice($rows, 0, 5) as $row) {
-            $amountK = $this->parseNumeric($row['amount'] ?? null);
             $recentTxs[] = [
                 'date' => $row['date'] ?? null,
                 'time' => $row['time'] ?? null,
                 'flow' => $row['flow'] ?? null,
-                'amount_vnd' => abs($amountK) * 1000,
+                'amount_vnd' => MoneyAmount::amountAbsVnd($row),
+                'amount_vnd_signed' => MoneyAmount::amountSignedVnd($row),
+                'amount_vnd_abs' => MoneyAmount::amountAbsVnd($row),
                 'description' => $row['description'] ?? null,
                 'category' => $row['category'] ?? null,
                 'jar' => $row['jar'] ?? null,
@@ -118,7 +117,9 @@ class DashboardController extends Controller
                     'income_vnd' => $incomeVnd,
                     'expense_vnd' => $expenseVnd,
                     'net_vnd' => $incomeVnd - $expenseVnd,
-                    'ending_balance_vnd' => $endingBalanceVnd,
+                    'ending_balance_vnd' => $balance['ending_balance_vnd'],
+                    'account_balance_vnd' => $balance['account_balance_vnd'],
+                    'opening_balance_vnd' => $balance['opening_balance_vnd'],
                 ],
                 'expense_by_jar' => $byJar,
                 'recent_transactions' => $recentTxs,
@@ -167,153 +168,20 @@ class DashboardController extends Controller
             ], 400);
         }
 
-        $cacheKey = 'budget_status_' . md5($month);
+        $cacheKey = 'budget_status_v2_' . md5($month);
         $cached = Cache::get($cacheKey);
         if ($cached !== null) {
             return response()->json($cached);
         }
 
-        // Parse month string (e.g. "Mar-2026")
-        $parts = explode('-', $month);
-        $monthAbbr = $parts[0] ?? '';
-        $year = (int) ($parts[1] ?? 0);
-
-        $monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-        $monthNum = array_search($monthAbbr, $monthNames);
-        $monthNum = $monthNum !== false ? $monthNum + 1 : 0;
-
-        // Compute income from Google Sheets
         try {
-            $rows = $this->repository->getByMonth($month);
-        } catch (\Throwable) {
-            $rows = [];
+            $payload = ['data' => $this->monthlySummaryService->summary($month)];
+        } catch (\Throwable $e) {
+            return response()->json([
+                'error' => 'summary_error',
+                'message' => 'Could not compute budget status.',
+            ], 500);
         }
-
-        $sheetIncome = 0;
-        $totalExpense = 0;
-        $expenseByJar = [];
-        foreach ($rows as $row) {
-            if (TransactionFilters::isLoan($row)) {
-                continue;
-            }
-            $flow = mb_strtolower(trim($row['flow'] ?? ''));
-            $amountK = $this->parseNumeric($row['amount'] ?? null);
-            $amountVnd = abs($amountK) * 1000;
-            if ($flow === 'income') {
-                $sheetIncome += $amountVnd;
-            } elseif ($flow === 'expense') {
-                $totalExpense += $amountVnd;
-                $jarKey = trim($row['jar'] ?? '');
-                if ($jarKey !== '') {
-                    $expenseByJar[$jarKey] = ($expenseByJar[$jarKey] ?? 0) + $amountVnd;
-                }
-            }
-        }
-
-        // Check if budget period exists for this month
-        $period = BudgetPeriod::where('year', $year)
-            ->where('month_num', $monthNum)
-            ->first();
-
-        $totalIncome = $sheetIncome;
-        $assigned = 0;
-        $committed = 0;
-        $availableToSpend = 0;
-        $overspentJars = [];
-        $periodStatus = 'not_started';
-        $jarsMetrics = [];
-
-        if ($period) {
-            $totalIncome = $period->total_income > 0 ? $period->total_income : $sheetIncome;
-            $periodStatus = $period->status ?? 'open';
-
-            $allocations = $period->jarAllocations()->with('jar')->get();
-            foreach ($allocations as $alloc) {
-                $jarKey = $alloc->jar->key;
-                $planned = $alloc->planned_amount;
-                $committedAmt = $alloc->committed_amount;
-                $spent = $expenseByJar[$jarKey] ?? ($expenseByJar[$alloc->jar->label] ?? 0);
-                $available = $planned + $alloc->rollover_amount - $committedAmt - $spent;
-
-                $assigned += $planned;
-                $committed += $committedAmt;
-                $availableToSpend += $available;
-
-                if ($spent > $planned) {
-                    $overspentJars[] = [
-                        'key'    => $jarKey,
-                        'label'  => $alloc->jar->label,
-                        'over'   => $spent - $planned,
-                    ];
-                }
-
-                // Count funds for this jar
-                $fundsCount = Fund::where('jar_id', $alloc->jar_id)->where('status', 'active')->count();
-
-                $jarsMetrics[] = [
-                    'key'        => $jarKey,
-                    'label'      => $alloc->jar->label,
-                    'planned'    => $planned,
-                    'committed'  => $committedAmt,
-                    'spent'      => $spent,
-                    'available'  => $available,
-                    'rollover'   => $alloc->rollover_amount,
-                    'funds_count' => $fundsCount,
-                ];
-            }
-        } else {
-            // No budget period — use jar defaults
-            $dbJars = Jar::active()->ordered()->get();
-            foreach ($dbJars as $jar) {
-                $planned = (int) round($totalIncome * $jar->percent / 100);
-                $spent = $expenseByJar[$jar->key] ?? ($expenseByJar[$jar->label] ?? 0);
-                $available = $planned - $spent;
-
-                $assigned += $planned;
-                $availableToSpend += $available;
-
-                if ($spent > $planned) {
-                    $overspentJars[] = [
-                        'key'   => $jar->key,
-                        'label' => $jar->label,
-                        'over'  => $spent - $planned,
-                    ];
-                }
-
-                $fundsCount = Fund::where('jar_id', $jar->id)->where('status', 'active')->count();
-
-                $jarsMetrics[] = [
-                    'key'        => $jar->key,
-                    'label'      => $jar->label,
-                    'planned'    => $planned,
-                    'committed'  => 0,
-                    'spent'      => $spent,
-                    'available'  => $available,
-                    'rollover'   => 0,
-                    'funds_count' => $fundsCount,
-                ];
-            }
-        }
-
-        $unassigned = $totalIncome - $assigned;
-
-        $payload = [
-            'data' => [
-                'month'             => $month,
-                'income'            => $totalIncome,
-                'sheet_income'      => $sheetIncome,
-                'assigned'          => $assigned,
-                'unassigned'        => $unassigned,
-                'committed'         => $committed,
-                'total_spent'       => $totalExpense,
-                'available_to_spend' => $availableToSpend,
-                'overspent_jars'    => $overspentJars,
-                'period_status'     => $periodStatus,
-                'planning_insights_enabled' => $period !== null && $assigned > 0,
-                'has_period'        => $period !== null,
-                'jars'              => $jarsMetrics,
-            ],
-        ];
 
         Cache::put($cacheKey, $payload, 120);
 

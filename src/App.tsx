@@ -81,7 +81,7 @@ export default function App() {
   };
 
   const renderCurrentView = (mobile = false) => {
-    if (currentView === 'overview') return <Overview month={selectedMonth} />;
+    if (currentView === 'overview') return <Overview month={selectedMonth} hideDesktopAnalytics={mobile} />;
     if (currentView === 'transactions') return <Transactions month={selectedMonth} hideHeader={mobile} />;
     if (currentView === 'jars') return <Jars month={selectedMonth} hideHeader={mobile} />;
     if (currentView === 'budget') return <BudgetPlan month={selectedMonth} hideHeader={mobile} />;

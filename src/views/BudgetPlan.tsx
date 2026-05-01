@@ -73,6 +73,13 @@ function getJarStyle(key: string) {
 }
 
 type PlannerType = BudgetLine['type'];
+const RESERVED_BUDGET_LINE_TYPES = new Set<PlannerType>([
+  'goal',
+  'bill',
+  'debt',
+  'sinking_fund',
+  'investment',
+]);
 
 type BudgetLineDraft = {
   name: string;
@@ -725,7 +732,7 @@ function PlannedExpenseSection({
           ) : (
             <span className="size-2 rounded-full bg-violet-500 dark:bg-violet-300" />
           )}
-          <span className="truncate">{canEdit ? 'Khoản chi dự kiến' : 'Xem khoản dự kiến'}</span>
+          <span className="truncate">{canEdit ? 'Khoản dự kiến' : 'Xem khoản dự kiến'}</span>
           <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-bold text-violet-700 dark:bg-violet-500/20 dark:text-violet-100">
             {sortedLines.length}
           </span>
@@ -762,10 +769,10 @@ function PlannedExpenseSection({
                     </span>
                   </div>
                   <h4 id={modalTitleId} className="mt-3 text-lg font-bold text-slate-900 dark:text-white">
-                    Khoản chi dự kiến · {jar.label}
+                    Khoản dự kiến · {jar.label}
                   </h4>
                   <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-                    {formatCurrency(plannedTotal)} đã gài trước · Khả dụng sau dự kiến {formatCurrency(availableAmount)}
+                    {formatCurrency(plannedTotal)} giữ trước · Còn lại sau giữ trước {formatCurrency(availableAmount)}
                   </p>
                 </div>
 
@@ -972,10 +979,11 @@ export default function BudgetPlan({ month, hideHeader = false }: { month: strin
   const deleteBudgetLineMutation = useDeleteBudgetLine();
 
   useEffect(() => {
-    if (data?.data?.base_income) {
-      setPlanValue(String(data.data.base_income));
+    const expectedIncome = data?.data?.expected_income_vnd ?? data?.data?.base_income;
+    if (expectedIncome) {
+      setPlanValue(String(expectedIncome));
     }
-  }, [data?.data?.base_income]);
+  }, [data?.data?.base_income, data?.data?.expected_income_vnd]);
 
   useEffect(() => {
     setEnsuredPeriodId(null);
@@ -1036,7 +1044,12 @@ export default function BudgetPlan({ month, hideHeader = false }: { month: strin
       throw new Error(`Không đọc được tháng ngân sách từ "${month}".`);
     }
 
-    const totalIncome = budgetStatus?.income ?? data?.data.sheet_income ?? data?.data.base_income ?? 0;
+    const totalIncome =
+      budgetStatus?.expected_income_vnd ??
+      data?.data.expected_income_vnd ??
+      budgetStatus?.income ??
+      data?.data.base_income ??
+      0;
     const response = await createPeriodMutation.mutateAsync({
       month,
       year: parsedMonth.year,
@@ -1052,10 +1065,11 @@ export default function BudgetPlan({ month, hideHeader = false }: { month: strin
       jars: response.data.jars,
     };
   }, [
+    budgetStatus?.expected_income_vnd,
     budgetStatus?.income,
     createPeriodMutation,
     data?.data.base_income,
-    data?.data.sheet_income,
+    data?.data.expected_income_vnd,
     effectivePeriodId,
     isPeriodsPending,
     month,
@@ -1087,6 +1101,8 @@ export default function BudgetPlan({ month, hideHeader = false }: { month: strin
 
   const plan = data.data;
   const { summary, jars } = plan;
+  const expectedIncome = plan.expected_income_vnd ?? plan.base_income;
+  const actualIncome = plan.actual_income_vnd ?? plan.sheet_income;
   const parsedHeaderMonth = parseBudgetMonth(month);
   const budgetHeading = parsedHeaderMonth
     ? `Chi tiêu · Th ${String(parsedHeaderMonth.monthNum).padStart(2, '0')}/${parsedHeaderMonth.year}`
@@ -1129,17 +1145,17 @@ export default function BudgetPlan({ month, hideHeader = false }: { month: strin
 
       {/* Summary cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* BASE INCOME — read-only from Sheet */}
+        {/* Expected income — plan base */}
         <div className="relative overflow-hidden rounded-[24px] border border-slate-200/80 bg-white/90 p-6 shadow-sm backdrop-blur-sm dark:border-slate-700/80 dark:bg-[#111827]/85">
           <div className="absolute right-0 top-0 h-24 w-24 translate-x-8 -translate-y-8 rounded-full bg-blue-50 dark:bg-blue-500/10" />
           <div className="relative z-10 flex flex-col gap-1">
-            <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Thu nhập gốc</span>
+            <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Thu nhập dự kiến</span>
             <h3 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-              {formatCurrency(plan.sheet_income ?? plan.base_income)}
+              {formatCurrency(expectedIncome)}
             </h3>
             <div className="mt-2 flex items-center gap-1 text-sm font-medium text-blue-600 dark:text-blue-400">
               <Wallet className="size-4" />
-              <span>Từ Sheet (tự động)</span>
+              <span>Dùng để lập kế hoạch</span>
             </div>
           </div>
         </div>
@@ -1170,7 +1186,7 @@ export default function BudgetPlan({ month, hideHeader = false }: { month: strin
                       setEditingPlan(false);
                     }
                     if (e.key === 'Escape') {
-                      setPlanValue(String(plan.base_income));
+                      setPlanValue(String(expectedIncome));
                       setEditingPlan(false);
                     }
                   }}
@@ -1189,7 +1205,7 @@ export default function BudgetPlan({ month, hideHeader = false }: { month: strin
                 </button>
                 <button
                   onClick={() => {
-                    setPlanValue(String(plan.base_income));
+                    setPlanValue(String(expectedIncome));
                     updateSettingMutation.mutate({ month, baseIncomeOverride: null });
                     setEditingPlan(false);
                   }}
@@ -1205,7 +1221,7 @@ export default function BudgetPlan({ month, hideHeader = false }: { month: strin
                 </h3>
                 <button
                   onClick={() => {
-                    setPlanValue(String(plan.base_income));
+                    setPlanValue(String(expectedIncome));
                     setEditingPlan(true);
                   }}
                   className="cursor-pointer text-slate-400 transition-colors hover:text-blue-500 dark:text-slate-500 dark:hover:text-blue-400"
@@ -1217,7 +1233,7 @@ export default function BudgetPlan({ month, hideHeader = false }: { month: strin
             )}
             <div className="mt-2 flex items-center gap-1 text-sm font-medium text-green-600 dark:text-green-400">
               <TrendingUp className="size-4" />
-              <span>{planOverride ? 'Đã tuỳ chỉnh' : `~${Math.round((summary.total_planned / (plan.sheet_income || plan.base_income)) * 100)}%`}</span>
+              <span>{planOverride ? 'Đã tuỳ chỉnh' : `~${expectedIncome > 0 ? Math.round((summary.total_planned / expectedIncome) * 100) : 0}%`}</span>
             </div>
           </div>
         </div>
@@ -1249,6 +1265,10 @@ export default function BudgetPlan({ month, hideHeader = false }: { month: strin
             </div>
           </div>
         </div>
+      </div>
+
+      <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm dark:border-slate-700 dark:bg-[#111827] dark:text-slate-300">
+        Thực thu tháng này: <b>{formatCurrency(actualIncome)}</b>. Kế hoạch vẫn dựa trên thu nhập dự kiến để đầu tháng chưa nhận lương không bị xem là hết tiền.
       </div>
 
       {/* Investment Allocation Card */}
@@ -1399,11 +1419,15 @@ export default function BudgetPlan({ month, hideHeader = false }: { month: strin
           const jarMetric = budgetStatus?.jars.find((metric) => metric.key === jar.key);
           const jarLines = budgetLinesByJar[jar.key] ?? [];
           const spentAmount = jarMetric?.spent ?? jar.actual_amount;
-          const committedFromLines = jarLines.reduce((sum, line) => sum + line.planned_amount, 0);
+          const committedFromLines = jarLines
+            .filter((line) => RESERVED_BUDGET_LINE_TYPES.has(line.type))
+            .reduce((sum, line) => sum + line.planned_amount, 0);
           const committedAmount = hasHydratedBudgetLines
             ? committedFromLines
-            : (jarMetric?.committed ?? committedFromLines);
-          const availableAmount = jar.planned_amount + (jarMetric?.rollover ?? 0) - committedAmount - spentAmount;
+            : (jarMetric?.reserved ?? jarMetric?.committed ?? committedFromLines);
+          const availableAmount =
+            jarMetric?.available ??
+            (jar.planned_amount + (jarMetric?.rollover ?? 0) - committedAmount - spentAmount);
           const actualUsagePct = jar.planned_amount > 0 ? (spentAmount / jar.planned_amount) * 100 : 0;
           const spentProgressWidth = Math.min(Math.max(actualUsagePct, 0), 100);
           const committedUsagePct = jar.planned_amount > 0 ? (committedAmount / jar.planned_amount) * 100 : 0;
@@ -1477,7 +1501,7 @@ export default function BudgetPlan({ month, hideHeader = false }: { month: strin
                     </span>
                     <span className={cn('inline-flex items-center gap-1.5', PLANNED_PROGRESS_TEXT_CLASS)}>
                       <span className={cn('size-2 rounded-full', PLANNED_PROGRESS_BAR_CLASS)} />
-                      Khoản chi dự kiến {formatCurrency(committedAmount)}
+                      Giữ trước {formatCurrency(committedAmount)}
                     </span>
                   </div>
                 </div>
@@ -1489,7 +1513,7 @@ export default function BudgetPlan({ month, hideHeader = false }: { month: strin
                     <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{formatCurrency(jar.planned_amount)}</span>
                   </div>
                   <div className="flex flex-col">
-                    <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider font-semibold">Dự kiến</span>
+                    <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider font-semibold">Giữ trước</span>
                     <span className={cn('text-sm font-bold', PLANNED_PROGRESS_TEXT_CLASS)}>{formatCurrency(committedAmount)}</span>
                   </div>
                   <div className="flex flex-col">
@@ -1497,7 +1521,7 @@ export default function BudgetPlan({ month, hideHeader = false }: { month: strin
                     <span className="text-sm font-bold text-red-600 dark:text-red-400">{formatCurrency(spentAmount)}</span>
                   </div>
                   <div className="flex flex-col">
-                    <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider font-semibold">Khả dụng</span>
+                    <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider font-semibold">Còn lại</span>
                     <span className={`text-sm font-bold ${availableAmount >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
                       {formatCurrency(availableAmount)}
                     </span>
@@ -1557,4 +1581,3 @@ export default function BudgetPlan({ month, hideHeader = false }: { month: strin
     </div>
   );
 }
-

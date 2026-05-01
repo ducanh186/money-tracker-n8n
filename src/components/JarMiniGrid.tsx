@@ -23,7 +23,7 @@ export default function JarMiniGrid({ month }: { month: string }) {
     <div className="bg-white dark:bg-[#1a2433] rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm p-4 lg:p-5">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-          6 hũ tháng này
+          {budgetStatus.has_period ? '6 hũ tháng này' : 'Gợi ý 6 hũ'}
         </h3>
         <a
           href="#jars"
@@ -44,7 +44,7 @@ export default function JarMiniGrid({ month }: { month: string }) {
           const data = byKey.get(k);
           const planned = data?.planned ?? 0;
           const spent = data?.spent ?? 0;
-          const remain = planned - spent;
+          const remain = data?.available ?? (planned - spent);
           const usage = planned > 0 ? Math.round((spent / planned) * 100) : 0;
           const status: 'over' | 'warn' | 'ok' = remain < 0 ? 'over' : usage >= 80 ? 'warn' : 'ok';
           const dotColor =

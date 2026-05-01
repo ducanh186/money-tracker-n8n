@@ -44,6 +44,8 @@ import type {
   SimulateScenarioPayload,
   BudgetLinesResponse,
   CreateBudgetLinePayload,
+  BalanceResponse,
+  MonthlySummaryResponse,
 } from './types';
 
 // Base URL — in dev the Vite proxy forwards /api → Laravel at :8000
@@ -321,6 +323,18 @@ export async function updateJar(id: number, payload: { percent?: number; label?:
 export async function fetchBudgetStatus(month: string): Promise<BudgetStatusData> {
   const res = await smartFetch<BudgetStatusResponse>(`${BASE}/budget-status?month=${encodeURIComponent(month)}`);
   return res.data;
+}
+
+export async function fetchBalances(month: string): Promise<BalanceResponse> {
+  return smartFetch(`${BASE}/balances?month=${encodeURIComponent(month)}`);
+}
+
+export async function fetchBalanceAsOf(date: string): Promise<BalanceResponse> {
+  return smartFetch(`${BASE}/balances/as-of?date=${encodeURIComponent(date)}`);
+}
+
+export async function fetchMonthlySummary(month: string): Promise<MonthlySummaryResponse> {
+  return smartFetch(`${BASE}/monthly-summary?month=${encodeURIComponent(month)}`);
 }
 
 // ---------------------------------------------------------------

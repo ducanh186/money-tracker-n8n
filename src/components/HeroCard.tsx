@@ -19,18 +19,25 @@ export default function HeroCard({ month }: { month: string }) {
   const { data: budgetStatus } = useBudgetStatus(month);
 
   const totals = summaryRes?.data?.totals;
-  const income = budgetStatus?.income ?? totals?.income_vnd ?? 0;
-  const totalSpent = budgetStatus?.total_spent ?? totals?.expense_vnd ?? 0;
-  const remaining = budgetStatus?.available_to_spend ?? (income - totalSpent);
-  const netAfterSpend = income - totalSpent;
-  const savingsRate = income > 0 ? Math.round((netAfterSpend / income) * 100) : 0;
+  const expectedIncome = budgetStatus?.expected_income_vnd ?? budgetStatus?.income ?? totals?.income_vnd ?? 0;
+  const actualIncome = budgetStatus?.actual_income_vnd ?? budgetStatus?.sheet_income ?? totals?.income_vnd ?? 0;
+  const totalSpent = budgetStatus?.actual_expense_vnd ?? budgetStatus?.total_spent ?? totals?.expense_vnd ?? 0;
+  const accountBalance =
+    budgetStatus?.account_balance_vnd ??
+    totals?.account_balance_vnd ??
+    totals?.ending_balance_vnd ??
+    0;
+  const remaining = budgetStatus?.available_to_spend_vnd ?? budgetStatus?.available_to_spend ?? (expectedIncome - totalSpent);
+  const hasBudgetPlan = budgetStatus?.has_period ?? true;
+  const netAfterSpend = (actualIncome > 0 ? actualIncome : expectedIncome) - totalSpent;
+  const savingsRate = expectedIncome > 0 ? Math.round((netAfterSpend / expectedIncome) * 100) : 0;
 
   let big: number;
   let label: string;
   let suffix: string | null = ' ₫';
   if (mode === 'remaining') {
-    big = remaining;
-    label = 'Còn chi được';
+    big = hasBudgetPlan ? remaining : accountBalance;
+    label = hasBudgetPlan ? 'Còn chi được' : 'Số dư tài khoản';
   } else if (mode === 'spent') {
     big = totalSpent;
     label = 'Đã chi tháng này';
@@ -67,7 +74,7 @@ export default function HeroCard({ month }: { month: string }) {
         <span
           className={cn(
             'font-extrabold tracking-tight tabular-nums text-4xl lg:text-5xl',
-            mode === 'remaining' && remaining < 0
+            mode === 'remaining' && hasBudgetPlan && remaining < 0
               ? 'text-red-600 dark:text-red-400'
               : 'text-slate-900 dark:text-white'
           )}
@@ -82,7 +89,9 @@ export default function HeroCard({ month }: { month: string }) {
       </div>
 
       <div className="text-sm text-slate-500 dark:text-slate-400">
-        Thu {compact(income)} · Chi {compact(totalSpent)}
+        {hasBudgetPlan
+          ? `Dự kiến ${compact(expectedIncome)} · Thực thu ${compact(actualIncome)} · Chi ${compact(totalSpent)}`
+          : `Chưa lập kế hoạch tháng này · Thực thu ${compact(actualIncome)} · Chi ${compact(totalSpent)}`}
       </div>
     </div>
   );
