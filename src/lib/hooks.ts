@@ -22,6 +22,9 @@ import {
   fetchBudgetStatus,
   fetchBalances,
   fetchMonthlySummary,
+  fetchCategories,
+  fetchCategoryBudgets,
+  fetchBudgetTemplates,
   fetchFunds,
   createFund,
   updateFund,
@@ -432,6 +435,33 @@ export function useMonthlySummary(month: string) {
     refetchInterval: 60_000,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: false,
+    retry: MAX_RETRIES,
+  });
+}
+
+export function useCategories() {
+  return useQuery({
+    queryKey: ['categories'],
+    queryFn: () => fetchCategories(),
+    staleTime: 5 * 60_000,
+    retry: MAX_RETRIES,
+  });
+}
+
+export function useCategoryBudgets(month: string) {
+  return useQuery({
+    queryKey: ['category-budgets', month],
+    queryFn: () => fetchCategoryBudgets(month),
+    staleTime: 60_000,
+    retry: MAX_RETRIES,
+  });
+}
+
+export function useBudgetTemplates() {
+  return useQuery({
+    queryKey: ['budget-templates'],
+    queryFn: () => fetchBudgetTemplates(),
+    staleTime: 5 * 60_000,
     retry: MAX_RETRIES,
   });
 }

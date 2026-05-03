@@ -6,6 +6,8 @@ use App\Contracts\TransactionsRepositoryInterface;
 use App\Models\BudgetLine;
 use App\Models\BudgetPeriod;
 use App\Models\BudgetSetting;
+use App\Models\Category;
+use App\Models\CategoryBudget;
 use App\Models\Fund;
 use App\Models\Jar;
 use App\Models\JarAllocation;
@@ -35,21 +37,26 @@ class MonthlyBudgetSummaryService
         $jarMetrics = $period
             ? $this->periodJarMetrics($period, $totals['expense_by_jar'])
             : $this->defaultJarMetrics($expectedIncome, $totals['expense_by_jar']);
+        $categoryMetrics = $this->categoryMetrics($period, $totals['expense_by_category']);
+        $hasCategoryBudgets = $period !== null && $period->categoryBudgets()->exists();
 
-        $budgeted = (int) array_sum(array_column($jarMetrics, 'planned'));
-        $reserved = (int) array_sum(array_column($jarMetrics, 'reserved'));
-        $available = (int) array_sum(array_column($jarMetrics, 'available'));
-        $overspent = array_values(array_filter(array_map(function (array $jar) {
-            if ($jar['spent'] <= $jar['planned']) {
+        $summaryMetrics = $hasCategoryBudgets ? $categoryMetrics : $jarMetrics;
+        $budgeted = (int) array_sum(array_column($summaryMetrics, 'budgeted_vnd'));
+        $reserved = (int) array_sum(array_column($summaryMetrics, 'reserved_vnd'));
+        $available = (int) array_sum(array_column($summaryMetrics, 'remaining_vnd'));
+        $overspent = array_values(array_filter(array_map(function (array $item) {
+            $budgeted = $item['budgeted_vnd'] ?? $item['planned'] ?? 0;
+            $spent = $item['spent_vnd'] ?? $item['spent'] ?? 0;
+            if ($spent <= $budgeted) {
                 return null;
             }
 
             return [
-                'key' => $jar['key'],
-                'label' => $jar['label'],
-                'over' => $jar['spent'] - $jar['planned'],
+                'key' => $item['category_key'] ?? $item['key'],
+                'label' => $item['category_name'] ?? $item['label'],
+                'over' => $spent - $budgeted,
             ];
-        }, $jarMetrics)));
+        }, $summaryMetrics)));
 
         $leftToBudget = $expectedIncome - $budgeted;
 
@@ -84,7 +91,8 @@ class MonthlyBudgetSummaryService
             'planning_insights_enabled' => $period !== null && $budgeted > 0,
             'has_period' => $period !== null,
             'jars' => $jarMetrics,
-            'categories' => $this->categoryCompatibility($jarMetrics),
+            'categories' => $categoryMetrics,
+            'budget_basis' => $hasCategoryBudgets ? 'category' : 'jar_compatibility',
         ];
     }
 
@@ -117,13 +125,14 @@ class MonthlyBudgetSummaryService
 
     /**
      * @param  array<int, array<string, mixed>>  $rows
-     * @return array{income_vnd:int, expense_vnd:int, expense_by_jar:array<string, int>}
+     * @return array{income_vnd:int, expense_vnd:int, expense_by_jar:array<string, int>, expense_by_category:array<string, int>}
      */
     private function actualTotals(array $rows): array
     {
         $income = 0;
         $expense = 0;
         $expenseByJar = [];
+        $expenseByCategory = [];
 
         foreach ($rows as $row) {
             if (TransactionFilters::isLoan($row)) {
@@ -141,6 +150,8 @@ class MonthlyBudgetSummaryService
                 if ($jarKey !== '') {
                     $expenseByJar[$jarKey] = ($expenseByJar[$jarKey] ?? 0) + $amount;
                 }
+                $categoryKey = Category::normalizeKey((string) ($row['category'] ?? ''));
+                $expenseByCategory[$categoryKey] = ($expenseByCategory[$categoryKey] ?? 0) + $amount;
             }
         }
 
@@ -148,6 +159,7 @@ class MonthlyBudgetSummaryService
             'income_vnd' => $income,
             'expense_vnd' => $expense,
             'expense_by_jar' => $expenseByJar,
+            'expense_by_category' => $expenseByCategory,
         ];
     }
 
@@ -266,20 +278,65 @@ class MonthlyBudgetSummaryService
     }
 
     /**
-     * @param  array<int, array<string, mixed>>  $jars
+     * @param  array<string, int>  $expenseByCategory
      * @return array<int, array<string, mixed>>
      */
-    private function categoryCompatibility(array $jars): array
+    private function categoryMetrics(?BudgetPeriod $period, array $expenseByCategory): array
     {
-        return array_map(fn (array $jar) => [
-            'category_key' => mb_strtolower($jar['key']),
-            'category_name' => $jar['label'],
-            'budgeted_vnd' => $jar['planned'],
-            'spent_vnd' => $jar['spent'],
-            'reserved_vnd' => $jar['reserved'],
-            'remaining_vnd' => $jar['available'],
-            'usage_pct' => $jar['usage_pct'],
-            'status' => $jar['status'],
-        ], $jars);
+        $categories = Category::active()->ordered()->get();
+        $budgets = $period
+            ? CategoryBudget::query()
+                ->where('budget_period_id', $period->id)
+                ->with('category')
+                ->get()
+                ->keyBy(fn (CategoryBudget $budget) => $budget->category?->key)
+            : collect();
+
+        $metrics = $categories->map(function (Category $category) use ($budgets, $expenseByCategory) {
+            /** @var CategoryBudget|null $budget */
+            $budget = $budgets->get($category->key);
+            $budgeted = (int) ($budget?->budgeted_amount ?? 0);
+            $reserved = (int) ($budget?->reserved_amount ?? 0);
+            $rollover = (int) ($budget?->rollover_amount ?? 0);
+            $spent = (int) ($expenseByCategory[$category->key] ?? 0);
+            $remaining = $budgeted + $rollover - $spent - $reserved;
+
+            return [
+                'category_key' => $category->key,
+                'category_name' => $category->name,
+                'category_group' => $category->group,
+                'budgeted_vnd' => $budgeted,
+                'spent_vnd' => $spent,
+                'reserved_vnd' => $reserved,
+                'rollover_vnd' => $rollover,
+                'remaining_vnd' => $remaining,
+                'usage_pct' => $budgeted > 0 ? round(($spent / $budgeted) * 100, 2) : 0,
+                'status' => $spent > $budgeted && $budgeted > 0 ? 'OVER' : 'OK',
+                'source' => $budget ? 'category_budget' : 'actual_category',
+            ];
+        });
+
+        $knownKeys = $categories->pluck('key')->all();
+        foreach ($expenseByCategory as $key => $spent) {
+            if (in_array($key, $knownKeys, true)) {
+                continue;
+            }
+
+            $metrics->push([
+                'category_key' => $key,
+                'category_name' => $key,
+                'category_group' => 'other',
+                'budgeted_vnd' => 0,
+                'spent_vnd' => (int) $spent,
+                'reserved_vnd' => 0,
+                'rollover_vnd' => 0,
+                'remaining_vnd' => -1 * (int) $spent,
+                'usage_pct' => 0,
+                'status' => 'OK',
+                'source' => 'actual_category',
+            ]);
+        }
+
+        return $metrics->values()->all();
     }
 }

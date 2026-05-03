@@ -25,10 +25,31 @@ class RemoteMoneyRepository implements MoneyRepository {
       throw const ApiException('Overview endpoints returned invalid data');
     }
 
+    final budgetStatus = BudgetStatus.fromJson(statusData);
+    final categories = budgetStatus.categories;
+    final totalCategorySpent = categories.fold<int>(
+      0,
+      (sum, category) => sum + category.spentVnd.abs(),
+    );
+    final topCategories = categories
+        .where((category) => category.spentVnd > 0)
+        .map(
+          (category) => TopCategory(
+            label: category.name,
+            jarKey: category.key,
+            amountVnd: category.spentVnd,
+            percent: totalCategorySpent > 0
+                ? ((category.spentVnd / totalCategorySpent) * 100).round()
+                : 0,
+          ),
+        )
+        .toList()
+      ..sort((a, b) => b.amountVnd.compareTo(a.amountVnd));
+
     return OverviewData(
       summary: DashboardSummary.fromJson(summaryData),
-      budgetStatus: BudgetStatus.fromJson(statusData),
-      topCategories: const [],
+      budgetStatus: budgetStatus,
+      topCategories: topCategories.take(4).toList(),
     );
   }
 }
