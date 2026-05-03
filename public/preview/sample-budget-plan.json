@@ -1,0 +1,47 @@
+{
+  "expected_income_vnd": 700000,
+  "categories": [
+    {
+      "category_name": "Ăn uống",
+      "budgeted_vnd": 140000,
+      "reserved_vnd": 0,
+      "rollover_vnd": 0,
+      "notes": "Mẫu needs"
+    },
+    {
+      "category_name": "Di chuyển",
+      "budgeted_vnd": 70000,
+      "reserved_vnd": 0,
+      "rollover_vnd": 0,
+      "notes": "Mẫu đi lại"
+    },
+    {
+      "category_name": "Nhà ở",
+      "budgeted_vnd": 210000,
+      "reserved_vnd": 0,
+      "rollover_vnd": 0,
+      "notes": "Mẫu nhà ở"
+    },
+    {
+      "category_name": "Hóa đơn",
+      "budgeted_vnd": 70000,
+      "reserved_vnd": 0,
+      "rollover_vnd": 0,
+      "notes": "Mẫu hóa đơn"
+    },
+    {
+      "category_name": "Mua sắm",
+      "budgeted_vnd": 105000,
+      "reserved_vnd": 0,
+      "rollover_vnd": 0,
+      "notes": "Mẫu wants"
+    },
+    {
+      "category_name": "Giải trí",
+      "budgeted_vnd": 35000,
+      "reserved_vnd": 0,
+      "rollover_vnd": 0,
+      "notes": "Mẫu giải trí"
+    }
+  ]
+}

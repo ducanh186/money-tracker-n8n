@@ -1098,7 +1098,7 @@ function EditableCategoryBudgetCard({
 
   const sliderBase = resolveBase(basis);
   const sliderMax = Math.max(sliderBase, draftAmount, savedAmount, 1);
-  const sliderStep = sliderMax >= 5_000_000 ? 50_000 : sliderMax >= 1_000_000 ? 10_000 : 1_000;
+  const sliderStep = 1;
   const incomePercent = expectedIncome > 0 ? (draftAmount / expectedIncome) * 100 : 0;
   const balancePercent = balanceBase > 0 ? (draftAmount / balanceBase) * 100 : 0;
   const isDirty = draftAmount !== savedAmount;
@@ -1176,8 +1176,8 @@ function EditableCategoryBudgetCard({
   };
 
   return (
-    <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 dark:border-slate-700 dark:bg-[#0c1222]">
-      <div className="mb-3 flex items-start justify-between gap-3">
+    <div className="rounded-[24px] border border-slate-100 bg-slate-50 p-4 shadow-sm dark:border-slate-700 dark:bg-[#0c1222] dark:shadow-black/10 md:p-5">
+      <div className="mb-4 flex items-start justify-between gap-4">
         <div className="min-w-0">
           <p className="truncate text-sm font-bold text-slate-900 dark:text-white">{category.category_name}</p>
           <p className="text-[11px] text-slate-500 dark:text-slate-400">{category.category_group ?? category.category_key}</p>
@@ -1209,7 +1209,7 @@ function EditableCategoryBudgetCard({
         </div>
       </div>
 
-      <div className="mt-4 rounded-xl border border-slate-200 bg-white/90 p-3 dark:border-slate-700 dark:bg-slate-900/40">
+      <div className="mt-4 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900/50">
         <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
           <span>Chỉnh ngân sách</span>
           <span>{formatPercentValue(incomePercent)}% income · {formatPercentValue(balancePercent)}% số dư</span>
@@ -1230,7 +1230,7 @@ function EditableCategoryBudgetCard({
           className="mt-3 h-2 w-full cursor-pointer accent-blue-600 disabled:cursor-not-allowed disabled:opacity-60"
         />
 
-        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_140px_140px]">
+        <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
           <label className="flex flex-col gap-1.5">
             <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Số tiền</span>
             <input
@@ -1258,7 +1258,7 @@ function EditableCategoryBudgetCard({
             />
           </label>
 
-          <label className="flex flex-col gap-1.5">
+          <label className="flex flex-col gap-1.5 md:col-span-2">
             <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Theo cơ sở</span>
             <select
               value={basis}
@@ -1272,7 +1272,7 @@ function EditableCategoryBudgetCard({
           </label>
         </div>
 
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
+        <div className="mt-3 flex flex-col gap-2 text-xs text-slate-500 dark:text-slate-400 lg:flex-row lg:items-center lg:justify-between">
           <span>
             Dự thảo: <b className="text-slate-700 dark:text-slate-200">{formatCurrency(draftAmount)}</b>
             {' '}· Cơ sở hiện tại: <b className="text-slate-700 dark:text-slate-200">{formatCurrency(resolveBase(basis))}</b>
@@ -1293,12 +1293,12 @@ function EditableCategoryBudgetCard({
           </div>
         )}
 
-        <div className="mt-3 flex flex-wrap justify-end gap-2">
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
           <button
             type="button"
             onClick={handleReset}
             disabled={isSaving || !isDirty}
-            className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 sm:w-auto"
           >
             Đặt lại
           </button>
@@ -1306,7 +1306,7 @@ function EditableCategoryBudgetCard({
             type="button"
             onClick={handleSave}
             disabled={!canEdit || isSaving || !isDirty || !sourceCategory}
-            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
           >
             {isSaving ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
             Lưu budget
@@ -1609,9 +1609,9 @@ export default function BudgetPlan({ month, hideHeader = false }: { month: strin
               </p>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
             <label className={cn(
-              "flex cursor-pointer items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-200 dark:hover:bg-slate-800",
+              "flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-200 dark:hover:bg-slate-800 sm:justify-start",
               plannerMutating && "pointer-events-none opacity-60"
             )}>
               <Upload className="size-4" />
@@ -1797,7 +1797,7 @@ export default function BudgetPlan({ month, hideHeader = false }: { month: strin
             </span>
           </div>
 
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 2xl:grid-cols-3">
             {data.data.categories.map((category) => {
               const sourceCategory = categoriesByKey.get(normalizePlanText(category.category_key));
               const existingBudget = sourceCategory ? categoryBudgetsByCategoryId.get(sourceCategory.id) : undefined;
