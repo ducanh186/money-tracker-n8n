@@ -88,7 +88,6 @@ class MockMoneyRepository implements MoneyRepository {
       income: 18000000,
       expectedIncomeVnd: 18000000,
       actualIncomeVnd: 18000000,
-      actualExpenseVnd: totalSpent,
       assigned: 18000000,
       unassigned: 0,
       reservedVnd: 0,

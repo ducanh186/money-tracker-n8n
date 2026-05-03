@@ -93,7 +93,6 @@ class BudgetStatus {
     required this.income,
     required this.expectedIncomeVnd,
     required this.actualIncomeVnd,
-    required this.actualExpenseVnd,
     required this.assigned,
     required this.unassigned,
     required this.reservedVnd,
@@ -112,7 +111,6 @@ class BudgetStatus {
   final int income;
   final int expectedIncomeVnd;
   final int actualIncomeVnd;
-  final int actualExpenseVnd;
   final int assigned;
   final int unassigned;
   final int reservedVnd;
@@ -144,9 +142,6 @@ class BudgetStatus {
       ),
       actualIncomeVnd: _intFromJson(
         json['actual_income_vnd'] ?? json['sheet_income'],
-      ),
-      actualExpenseVnd: _intFromJson(
-        json['actual_expense_vnd'] ?? json['total_spent'],
       ),
       assigned: _intFromJson(json['assigned']),
       unassigned: _intFromJson(

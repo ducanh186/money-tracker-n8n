@@ -515,19 +515,19 @@ class _BudgetScreenState extends State<BudgetScreen> {
               _SummaryCard(
                 width: summaryCardWidth,
                 title: 'Đã chi thực tế',
-                value: formatCompactCurrency(status.actualExpenseVnd),
+                value: formatCompactCurrency(status.totalSpent),
                 subtitle: _expectedIncomeDraft > 0
-                    ? '${((status.actualExpenseVnd / _expectedIncomeDraft) * 100).round()}% trên draft hiện tại'
+                    ? '${((status.totalSpent / _expectedIncomeDraft) * 100).round()}% trên draft hiện tại'
                     : 'Chưa có income draft',
                 icon: Icons.trending_down_rounded,
                 tone: Colors.red,
               ),
               _SummaryCard(
                 width: summaryCardWidth,
-                title: 'Còn lại',
+                title: 'Dư tổng category',
                 value: formatCompactCurrency(totalRemaining),
                 subtitle: totalRemaining >= 0
-                    ? 'Sau khi trừ spent + reserved'
+                    ? 'Cộng dồn còn của từng category'
                     : 'Draft hiện tại đang thiếu',
                 icon: Icons.savings_outlined,
                 tone: totalRemaining >= 0 ? Colors.teal : Colors.red,
@@ -1192,7 +1192,7 @@ class _CategoryBudgetCard extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               Text(
-                '${budgetShare.toStringAsFixed(budgetShare >= 10 ? 1 : 2)}% income · ${category.usagePct}% đã dùng',
+                '${budgetShare.toStringAsFixed(budgetShare >= 10 ? 1 : 2)}% income · ${category.usagePct}% đã dùng${category.rolloverAmount != 0 ? ' · Carry ${formatCompactCurrency(category.rolloverAmount)}' : ''}',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontWeight: FontWeight.w600,

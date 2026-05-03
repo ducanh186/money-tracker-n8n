@@ -2116,16 +2116,6 @@ export default function BudgetPlan({ month, hideHeader = false }: { month: strin
                       )}
                     </div>
                   </div>
-                  <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] font-medium">
-                    <span className="inline-flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
-                      <span className={cn('size-2 rounded-full', actualProgressClass)} />
-                      Đã chi {formatCurrency(spentAmount)}
-                    </span>
-                    <span className={cn('inline-flex items-center gap-1.5', PLANNED_PROGRESS_TEXT_CLASS)}>
-                      <span className={cn('size-2 rounded-full', PLANNED_PROGRESS_BAR_CLASS)} />
-                      Giữ trước {formatCurrency(committedAmount)}
-                    </span>
-                  </div>
                 </div>
 
                 {/* Stats row */}
