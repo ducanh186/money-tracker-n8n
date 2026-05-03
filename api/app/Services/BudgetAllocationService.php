@@ -177,7 +177,6 @@ class BudgetAllocationService
                 'jar_label'       => $alloc->jar->label,
                 'percent'         => $alloc->effective_percent,
                 'planned_amount'  => $alloc->planned_amount,
-                'funded_amount'   => $alloc->funded_amount,
                 'lines_planned'   => $linesPlanned,
                 'lines_actual'    => $linesActual,
                 'unassigned'      => $alloc->planned_amount - $linesPlanned,

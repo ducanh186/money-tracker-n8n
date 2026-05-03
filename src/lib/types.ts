@@ -392,8 +392,7 @@ export interface BudgetStatusJarMetric {
   label: string;
   planned: number;
   budgeted_vnd?: number;
-  committed: number;
-  reserved?: number;
+  reserved: number;
   reserved_vnd?: number;
   spent: number;
   spent_vnd?: number;
@@ -663,7 +662,6 @@ export interface BudgetWorkspaceJar {
   jar_label: string;
   percent: number;
   planned_amount: number;
-  funded_amount: number;
   lines_planned: number;
   lines_actual: number;
   unassigned: number;
