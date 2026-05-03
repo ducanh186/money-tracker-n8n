@@ -23,6 +23,8 @@ export default function TopBar({ currentView, setCurrentView, selectedMonth, onM
   const availableToSpend = budgetStatus?.available_to_spend_vnd ?? budgetStatus?.available_to_spend ?? 0;
   const leftToBudget = budgetStatus?.left_to_budget_vnd ?? budgetStatus?.unassigned ?? 0;
   const hasBudgetPlan = budgetStatus?.has_period ?? true;
+  const planAmountLabel = hasBudgetPlan ? 'Đã phân bổ:' : 'Plan gợi ý:';
+  const availableLabel = hasBudgetPlan ? 'Còn chi được:' : 'Còn theo gợi ý:';
 
   const navItems = [
     { id: 'overview', label: 'Tổng quan', icon: PieChart },
@@ -181,22 +183,24 @@ export default function TopBar({ currentView, setCurrentView, selectedMonth, onM
               <span className="font-semibold text-emerald-600 dark:text-emerald-400">{formatCurrency(actualIncome)}</span>
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
-              <span className="text-slate-500 dark:text-slate-400">Đã phân bổ:</span>
+              <span className="text-slate-500 dark:text-slate-400">{planAmountLabel}</span>
               <span className="font-semibold text-blue-600 dark:text-blue-400">{formatCurrency(budgetStatus.assigned)}</span>
             </div>
+            {hasBudgetPlan && (
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span className="text-slate-500 dark:text-slate-400">Chưa phân bổ:</span>
+                <span className={cn(
+                  "font-semibold",
+                  leftToBudget === 0
+                    ? "text-green-600 dark:text-green-400"
+                    : "text-red-600 dark:text-red-400"
+                )}>
+                  {formatCurrency(leftToBudget)}
+                </span>
+              </div>
+            )}
             <div className="flex items-center gap-1.5 shrink-0">
-              <span className="text-slate-500 dark:text-slate-400">Chưa phân bổ:</span>
-              <span className={cn(
-                "font-semibold",
-                leftToBudget === 0
-                  ? "text-green-600 dark:text-green-400"
-                  : "text-red-600 dark:text-red-400"
-              )}>
-                {formatCurrency(leftToBudget)}
-              </span>
-            </div>
-            <div className="flex items-center gap-1.5 shrink-0">
-              <span className="text-slate-500 dark:text-slate-400">Còn chi được:</span>
+              <span className="text-slate-500 dark:text-slate-400">{availableLabel}</span>
               <span className={cn(
                 'font-semibold',
                 availableToSpend >= 0
@@ -205,10 +209,15 @@ export default function TopBar({ currentView, setCurrentView, selectedMonth, onM
               )}>{formatCurrency(availableToSpend)}</span>
             </div>
             {!hasBudgetPlan && (
-              <div className="flex items-center gap-1.5 shrink-0 text-amber-600 dark:text-amber-400">
+              <button
+                type="button"
+                onClick={() => setCurrentView('budget')}
+                title="Chưa có Plan đã lưu cho tháng này. Mở Kế hoạch để lưu hoặc nhập JSON."
+                className="flex items-center gap-1.5 shrink-0 rounded-full border border-amber-300/70 px-2 py-0.5 text-amber-700 transition hover:bg-amber-50 dark:border-amber-500/30 dark:text-amber-300 dark:hover:bg-amber-500/10"
+              >
                 <AlertTriangle className="size-3.5" />
-                <span className="font-medium">Chưa lập kế hoạch tháng này</span>
-              </div>
+                <span className="font-medium">Đang dùng Plan gợi ý</span>
+              </button>
             )}
             {budgetStatus.reserved_vnd != null && budgetStatus.reserved_vnd > 0 && (
               <div className="flex items-center gap-1.5 shrink-0">
