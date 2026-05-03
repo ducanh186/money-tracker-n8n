@@ -104,7 +104,10 @@ export interface BudgetPlanData {
   sheet_income: number;
   expected_income_vnd: number;
   actual_income_vnd: number;
+  actual_expense_vnd?: number;
   jars: BudgetJar[];
+  categories?: CategorySummary[];
+  budget_basis?: 'category' | 'jar_compatibility' | string;
   summary: BudgetPlanSummary;
   loan_summary?: LoanSummary;
   thresholds: { ok_max: number; warn_max: number };
@@ -384,6 +387,8 @@ export interface BudgetStatusData {
   planning_insights_enabled: boolean;
   has_period: boolean;
   jars: BudgetStatusJarMetric[];
+  categories?: CategorySummary[];
+  budget_basis?: 'category' | 'jar_compatibility' | string;
 }
 
 export interface BudgetStatusResponse {
@@ -420,6 +425,69 @@ export type MonthlySummaryData = BudgetStatusData;
 
 export interface MonthlySummaryResponse {
   data: MonthlySummaryData;
+}
+
+export interface Category {
+  id: number;
+  key: string;
+  name: string;
+  group: string | null;
+  sort_order: number;
+  is_active: boolean;
+}
+
+export interface CategorySummary {
+  category_key: string;
+  category_name: string;
+  category_group?: string | null;
+  budgeted_vnd: number;
+  spent_vnd: number;
+  reserved_vnd: number;
+  rollover_vnd?: number;
+  remaining_vnd: number;
+  usage_pct: number;
+  status: 'OK' | 'WARN' | 'OVER' | string;
+  source?: string;
+}
+
+export interface CategoryBudget {
+  id: number;
+  budget_period_id: number;
+  category_id: number;
+  category_key: string;
+  category_name: string;
+  budgeted_amount: number;
+  reserved_amount: number;
+  rollover_amount: number;
+  notes: string | null;
+}
+
+export interface CategoriesResponse {
+  data: Category[];
+}
+
+export interface CategoryBudgetsResponse {
+  data: CategoryBudget[];
+}
+
+export interface BudgetTemplateItem {
+  category: Pick<Category, 'id' | 'key' | 'name'> | null;
+  jar: { id: number; key: string; label: string } | null;
+  percent: number;
+  sort_order: number;
+}
+
+export interface BudgetTemplate {
+  id: number;
+  key: string;
+  name: string;
+  type: string;
+  is_default: boolean;
+  items: BudgetTemplateItem[];
+}
+
+export interface BudgetTemplatesResponse {
+  data: BudgetTemplate[];
 }
 
 // ---------------------------------------------------------------

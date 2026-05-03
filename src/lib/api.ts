@@ -46,6 +46,9 @@ import type {
   CreateBudgetLinePayload,
   BalanceResponse,
   MonthlySummaryResponse,
+  CategoriesResponse,
+  CategoryBudgetsResponse,
+  BudgetTemplatesResponse,
 } from './types';
 
 // Base URL — in dev the Vite proxy forwards /api → Laravel at :8000
@@ -335,6 +338,18 @@ export async function fetchBalanceAsOf(date: string): Promise<BalanceResponse> {
 
 export async function fetchMonthlySummary(month: string): Promise<MonthlySummaryResponse> {
   return smartFetch(`${BASE}/monthly-summary?month=${encodeURIComponent(month)}`);
+}
+
+export async function fetchCategories(): Promise<CategoriesResponse> {
+  return smartFetch(`${BASE}/categories`);
+}
+
+export async function fetchCategoryBudgets(month: string): Promise<CategoryBudgetsResponse> {
+  return smartFetch(`${BASE}/category-budgets?month=${encodeURIComponent(month)}`);
+}
+
+export async function fetchBudgetTemplates(): Promise<BudgetTemplatesResponse> {
+  return smartFetch(`${BASE}/budget-templates`);
 }
 
 // ---------------------------------------------------------------

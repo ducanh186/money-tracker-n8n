@@ -6,6 +6,8 @@ use App\Http\Controllers\Api\BudgetLineController;
 use App\Http\Controllers\Api\BudgetPeriodController;
 use App\Http\Controllers\Api\BudgetPlanController;
 use App\Http\Controllers\Api\BudgetSettingController;
+use App\Http\Controllers\Api\CategoryBudgetController;
+use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DebtController;
 use App\Http\Controllers\Api\FundController;
@@ -129,6 +131,8 @@ Route::get('/budget-plan', BudgetPlanController::class);
 Route::get('/balances', [BalanceController::class, 'month']);
 Route::get('/balances/as-of', [BalanceController::class, 'asOf']);
 Route::get('/monthly-summary', MonthlySummaryController::class);
+Route::get('/categories', [CategoryController::class, 'index']);
+Route::get('/budget-templates', [CategoryController::class, 'templates']);
 
 // ══════════════════════════════════════════════════════════════════════
 // Dashboard summary + Sync (cache-first read model)
@@ -141,12 +145,12 @@ Route::post('/sync', [DashboardController::class, 'triggerSync'])
     ->middleware('throttle:sync');
 
 // ══════════════════════════════════════════════════════════════════════
-// ZBB + 6 Jars Budgeting System
+// Category-first budgeting with legacy 6-jar compatibility
 // ══════════════════════════════════════════════════════════════════════
 
 // ── Read endpoints with ETag (304 support) ────────────────────────
 Route::middleware(['etag'])->group(function () {
-    // Jars (6 hũ)
+    // Jars (optional template/grouping compatibility)
     Route::prefix('jars')->group(function () {
         Route::get('/', [JarController::class, 'index']);
         Route::get('/{jar}', [JarController::class, 'show']);
@@ -194,6 +198,9 @@ Route::middleware(['etag'])->group(function () {
 
     // Budget Settings (per-month overrides)
     Route::get('/budget-settings/{month}', [BudgetSettingController::class, 'show']);
+
+    // Category budgets (read)
+    Route::get('/category-budgets', [CategoryBudgetController::class, 'index']);
 });
 
 // ── Write endpoints with rate limiting ────────────────────────────
@@ -247,6 +254,11 @@ Route::middleware(['throttle:write'])->group(function () {
 
     // Budget Settings (write)
     Route::put('/budget-settings/{month}', [BudgetSettingController::class, 'update']);
+
+    // Category budgets (write)
+    Route::post('/category-budgets', [CategoryBudgetController::class, 'store']);
+    Route::put('/category-budgets/{categoryBudget}', [CategoryBudgetController::class, 'update']);
+    Route::delete('/category-budgets/{categoryBudget}', [CategoryBudgetController::class, 'destroy']);
 
     // Budget Period close
     Route::post('/budget-periods/{budgetPeriod}/close', [BudgetPeriodController::class, 'close']);

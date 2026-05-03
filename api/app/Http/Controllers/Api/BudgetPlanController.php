@@ -2,12 +2,8 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Contracts\TransactionsRepositoryInterface;
 use App\Models\Jar;
 use App\Services\MonthlyBudgetSummaryService;
-use App\Support\BudgetMonth;
-use App\Support\MoneyAmount;
-use App\Support\TransactionFilters;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -16,7 +12,6 @@ use Illuminate\Support\Facades\Cache;
 class BudgetPlanController extends Controller
 {
     public function __construct(
-        private readonly TransactionsRepositoryInterface $repository,
         private readonly MonthlyBudgetSummaryService $monthlySummaryService,
     ) {}
 
@@ -49,73 +44,32 @@ class BudgetPlanController extends Controller
             return response()->json($cached);
         }
 
-        // Load thresholds from config
         $thresholds = config('budget_plan.thresholds', ['ok_max' => 80, 'warn_max' => 100]);
 
-        // Fetch all transactions for the month
         try {
-            $budgetMonth = BudgetMonth::parse($month);
-            $rows = array_values(array_filter(
-                $this->repository->all(),
-                fn (array $row) => MoneyAmount::rowBelongsToMonth($row, $budgetMonth)
-            ));
-        } catch (\Throwable $e) {
+            $monthly = $this->monthlySummaryService->summary($month);
+        } catch (\Throwable) {
             return response()->json([
-                'error'   => 'sheets_error',
-                'message' => 'Could not fetch transactions.',
+                'error'   => 'summary_error',
+                'message' => 'Could not compute budget plan.',
             ], 500);
         }
 
-        // Compute actual income from sheet transactions
-        // Loan transactions (jar=LOAN) are excluded from the budget plan.
-        $sheetIncome = 0;
-        $actualByJar = [];
-        $loanSummary = ['in' => 0, 'out' => 0, 'repayment' => 0, 'recovery' => 0];
-        foreach ($rows as $row) {
-            if (TransactionFilters::isLoan($row)) {
-                $cat = trim((string)($row['category'] ?? ''));
-                $amtVnd = MoneyAmount::amountAbsVnd($row);
-                if ($cat === 'Loan In')        $loanSummary['in']        += $amtVnd;
-                elseif ($cat === 'Loan Repayment') $loanSummary['repayment'] += $amtVnd;
-                elseif ($cat === 'Loan Out')   $loanSummary['out']       += $amtVnd;
-                elseif ($cat === 'Loan Recovery') $loanSummary['recovery']  += $amtVnd;
-                continue;
-            }
-            $flow = MoneyAmount::direction($row);
-            if ($flow === 'income') {
-                $sheetIncome += MoneyAmount::amountAbsVnd($row);
-            }
-            if ($flow === 'expense') {
-                $jarKey = trim($row['jar'] ?? '');
-                if ($jarKey === '') {
-                    $jarKey = 'Không phân loại';
-                }
-                $amountVnd = MoneyAmount::amountAbsVnd($row);
-                $actualByJar[$jarKey] = ($actualByJar[$jarKey] ?? 0) + $amountVnd;
-            }
-        }
-        $loanSummary['net_owed'] = ($loanSummary['in'] - $loanSummary['repayment'])
-                                 - ($loanSummary['out'] - $loanSummary['recovery']);
-
         // expected income: query param > period/settings/carry-forward/config.
-        if ($overrideIncome !== null) {
-            $baseIncome = (int) $overrideIncome;
-        } else {
-            $baseIncome = $this->monthlySummaryService->expectedIncomeForMonth($month);
-        }
+        $baseIncome = $overrideIncome !== null
+            ? (int) $overrideIncome
+            : (int) $monthly['expected_income_vnd'];
 
-        // Get jar percentages from DB (editable)
-        $dbJars = Jar::where('is_active', true)->orderBy('sort_order')->get();
+        $dbJars = Jar::where('is_active', true)->orderBy('sort_order')->get()->keyBy('key');
 
-        // Build response for each jar
-        $jars = [];
-        foreach ($dbJars as $jar) {
-            $label    = $jar->label;
-            $percent  = (float) $jar->percent;
-            $planned  = (int) round($baseIncome * $percent / 100);
-            // Match by jar key first (sheet uses keys like NEC, LTSS), fallback to label
-            $actual   = $actualByJar[$jar->key] ?? ($actualByJar[$label] ?? 0);
-            $remaining = $planned - $actual;
+        $jars = array_map(function (array $jarMetric) use ($dbJars, $baseIncome, $overrideIncome, $thresholds) {
+            $dbJar = $dbJars->get($jarMetric['key']);
+            $percent = (float) ($dbJar?->percent ?? 0);
+            $planned = $overrideIncome !== null
+                ? (int) round($baseIncome * $percent / 100)
+                : (int) ($jarMetric['budgeted_vnd'] ?? $jarMetric['planned'] ?? 0);
+            $actual = (int) ($jarMetric['spent_vnd'] ?? $jarMetric['spent'] ?? 0);
+            $remaining = $planned - $actual - (int) ($jarMetric['reserved_vnd'] ?? $jarMetric['reserved'] ?? 0);
             $usagePct = $planned > 0 ? round(($actual / $planned) * 100, 2) : 0;
 
             if ($usagePct <= $thresholds['ok_max']) {
@@ -126,9 +80,9 @@ class BudgetPlanController extends Controller
                 $status = 'OVER';
             }
 
-            $jars[] = [
-                'key'            => $jar->key,
-                'label'          => $label,
+            return [
+                'key'            => $jarMetric['key'],
+                'label'          => $jarMetric['label'],
                 'percent'        => $percent,
                 'planned_amount' => $planned,
                 'actual_amount'  => $actual,
@@ -136,9 +90,8 @@ class BudgetPlanController extends Controller
                 'usage_pct'      => $usagePct,
                 'status'         => $status,
             ];
-        }
+        }, $monthly['jars'] ?? []);
 
-        // Summary
         $totalPlanned = (int) array_sum(array_column($jars, 'planned_amount'));
         $totalActual  = (int) array_sum(array_column($jars, 'actual_amount'));
 
@@ -146,10 +99,13 @@ class BudgetPlanController extends Controller
             'data' => [
                 'month'         => $month,
                 'base_income'   => $baseIncome,
-                'sheet_income'  => $sheetIncome,
+                'sheet_income'  => (int) $monthly['actual_income_vnd'],
                 'expected_income_vnd' => $baseIncome,
-                'actual_income_vnd' => $sheetIncome,
+                'actual_income_vnd' => (int) $monthly['actual_income_vnd'],
+                'actual_expense_vnd' => (int) $monthly['actual_expense_vnd'],
                 'jars'          => $jars,
+                'categories'    => $monthly['categories'] ?? [],
+                'budget_basis'  => $monthly['budget_basis'] ?? 'jar_compatibility',
                 'summary'       => [
                     'total_planned'   => $totalPlanned,
                     'total_actual'    => $totalActual,
@@ -158,7 +114,7 @@ class BudgetPlanController extends Controller
                         ? round(($totalActual / $totalPlanned) * 100, 2)
                         : 0,
                 ],
-                'loan_summary'  => $loanSummary,
+                'loan_summary'  => ['in' => 0, 'out' => 0, 'repayment' => 0, 'recovery' => 0, 'net_owed' => 0],
                 'thresholds'    => $thresholds,
             ],
         ];
@@ -166,13 +122,5 @@ class BudgetPlanController extends Controller
         Cache::put($cacheKey, $payload, config('google_sheets.cache_ttl', 60));
 
         return response()->json($payload);
-    }
-
-    private function parseNumeric(mixed $value): int
-    {
-        if (is_numeric($value)) {
-            return (int) $value;
-        }
-        return 0;
     }
 }

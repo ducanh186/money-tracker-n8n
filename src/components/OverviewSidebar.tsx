@@ -1,6 +1,6 @@
 import { TrendingUp, TrendingDown, ArrowUpCircle, ArrowDownCircle, ArrowRightLeft } from 'lucide-react';
 import { formatCurrency, formatSignedAmount } from '../lib/utils';
-import { useDashboardSummary, useDarkMode } from '../lib/hooks';
+import { useBudgetStatus, useDashboardSummary, useDarkMode } from '../lib/hooks';
 import { getJar, JAR_ORDER } from '../lib/jars';
 import type { JarKey } from '../lib/jars';
 
@@ -64,6 +64,7 @@ function signedAmount(amount: number, flow: string | null): number {
 
 export default function OverviewSidebar({ month }: { month: string }) {
   const { data: summaryRes } = useDashboardSummary(month);
+  const { data: budgetStatus } = useBudgetStatus(month);
   const isDark = useDarkMode();
   const summary = summaryRes?.data;
 
@@ -81,6 +82,12 @@ export default function OverviewSidebar({ month }: { month: string }) {
     .filter((x) => x.amount > 0)
     .sort((a, b) => b.amount - a.amount)
     .slice(0, 3);
+  const topCategories = (budgetStatus?.categories ?? [])
+    .filter((category) => category.spent_vnd > 0)
+    .sort((a, b) => b.spent_vnd - a.spent_vnd)
+    .slice(0, 3);
+  const totalCategoryExpense = (budgetStatus?.categories ?? [])
+    .reduce((sum, category) => sum + Math.abs(category.spent_vnd), 0);
 
   const recent = (summary?.recent_transactions ?? []).slice(0, 4);
   const recentGroups = Object.entries(
@@ -136,14 +143,35 @@ export default function OverviewSidebar({ month }: { month: string }) {
         </div>
       </div>
 
-      {/* Top categories (top 3 jars by expense) */}
+      {/* Top categories */}
       <div className="bg-white dark:bg-[#1a2433] rounded-xl border border-slate-100 dark:border-slate-700 p-4 shadow-sm">
-        <h4 className="text-sm font-semibold text-slate-900 dark:text-white mb-3">Top ăn tiền</h4>
-        {topJars.length === 0 ? (
+        <h4 className="text-sm font-semibold text-slate-900 dark:text-white mb-3">Top danh mục</h4>
+        {topCategories.length === 0 && topJars.length === 0 ? (
           <p className="text-xs text-slate-400 dark:text-slate-500 py-2">Chưa có chi tiêu</p>
         ) : (
           <div className="flex flex-col">
-            {topJars.map((item, i) => {
+            {topCategories.length > 0 ? topCategories.map((item, i) => {
+              const pct = totalCategoryExpense > 0 ? Math.round((item.spent_vnd / totalCategoryExpense) * 100) : 0;
+              return (
+                <div key={item.category_key} className={`py-2.5 ${i < topCategories.length - 1 ? 'border-b border-slate-100 dark:border-slate-700' : ''}`}>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{item.category_name}</span>
+                    <span className="text-sm font-semibold text-slate-900 dark:text-white tabular-nums">
+                      −{compact(item.spent_vnd)}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">
+                      {item.category_key}
+                    </span>
+                    <div className="flex-1 h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                      <div className="h-full rounded-full bg-blue-500" style={{ width: `${pct}%` }} />
+                    </div>
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400 tabular-nums w-8 text-right">{pct}%</span>
+                  </div>
+                </div>
+              );
+            }) : topJars.map((item, i) => {
               const jar = getJar(item.key as JarKey);
               if (!jar) return null;
               const pct = totalJarExpense > 0 ? Math.round((item.amount / totalJarExpense) * 100) : 0;

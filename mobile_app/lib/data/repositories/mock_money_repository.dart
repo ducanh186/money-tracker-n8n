@@ -96,6 +96,7 @@ class MockMoneyRepository implements MoneyRepository {
       periodStatus: 'open',
       planningInsightsEnabled: true,
       jars: jars,
+      categories: const [],
     );
 
     return OverviewData(

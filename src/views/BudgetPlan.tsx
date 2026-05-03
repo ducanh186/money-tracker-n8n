@@ -1271,6 +1271,59 @@ export default function BudgetPlan({ month, hideHeader = false }: { month: strin
         Thực thu tháng này: <b>{formatCurrency(actualIncome)}</b>. Kế hoạch vẫn dựa trên thu nhập dự kiến để đầu tháng chưa nhận lương không bị xem là hết tiền.
       </div>
 
+      {data?.data.categories && data.data.categories.length > 0 && (
+        <div className="rounded-[24px] border border-blue-200/80 bg-white p-5 shadow-sm dark:border-blue-500/30 dark:bg-[#111827]">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">Ngân sách theo danh mục</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Category là trục chính mới; 6 hũ vẫn giữ như template/nhóm tương thích.
+              </p>
+            </div>
+            <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-600 dark:bg-blue-500/10 dark:text-blue-300">
+              {data.data.budget_basis === 'category' ? 'Category-based' : 'Fallback từ dữ liệu hiện có'}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {data.data.categories.map((category) => {
+              const usage = Math.min(Math.max(category.usage_pct ?? 0, 0), 100);
+              const isOver = category.remaining_vnd < 0;
+              return (
+                <div key={category.category_key} className="rounded-2xl border border-slate-100 bg-slate-50 p-4 dark:border-slate-700 dark:bg-[#0c1222]">
+                  <div className="mb-3 flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-bold text-slate-900 dark:text-white">{category.category_name}</p>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">{category.category_group ?? category.category_key}</p>
+                    </div>
+                    <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${isOver ? 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300'}`}>
+                      {category.status}
+                    </span>
+                  </div>
+                  <div className="mb-3 h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
+                    <div className={`h-full rounded-full ${isOver ? 'bg-red-500' : 'bg-blue-500'}`} style={{ width: `${usage}%` }} />
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-xs">
+                    <div>
+                      <span className="block text-slate-400">Budget</span>
+                      <b className="text-slate-700 dark:text-slate-200">{formatCurrency(category.budgeted_vnd)}</b>
+                    </div>
+                    <div>
+                      <span className="block text-slate-400">Đã chi</span>
+                      <b className="text-red-600 dark:text-red-400">{formatCurrency(category.spent_vnd)}</b>
+                    </div>
+                    <div>
+                      <span className="block text-slate-400">Còn</span>
+                      <b className={isOver ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}>{formatCurrency(category.remaining_vnd)}</b>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Investment Allocation Card */}
       {investmentData?.data && investmentData.data.funds.length > 0 && (() => {
         const inv = investmentData.data;

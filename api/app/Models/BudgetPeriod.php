@@ -42,6 +42,11 @@ class BudgetPeriod extends Model
         return $this->hasMany(JarAllocation::class);
     }
 
+    public function categoryBudgets(): HasMany
+    {
+        return $this->hasMany(CategoryBudget::class);
+    }
+
     public function budgetLines()
     {
         return $this->hasManyThrough(BudgetLine::class, JarAllocation::class);

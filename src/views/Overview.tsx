@@ -1,7 +1,7 @@
 import { ArrowUpCircle, ArrowDownCircle, ArrowRightLeft, Loader2, RefreshCw } from 'lucide-react';
 import { useMemo } from 'react';
 import { formatCurrency, formatSignedAmount } from '../lib/utils';
-import { useDashboardSummary, useSyncStatus, useTriggerSync, useInvestmentSummary } from '../lib/hooks';
+import { useBudgetStatus, useDashboardSummary, useSyncStatus, useTriggerSync, useInvestmentSummary } from '../lib/hooks';
 import { IncomeExpenseChart } from '../components/IncomeExpenseChart';
 import { ExpenseStructureChart } from '../components/ExpenseStructureChart';
 import OverviewSidebar from '../components/OverviewSidebar';
@@ -71,6 +71,7 @@ export default function Overview({
 }) {
   // Lightweight summary endpoint — no full transaction list
   const { data: summaryRes, isPending, error } = useDashboardSummary(month);
+  const { data: budgetStatus } = useBudgetStatus(month);
   const { data: syncRes } = useSyncStatus();
   const syncMutation = useTriggerSync();
   const { data: investmentData } = useInvestmentSummary(month);
@@ -92,6 +93,12 @@ export default function Overview({
     .filter((item) => item.amount > 0)
     .sort((a, b) => b.amount - a.amount)
     .slice(0, 3);
+  const topCategories = (budgetStatus?.categories ?? [])
+    .filter((category) => category.spent_vnd > 0)
+    .sort((a, b) => b.spent_vnd - a.spent_vnd)
+    .slice(0, 3);
+  const totalCategoryExpense = (budgetStatus?.categories ?? [])
+    .reduce((sum, category) => sum + Math.abs(category.spent_vnd), 0);
 
   const recentGroups = useMemo(() => {
     const groups = new Map<string, typeof recentTxs>();
@@ -234,15 +241,34 @@ export default function Overview({
 
       <div className="lg:hidden flex flex-col gap-3 mt-1">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-bold text-slate-900 dark:text-white">Top ăn tiền</h3>
+          <h3 className="text-lg font-bold text-slate-900 dark:text-white">Top danh mục</h3>
         </div>
 
         <div className="rounded-2xl bg-white dark:bg-[#1a2433] border border-slate-100 dark:border-slate-700 shadow-sm p-4">
-          {topJars.length === 0 ? (
-            <p className="text-sm text-slate-400 dark:text-slate-500 text-center py-4">Chưa có chi tiêu theo hũ trong tháng này</p>
+          {topCategories.length === 0 && topJars.length === 0 ? (
+            <p className="text-sm text-slate-400 dark:text-slate-500 text-center py-4">Chưa có chi tiêu theo danh mục trong tháng này</p>
           ) : (
             <div className="flex flex-col gap-3">
-              {topJars.map((item) => {
+              {topCategories.length > 0 ? topCategories.map((item) => {
+                const pct = totalCategoryExpense > 0 ? Math.round((item.spent_vnd / totalCategoryExpense) * 100) : 0;
+                return (
+                  <div key={item.category_key} className="rounded-xl bg-slate-50 dark:bg-[#0c1222] border border-slate-100 dark:border-slate-700 p-3">
+                    <div className="flex items-center justify-between gap-3 mb-2">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">{item.category_name}</p>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400">{item.category_group ?? item.category_key}</p>
+                      </div>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{formatCurrency(item.spent_vnd)}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
+                        <div className="h-full rounded-full bg-blue-500" style={{ width: `${pct}%` }} />
+                      </div>
+                      <span className="w-9 text-right text-[11px] text-slate-500 dark:text-slate-400">{pct}%</span>
+                    </div>
+                  </div>
+                );
+              }) : topJars.map((item) => {
                 const jar = getJar(item.key);
                 if (!jar) return null;
                 const pct = totalJarExpense > 0 ? Math.round((item.amount / totalJarExpense) * 100) : 0;

@@ -105,6 +105,7 @@ class BudgetStatus {
     required this.periodStatus,
     required this.planningInsightsEnabled,
     required this.jars,
+    required this.categories,
   });
 
   final String month;
@@ -123,11 +124,16 @@ class BudgetStatus {
   final String periodStatus;
   final bool planningInsightsEnabled;
   final List<JarMetric> jars;
+  final List<CategoryMetric> categories;
 
   factory BudgetStatus.fromJson(Map<String, Object?> json) {
     final jars = (json['jars'] as List<Object?>? ?? [])
         .whereType<Map<String, Object?>>()
         .map(JarMetric.fromJson)
+        .toList();
+    final categories = (json['categories'] as List<Object?>? ?? [])
+        .whereType<Map<String, Object?>>()
+        .map(CategoryMetric.fromJson)
         .toList();
 
     return BudgetStatus(
@@ -147,6 +153,45 @@ class BudgetStatus {
       periodStatus: json['period_status'] as String? ?? '',
       planningInsightsEnabled: json['planning_insights_enabled'] == true,
       jars: jars,
+      categories: categories,
+    );
+  }
+}
+
+class CategoryMetric {
+  const CategoryMetric({
+    required this.key,
+    required this.name,
+    required this.group,
+    required this.budgetedVnd,
+    required this.spentVnd,
+    required this.reservedVnd,
+    required this.remainingVnd,
+    required this.usagePct,
+    required this.status,
+  });
+
+  final String key;
+  final String name;
+  final String? group;
+  final int budgetedVnd;
+  final int spentVnd;
+  final int reservedVnd;
+  final int remainingVnd;
+  final int usagePct;
+  final String status;
+
+  factory CategoryMetric.fromJson(Map<String, Object?> json) {
+    return CategoryMetric(
+      key: json['category_key'] as String? ?? '',
+      name: json['category_name'] as String? ?? '',
+      group: json['category_group'] as String?,
+      budgetedVnd: _intFromJson(json['budgeted_vnd']),
+      spentVnd: _intFromJson(json['spent_vnd']),
+      reservedVnd: _intFromJson(json['reserved_vnd']),
+      remainingVnd: _intFromJson(json['remaining_vnd']),
+      usagePct: _intFromJson(json['usage_pct']),
+      status: json['status'] as String? ?? 'OK',
     );
   }
 }
