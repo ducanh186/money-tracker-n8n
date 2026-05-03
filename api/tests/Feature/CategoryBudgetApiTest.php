@@ -24,8 +24,10 @@ class CategoryBudgetApiTest extends TestCase
     {
         $this->getJson('/api/categories')
             ->assertOk()
-            ->assertJsonPath('data.0.key', 'food')
-            ->assertJsonPath('data.0.name', 'Ăn uống');
+            ->assertJsonCount(36, 'data')
+            ->assertJsonPath('data.0.key', 'Relocation Setup')
+            ->assertJsonPath('data.0.name', 'Relocation Setup')
+            ->assertJsonPath('data.0.group', 'LTSS');
 
         $response = $this->getJson('/api/budget-templates');
 
@@ -47,10 +49,10 @@ class CategoryBudgetApiTest extends TestCase
             'status' => 'open',
         ]);
 
-        $food = Category::where('key', 'food')->firstOrFail();
+        $groceries = Category::where('key', 'Groceries')->firstOrFail();
         CategoryBudget::create([
             'budget_period_id' => $period->id,
-            'category_id' => $food->id,
+            'category_id' => $groceries->id,
             'budgeted_amount' => 3_000_000,
             'reserved_amount' => 0,
             'rollover_amount' => 0,
@@ -58,7 +60,7 @@ class CategoryBudgetApiTest extends TestCase
 
         $this->getJson('/api/category-budgets?month=2026-05')
             ->assertOk()
-            ->assertJsonPath('data.0.category_key', 'food')
+            ->assertJsonPath('data.0.category_key', 'Groceries')
             ->assertJsonPath('data.0.budgeted_amount', 3_000_000);
     }
 
@@ -73,10 +75,10 @@ class CategoryBudgetApiTest extends TestCase
             'status' => 'open',
         ]);
 
-        $food = Category::where('key', 'food')->firstOrFail();
+        $groceries = Category::where('key', 'Groceries')->firstOrFail();
         CategoryBudget::create([
             'budget_period_id' => $period->id,
-            'category_id' => $food->id,
+            'category_id' => $groceries->id,
             'budgeted_amount' => 3_000_000,
             'reserved_amount' => 0,
             'rollover_amount' => 0,
@@ -96,7 +98,7 @@ class CategoryBudgetApiTest extends TestCase
                         'datetime' => '2026-05-03 09:00:00',
                         'flow' => 'expense',
                         'amount' => -500,
-                        'category' => 'Ăn uống',
+                        'category' => ' groceries ',
                         'balance' => 7_700,
                     ],
                 ];
@@ -109,7 +111,10 @@ class CategoryBudgetApiTest extends TestCase
             ->assertJsonPath('data.budgeted_vnd', 3_000_000)
             ->assertJsonPath('data.spent_vnd', 500_000)
             ->assertJsonPath('data.remaining_vnd', 2_500_000)
-            ->assertJsonPath('data.categories.0.category_key', 'food')
-            ->assertJsonPath('data.categories.0.spent_vnd', 500_000);
+            ->assertJsonFragment([
+                'category_key' => 'Groceries',
+                'category_name' => 'Groceries',
+                'spent_vnd' => 500_000,
+            ]);
     }
 }
