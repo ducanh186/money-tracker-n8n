@@ -82,6 +82,8 @@ function getJarStyle(key: string) {
 
 type PlannerType = BudgetLine['type'];
 type CategoryBudgetBasis = 'income' | 'balance';
+type BudgetPlanView = 'planner' | 'jars';
+const BUDGET_TAB_QUERY_KEY = 'budgetTab';
 const RESERVED_BUDGET_LINE_TYPES = new Set<PlannerType>([
   'goal',
   'bill',
@@ -137,6 +139,24 @@ const PLANNER_TYPE_OPTIONS: Array<{ value: PlannerType; label: string }> = [
 const PLANNER_FIELD_CLASS = 'w-full rounded-lg border border-violet-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-200 dark:border-violet-500/30 dark:bg-[#0f1728] dark:text-slate-100 dark:focus:border-violet-400 dark:focus:ring-violet-500/20';
 const PLANNED_PROGRESS_BAR_CLASS = 'bg-violet-500 dark:bg-violet-400';
 const PLANNED_PROGRESS_TEXT_CLASS = 'text-violet-600 dark:text-violet-300';
+
+function readBudgetPlanViewFromQuery(): BudgetPlanView {
+  const view = new URLSearchParams(window.location.search).get(BUDGET_TAB_QUERY_KEY);
+  return view === 'jars' ? 'jars' : 'planner';
+}
+
+function writeBudgetPlanViewToQuery(view: BudgetPlanView) {
+  const params = new URLSearchParams(window.location.search);
+  if (view === 'planner') {
+    params.delete(BUDGET_TAB_QUERY_KEY);
+  } else {
+    params.set(BUDGET_TAB_QUERY_KEY, view);
+  }
+
+  const query = params.toString();
+  const nextUrl = `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`;
+  window.history.replaceState(null, '', nextUrl);
+}
 
 function toPlannerType(value: PlannerType | string): PlannerType {
   if (
@@ -1323,6 +1343,7 @@ export default function BudgetPlan({ month, hideHeader = false }: { month: strin
   const [expandedJar, setExpandedJar] = useState<string | null>(null);
   const [ensuredPeriodId, setEnsuredPeriodId] = useState<number | null>(null);
   const [optimisticWorkspaceJars, setOptimisticWorkspaceJars] = useState<BudgetWorkspaceJar[] | null>(null);
+  const [activeView, setActiveView] = useState<BudgetPlanView>(() => readBudgetPlanViewFromQuery());
 
   // Editable total plan (base_income override) — persisted to DB
   const [editingPlan, setEditingPlan] = useState(false);
@@ -1380,6 +1401,10 @@ export default function BudgetPlan({ month, hideHeader = false }: { month: strin
       setEnsuredPeriodId(currentPeriodId);
     }
   }, [currentPeriodId]);
+
+  useEffect(() => {
+    writeBudgetPlanViewToQuery(activeView);
+  }, [activeView]);
 
   useEffect(() => {
     if (workspaceRes?.data.jars?.length) {
@@ -1594,6 +1619,11 @@ export default function BudgetPlan({ month, hideHeader = false }: { month: strin
     setExpandedJar(expandedJar === key ? null : key);
   };
 
+  const selectView = (view: BudgetPlanView) => {
+    setExpandedJar(null);
+    setActiveView(view);
+  };
+
   return (
     <div className="flex flex-col gap-6 max-w-7xl mx-auto">
       {/* Page header */}
@@ -1783,187 +1813,228 @@ export default function BudgetPlan({ month, hideHeader = false }: { month: strin
         Thực thu tháng này: <b>{formatCurrency(actualIncome)}</b>. Kế hoạch vẫn dựa trên thu nhập dự kiến để đầu tháng chưa nhận lương không bị xem là hết tiền.
       </div>
 
-      {data?.data.categories && data.data.categories.length > 0 && (
-        <div className="rounded-[24px] border border-blue-200/80 bg-white p-5 shadow-sm dark:border-blue-500/30 dark:bg-[#111827]">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white">Ngân sách theo danh mục</h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                Category là trục chính mới; có thể kéo thanh, nhập số tiền, hoặc nhập % theo income / số dư để chỉnh nhanh sau khi import JSON.
-              </p>
-            </div>
-            <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-600 dark:bg-blue-500/10 dark:text-blue-300">
-              {data.data.budget_basis === 'category' ? 'Category-based' : 'Fallback từ dữ liệu hiện có'}
+      <div className="rounded-[24px] border border-slate-200 bg-white p-2 shadow-sm dark:border-slate-700 dark:bg-[#111827]">
+        <div className="grid gap-2 md:grid-cols-2">
+          <button
+            type="button"
+            onClick={() => selectView('planner')}
+            className={cn(
+              'flex flex-col rounded-[18px] px-4 py-3 text-left transition',
+              activeView === 'planner'
+                ? 'bg-blue-600 text-white shadow-sm'
+                : 'text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800'
+            )}
+          >
+            <span className="text-sm font-semibold">Kế hoạch theo category</span>
+            <span className={cn('text-xs', activeView === 'planner' ? 'text-blue-100' : 'text-slate-500 dark:text-slate-400')}>
+              {data.data.categories?.length ?? 0} danh mục + khối đầu tư, ưu tiên cho lúc lập plan.
             </span>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 2xl:grid-cols-3">
-            {data.data.categories.map((category) => {
-              const sourceCategory = categoriesByKey.get(normalizePlanText(category.category_key));
-              const existingBudget = sourceCategory ? categoryBudgetsByCategoryId.get(sourceCategory.id) : undefined;
-
-              return (
-                <EditableCategoryBudgetCard
-                  key={category.category_key}
-                  category={category}
-                  sourceCategory={sourceCategory}
-                  existingBudget={existingBudget}
-                  expectedIncome={expectedIncome}
-                  balanceBase={budgetStatus?.account?.account_balance_vnd ?? budgetStatus?.account_balance_vnd ?? budgetStatus?.ending_balance_vnd ?? summary.total_remaining}
-                  canEdit={plannerEditable}
-                  isSaving={plannerMutating}
-                  ensureBudgetPeriod={() => ensureCurrentPeriodWorkspace()}
-                  onCreateBudget={(payload) => createCategoryBudgetMutation.mutateAsync(payload)}
-                  onUpdateBudget={(id, payload) => updateCategoryBudgetMutation.mutateAsync({ id, payload })}
-                />
-              );
-            })}
-          </div>
+          </button>
+          <button
+            type="button"
+            onClick={() => selectView('jars')}
+            className={cn(
+              'flex flex-col rounded-[18px] px-4 py-3 text-left transition',
+              activeView === 'jars'
+                ? 'bg-slate-900 text-white shadow-sm dark:bg-slate-100 dark:text-slate-900'
+                : 'text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800'
+            )}
+          >
+            <span className="text-sm font-semibold">Theo dõi hũ</span>
+            <span className={cn('text-xs', activeView === 'jars' ? 'text-slate-200 dark:text-slate-700' : 'text-slate-500 dark:text-slate-400')}>
+              {jars.length} hũ + drill-down giao dịch, mở nhanh mà không phải kéo xuống cuối trang.
+            </span>
+          </button>
         </div>
+      </div>
+
+      {activeView === 'planner' && (
+        <>
+          {data?.data.categories && data.data.categories.length > 0 && (
+            <div className="rounded-[24px] border border-blue-200/80 bg-white p-5 shadow-sm dark:border-blue-500/30 dark:bg-[#111827]">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">Ngân sách theo danh mục</h3>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    Category là trục chính mới; có thể kéo thanh, nhập số tiền, hoặc nhập % theo income / số dư để chỉnh nhanh sau khi import JSON.
+                  </p>
+                </div>
+                <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-600 dark:bg-blue-500/10 dark:text-blue-300">
+                  {data.data.budget_basis === 'category' ? 'Category-based' : 'Fallback từ dữ liệu hiện có'}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 2xl:grid-cols-3">
+                {data.data.categories.map((category) => {
+                  const sourceCategory = categoriesByKey.get(normalizePlanText(category.category_key));
+                  const existingBudget = sourceCategory ? categoryBudgetsByCategoryId.get(sourceCategory.id) : undefined;
+
+                  return (
+                    <EditableCategoryBudgetCard
+                      key={category.category_key}
+                      category={category}
+                      sourceCategory={sourceCategory}
+                      existingBudget={existingBudget}
+                      expectedIncome={expectedIncome}
+                      balanceBase={budgetStatus?.account?.account_balance_vnd ?? budgetStatus?.account_balance_vnd ?? budgetStatus?.ending_balance_vnd ?? summary.total_remaining}
+                      canEdit={plannerEditable}
+                      isSaving={plannerMutating}
+                      ensureBudgetPeriod={() => ensureCurrentPeriodWorkspace()}
+                      onCreateBudget={(payload) => createCategoryBudgetMutation.mutateAsync(payload)}
+                      onUpdateBudget={(id, payload) => updateCategoryBudgetMutation.mutateAsync({ id, payload })}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Investment Allocation Card */}
+          {investmentData?.data && investmentData.data.funds.length > 0 && (() => {
+            const inv = investmentData.data;
+            const varianceColor = inv.total_variance === 0
+              ? 'text-green-600 dark:text-green-400'
+              : inv.total_variance > 0
+                ? 'text-amber-600 dark:text-amber-400'
+                : 'text-red-600 dark:text-red-400';
+            const actualPct = inv.total_monthly_planned > 0
+              ? Math.round((inv.total_monthly_actual / inv.total_monthly_planned) * 100)
+              : 0;
+
+            return (
+              <div className="overflow-hidden rounded-[24px] border border-indigo-200/80 bg-gradient-to-r from-indigo-50 to-violet-50 shadow-sm dark:border-indigo-500/30 dark:from-indigo-500/10 dark:to-violet-500/10">
+                <div className="p-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="size-10 rounded-lg flex items-center justify-center bg-indigo-100 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400">
+                        <TrendingUp className="size-5" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-slate-900 dark:text-white">Đầu tư</h3>
+                        <span className="text-xs text-slate-400 dark:text-slate-500">Investment Allocation</span>
+                      </div>
+                    </div>
+                    {inv.total_monthly_actual >= inv.total_monthly_planned && inv.total_monthly_planned > 0 ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400">
+                        <CheckCircle2 className="size-3.5" /> Đã đủ
+                      </span>
+                    ) : inv.total_monthly_actual > 0 ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400">
+                        <AlertTriangle className="size-3.5" /> Đang tích
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-600 dark:bg-slate-500/20 dark:text-slate-400">
+                        Chưa bắt đầu
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Progress bar */}
+                  <div className="mb-4">
+                    <div className="flex justify-between text-xs mb-1.5">
+                      <span className="text-slate-500 dark:text-slate-400 font-medium">Tiến độ {actualPct}%</span>
+                      <span className="text-slate-500 dark:text-slate-400 font-medium">
+                        {formatCurrency(inv.total_monthly_actual)} / {formatCurrency(inv.total_monthly_planned)}
+                      </span>
+                    </div>
+                    <div className="h-2.5 w-full bg-white/60 dark:bg-slate-700 rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-500 bg-indigo-500"
+                        style={{ width: `${Math.min(actualPct, 100)}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Stats grid */}
+                  <div className="grid grid-cols-4 gap-3">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider font-semibold">Kế hoạch</span>
+                      <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">{formatCurrency(inv.total_monthly_planned)}</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider font-semibold">Thực tế</span>
+                      <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{formatCurrency(inv.total_monthly_actual)}</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider font-semibold">Chênh lệch</span>
+                      <span className={cn("text-sm font-bold", varianceColor)}>
+                        {inv.total_variance >= 0 ? '' : '-'}{formatCurrency(Math.abs(inv.total_variance))}
+                      </span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider font-semibold">Tích lũy</span>
+                      <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(inv.total_cumulative_contributed)}</span>
+                    </div>
+                  </div>
+
+                  {/* Per-fund breakdown (if multiple investment funds) */}
+                  {inv.funds.length > 1 && (
+                    <div className="mt-4 pt-4 border-t border-indigo-200/50 dark:border-indigo-500/20 space-y-2">
+                      {inv.funds.map((fund) => {
+                        const pct = fund.monthly_planned > 0
+                          ? Math.round((fund.monthly_actual / fund.monthly_planned) * 100)
+                          : 0;
+                        return (
+                          <div key={fund.id} className="flex items-center justify-between text-sm">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="font-medium text-slate-700 dark:text-slate-200 truncate">{fund.name}</span>
+                              {fund.jar && (
+                                <span className="text-xs text-slate-400 dark:text-slate-500">({fund.jar.label})</span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-3 shrink-0">
+                              <span className="text-xs text-slate-400 dark:text-slate-500">{pct}%</span>
+                              <span className="font-bold text-slate-700 dark:text-slate-200">
+                                {formatCurrency(fund.monthly_actual)} / {formatCurrency(fund.monthly_planned)}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+        </>
       )}
 
-      {/* Investment Allocation Card */}
-      {investmentData?.data && investmentData.data.funds.length > 0 && (() => {
-        const inv = investmentData.data;
-        const varianceColor = inv.total_variance === 0
-          ? 'text-green-600 dark:text-green-400'
-          : inv.total_variance > 0
-            ? 'text-amber-600 dark:text-amber-400'
-            : 'text-red-600 dark:text-red-400';
-        const actualPct = inv.total_monthly_planned > 0
-          ? Math.round((inv.total_monthly_actual / inv.total_monthly_planned) * 100)
-          : 0;
-
-        return (
-          <div className="overflow-hidden rounded-[24px] border border-indigo-200/80 bg-gradient-to-r from-indigo-50 to-violet-50 shadow-sm dark:border-indigo-500/30 dark:from-indigo-500/10 dark:to-violet-500/10">
-            <div className="p-5">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="size-10 rounded-lg flex items-center justify-center bg-indigo-100 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400">
-                    <TrendingUp className="size-5" />
+      {activeView === 'jars' && (
+        <>
+          {/* Loan summary banner — vay/trả nợ không tính vào kế hoạch hũ */}
+          {data?.data.loan_summary && (
+            (data.data.loan_summary.in + data.data.loan_summary.out + data.data.loan_summary.repayment + data.data.loan_summary.recovery) > 0
+          ) && (() => {
+            const ls = data.data.loan_summary!;
+            const total = ls.in + ls.repayment + ls.out + ls.recovery;
+            const owed = Math.max(0, ls.net_owed);
+            const lent = Math.max(0, -ls.net_owed);
+            return (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span>💳</span>
+                    <span className="font-semibold">Đã loại {formatCurrency(total)} vay/trả khỏi kế hoạch hũ</span>
                   </div>
-                  <div>
-                    <h3 className="font-bold text-slate-900 dark:text-white">Đầu tư</h3>
-                    <span className="text-xs text-slate-400 dark:text-slate-500">Investment Allocation</span>
+                  <div className="flex flex-wrap items-center gap-3 text-xs">
+                    {owed > 0 && <span>Đang nợ: <b>{formatCurrency(owed)}</b></span>}
+                    {lent > 0 && <span>Đang cho vay: <b>{formatCurrency(lent)}</b></span>}
                   </div>
                 </div>
-                {inv.total_monthly_actual >= inv.total_monthly_planned && inv.total_monthly_planned > 0 ? (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400">
-                    <CheckCircle2 className="size-3.5" /> Đã đủ
-                  </span>
-                ) : inv.total_monthly_actual > 0 ? (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400">
-                    <AlertTriangle className="size-3.5" /> Đang tích
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-600 dark:bg-slate-500/20 dark:text-slate-400">
-                    Chưa bắt đầu
-                  </span>
-                )}
-              </div>
-
-              {/* Progress bar */}
-              <div className="mb-4">
-                <div className="flex justify-between text-xs mb-1.5">
-                  <span className="text-slate-500 dark:text-slate-400 font-medium">Tiến độ {actualPct}%</span>
-                  <span className="text-slate-500 dark:text-slate-400 font-medium">
-                    {formatCurrency(inv.total_monthly_actual)} / {formatCurrency(inv.total_monthly_planned)}
-                  </span>
-                </div>
-                <div className="h-2.5 w-full bg-white/60 dark:bg-slate-700 rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-all duration-500 bg-indigo-500"
-                    style={{ width: `${Math.min(actualPct, 100)}%` }}
-                  />
+                <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-amber-800/80 dark:text-amber-300/80">
+                  <span>Vay vào: {formatCurrency(ls.in)}</span>
+                  <span>Trả nợ: {formatCurrency(ls.repayment)}</span>
+                  <span>Cho vay: {formatCurrency(ls.out)}</span>
+                  <span>Thu nợ: {formatCurrency(ls.recovery)}</span>
                 </div>
               </div>
+            );
+          })()}
 
-              {/* Stats grid */}
-              <div className="grid grid-cols-4 gap-3">
-                <div className="flex flex-col">
-                  <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider font-semibold">Kế hoạch</span>
-                  <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">{formatCurrency(inv.total_monthly_planned)}</span>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider font-semibold">Thực tế</span>
-                  <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{formatCurrency(inv.total_monthly_actual)}</span>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider font-semibold">Chênh lệch</span>
-                  <span className={cn("text-sm font-bold", varianceColor)}>
-                    {inv.total_variance >= 0 ? '' : '-'}{formatCurrency(Math.abs(inv.total_variance))}
-                  </span>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider font-semibold">Tích lũy</span>
-                  <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(inv.total_cumulative_contributed)}</span>
-                </div>
-              </div>
-
-              {/* Per-fund breakdown (if multiple investment funds) */}
-              {inv.funds.length > 1 && (
-                <div className="mt-4 pt-4 border-t border-indigo-200/50 dark:border-indigo-500/20 space-y-2">
-                  {inv.funds.map((fund) => {
-                    const pct = fund.monthly_planned > 0
-                      ? Math.round((fund.monthly_actual / fund.monthly_planned) * 100)
-                      : 0;
-                    return (
-                      <div key={fund.id} className="flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className="font-medium text-slate-700 dark:text-slate-200 truncate">{fund.name}</span>
-                          {fund.jar && (
-                            <span className="text-xs text-slate-400 dark:text-slate-500">({fund.jar.label})</span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-3 shrink-0">
-                          <span className="text-xs text-slate-400 dark:text-slate-500">{pct}%</span>
-                          <span className="font-bold text-slate-700 dark:text-slate-200">
-                            {formatCurrency(fund.monthly_actual)} / {formatCurrency(fund.monthly_planned)}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* Loan summary banner — vay/trả nợ không tính vào kế hoạch hũ */}
-      {data?.data.loan_summary && (
-        (data.data.loan_summary.in + data.data.loan_summary.out + data.data.loan_summary.repayment + data.data.loan_summary.recovery) > 0
-      ) && (() => {
-        const ls = data.data.loan_summary!;
-        const total = ls.in + ls.repayment + ls.out + ls.recovery;
-        const owed = Math.max(0, ls.net_owed);
-        const lent = Math.max(0, -ls.net_owed);
-        return (
-          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <span>💳</span>
-                <span className="font-semibold">Đã loại {formatCurrency(total)} vay/trả khỏi kế hoạch hũ</span>
-              </div>
-              <div className="flex flex-wrap items-center gap-3 text-xs">
-                {owed > 0 && <span>Đang nợ: <b>{formatCurrency(owed)}</b></span>}
-                {lent > 0 && <span>Đang cho vay: <b>{formatCurrency(lent)}</b></span>}
-              </div>
-            </div>
-            <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-amber-800/80 dark:text-amber-300/80">
-              <span>Vay vào: {formatCurrency(ls.in)}</span>
-              <span>Trả nợ: {formatCurrency(ls.repayment)}</span>
-              <span>Cho vay: {formatCurrency(ls.out)}</span>
-              <span>Thu nợ: {formatCurrency(ls.recovery)}</span>
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* Jar cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {jars.map((jar) => {
+          {/* Jar cards */}
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {jars.map((jar) => {
           const style = getJarStyle(jar.key);
           const isExpanded = expandedJar === jar.key;
           const dbJar = dbJars.find((j: Jar) => j.key === jar.key);
@@ -2126,9 +2197,11 @@ export default function BudgetPlan({ month, hideHeader = false }: { month: strin
                 </div>
               )}
             </div>
-          );
-        })}
-      </div>
+              );
+            })}
+          </div>
+        </>
+      )}
     </div>
   );
 }

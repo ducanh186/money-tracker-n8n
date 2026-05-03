@@ -1,47 +1,47 @@
 {
-  "expected_income_vnd": 700000,
+  "expected_income_vnd": 13600000,
   "categories": [
     {
       "category_name": "Ăn uống",
-      "budgeted_vnd": 140000,
+      "budgeted_vnd": 2400000,
       "reserved_vnd": 0,
-      "rollover_vnd": 0,
-      "notes": "Mẫu needs"
+      "rollover_vnd": 2400000,
+      "notes": "Chi tiêu ăn uống từ đầu tháng 5 đến 29/5. Trung bình khoảng 80,000đ/ngày."
     },
     {
       "category_name": "Di chuyển",
-      "budgeted_vnd": 70000,
+      "budgeted_vnd": 700000,
       "reserved_vnd": 0,
-      "rollover_vnd": 0,
-      "notes": "Mẫu đi lại"
+      "rollover_vnd": 700000,
+      "notes": "Xăng xe, gửi xe, đi lại hằng ngày."
     },
     {
       "category_name": "Nhà ở",
-      "budgeted_vnd": 210000,
+      "budgeted_vnd": 0,
       "reserved_vnd": 0,
       "rollover_vnd": 0,
-      "notes": "Mẫu nhà ở"
+      "notes": "Không phân bổ trong giai đoạn này."
     },
     {
       "category_name": "Hóa đơn",
-      "budgeted_vnd": 70000,
-      "reserved_vnd": 0,
-      "rollover_vnd": 0,
-      "notes": "Mẫu hóa đơn"
+      "budgeted_vnd": 13850000,
+      "reserved_vnd": 13850000,
+      "rollover_vnd": 2250000,
+      "notes": "Bao gồm học phí 11,250,000đ ngày 30/5, Shopee Later khoảng 2,000,000đ, gói đăng ký tháng khoảng 600,000đ. Cần giữ trước 2,250,000đ từ số dư hiện có để bù vì lương 13,600,000đ không đủ cover toàn bộ các khoản cứng."
     },
     {
       "category_name": "Mua sắm",
-      "budgeted_vnd": 105000,
+      "budgeted_vnd": 500000,
       "reserved_vnd": 0,
-      "rollover_vnd": 0,
-      "notes": "Mẫu wants"
+      "rollover_vnd": 500000,
+      "notes": "Mua sắm cá nhân và phát sinh nhỏ. Không dùng cho Shopee Later vì Shopee Later đã đưa vào Hóa đơn."
     },
     {
       "category_name": "Giải trí",
-      "budgeted_vnd": 35000,
-      "reserved_vnd": 0,
-      "rollover_vnd": 0,
-      "notes": "Mẫu giải trí"
+      "budgeted_vnd": 4205000,
+      "reserved_vnd": 2000000,
+      "rollover_vnd": 2205000,
+      "notes": "Bao gồm date/đi chơi bạn bè 1,500,000đ, cho mẹ 2,000,000đ sau khi nhận lương, buffer khẩn cấp 705,000đ."
     }
   ]
 }

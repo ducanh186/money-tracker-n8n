@@ -17,6 +17,28 @@ import UiPlayground from './views/UiPlayground';
 import AddTransactionModal from './components/AddTransactionModal';
 import { getCurrentMonth } from './lib/api';
 
+const APP_VIEWS = ['overview', 'transactions', 'jars', 'budget', 'goals', 'debts', 'more'] as const;
+type AppView = typeof APP_VIEWS[number];
+const APP_VIEW_QUERY_KEY = 'view';
+
+function readAppViewFromQuery(): AppView {
+  const view = new URLSearchParams(window.location.search).get(APP_VIEW_QUERY_KEY);
+  return APP_VIEWS.includes(view as AppView) ? (view as AppView) : 'overview';
+}
+
+function writeAppViewToQuery(view: AppView) {
+  const params = new URLSearchParams(window.location.search);
+  if (view === 'overview') {
+    params.delete(APP_VIEW_QUERY_KEY);
+  } else {
+    params.set(APP_VIEW_QUERY_KEY, view);
+  }
+
+  const query = params.toString();
+  const nextUrl = `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`;
+  window.history.replaceState(null, '', nextUrl);
+}
+
 function useHashRoute(): string {
   const [hash, setHash] = useState(() => window.location.hash);
   useEffect(() => {
@@ -43,7 +65,7 @@ function useIsMobileBreakpoint(): boolean {
 
 export default function App() {
   const hash = useHashRoute();
-  const [currentView, setCurrentView] = useState('overview');
+  const [currentView, setCurrentView] = useState<AppView>(() => readAppViewFromQuery());
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
   const isMobile = useIsMobileBreakpoint();
   const [darkMode, setDarkMode] = useState(() => {
@@ -62,6 +84,10 @@ export default function App() {
       setCurrentView('overview');
     }
   }, [currentView, isMobile]);
+
+  useEffect(() => {
+    writeAppViewToQuery(currentView);
+  }, [currentView]);
 
   // Phase A: dev playground for UI primitives. Access via #/__ui
   if (hash === '#/__ui' || hash === '#__ui') {
