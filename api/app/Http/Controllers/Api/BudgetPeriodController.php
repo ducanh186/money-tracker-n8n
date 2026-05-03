@@ -6,6 +6,7 @@ use App\Http\Requests\StoreBudgetPeriodRequest;
 use App\Http\Requests\UpdateBudgetPeriodRequest;
 use App\Models\BudgetPeriod;
 use App\Services\BudgetAllocationService;
+use App\Services\BudgetRolloverService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -14,6 +15,7 @@ class BudgetPeriodController extends Controller
 {
     public function __construct(
         private readonly BudgetAllocationService $allocationService,
+        private readonly BudgetRolloverService $rolloverService,
     ) {}
 
     /**
@@ -42,8 +44,11 @@ class BudgetPeriodController extends Controller
         // Auto-allocate income to jars based on default %
         $period = $this->allocationService->allocateIncome($period, $period->total_income);
 
+        // Carry forward unspent budget from prior period as rollover
+        $this->rolloverService->carryForward($period);
+
         return response()->json([
-            'data'    => $this->allocationService->getWorkspace($period),
+            'data'    => $this->allocationService->getWorkspace($period->fresh()),
             'message' => 'Budget period created and income allocated.',
         ], 201);
     }
