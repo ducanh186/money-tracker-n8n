@@ -49,7 +49,10 @@ class MonthlySummaryApiTest extends TestCase
             ->assertJsonPath('data.actual_expense_vnd', 0)
             ->assertJsonPath('data.account_balance_vnd', 8_200_000)
             ->assertJsonPath('data.ending_balance_vnd', 8_200_000)
-            ->assertJsonPath('data.period_status', 'open');
+            ->assertJsonPath('data.period_status', 'open')
+            ->assertJsonPath('data.plan.has_period', true)
+            ->assertJsonPath('data.plan.income_vnd', 13_600_000)
+            ->assertJsonPath('data.suggestion.enabled', false);
     }
 
     public function test_monthly_summary_marks_missing_period_as_needs_plan_without_zeroing_balance(): void
@@ -72,7 +75,16 @@ class MonthlySummaryApiTest extends TestCase
             ->assertJsonPath('data.actual_expense_vnd', 0)
             ->assertJsonPath('data.account_balance_vnd', 8_200_000)
             ->assertJsonPath('data.period_status', 'needs_plan')
-            ->assertJsonPath('data.has_period', false);
+            ->assertJsonPath('data.has_period', false)
+            ->assertJsonPath('data.assigned', null)
+            ->assertJsonPath('data.unassigned', null)
+            ->assertJsonPath('data.available_to_spend', null)
+            ->assertJsonPath('data.plan.has_period', false)
+            ->assertJsonPath('data.plan.assigned_vnd', null)
+            ->assertJsonPath('data.account.account_balance_vnd', 8_200_000)
+            ->assertJsonPath('data.actuals.income_vnd', 0)
+            ->assertJsonPath('data.suggestion.enabled', true)
+            ->assertJsonPath('data.suggestion.expected_income_vnd', 13_600_000);
     }
 
     private function bindRows(array $rows): void

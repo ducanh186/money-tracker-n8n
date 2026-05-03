@@ -81,6 +81,7 @@ function getJarStyle(key: string) {
 }
 
 type PlannerType = BudgetLine['type'];
+type CategoryBudgetBasis = 'income' | 'balance';
 const RESERVED_BUDGET_LINE_TYPES = new Set<PlannerType>([
   'goal',
   'bill',
@@ -183,6 +184,20 @@ function readPlanMoney(value: number | string | null | undefined): number {
   }
 
   return 0;
+}
+
+function readPercentValue(value: string): number {
+  const normalized = value.replace(',', '.').replace(/[^\d.-]/g, '');
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? Math.max(parsed, 0) : 0;
+}
+
+function formatPercentValue(value: number): string {
+  if (!Number.isFinite(value)) {
+    return '0';
+  }
+
+  return `${Math.round(value * 100) / 100}`;
 }
 
 function resolvePlanCategory(input: PlanJsonCategoryInput, categories: Category[]): Category | null {
@@ -1006,6 +1021,302 @@ function PlannedExpenseSection({
   );
 }
 
+type EditableCategoryBudgetCardProps = {
+  category: CategorySummary;
+  sourceCategory?: Category;
+  existingBudget?: CategoryBudget;
+  expectedIncome: number;
+  balanceBase: number;
+  canEdit: boolean;
+  isSaving: boolean;
+  ensureBudgetPeriod: () => Promise<{ periodId: number; jars: BudgetWorkspaceJar[] }>;
+  onCreateBudget: (payload: {
+    budget_period_id: number;
+    category_id: number;
+    budgeted_amount: number;
+    reserved_amount?: number;
+    rollover_amount?: number;
+    notes?: string | null;
+  }) => Promise<unknown>;
+  onUpdateBudget: (id: number, payload: { budgeted_amount: number }) => Promise<unknown>;
+};
+
+function EditableCategoryBudgetCard({
+  category,
+  sourceCategory,
+  existingBudget,
+  expectedIncome,
+  balanceBase,
+  canEdit,
+  isSaving,
+  ensureBudgetPeriod,
+  onCreateBudget,
+  onUpdateBudget,
+}: EditableCategoryBudgetCardProps) {
+  const savedAmount = existingBudget?.budgeted_amount ?? category.budgeted_vnd ?? 0;
+  const initialBasis: CategoryBudgetBasis = expectedIncome > 0 ? 'income' : 'balance';
+  const [basis, setBasis] = useState<CategoryBudgetBasis>(initialBasis);
+  const [draftAmount, setDraftAmount] = useState(savedAmount);
+  const [amountInput, setAmountInput] = useState(String(savedAmount));
+  const [percentInput, setPercentInput] = useState('0');
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+
+  const resolveBase = useCallback((nextBasis: CategoryBudgetBasis) => {
+    const base = nextBasis === 'income' ? expectedIncome : balanceBase;
+    return base > 0 ? base : 0;
+  }, [balanceBase, expectedIncome]);
+
+  const syncFromAmount = useCallback((nextAmount: number, nextBasis: CategoryBudgetBasis) => {
+    const rounded = Math.max(0, Math.round(nextAmount));
+    const base = resolveBase(nextBasis);
+
+    setDraftAmount(rounded);
+    setAmountInput(String(rounded));
+    setPercentInput(base > 0 ? formatPercentValue((rounded / base) * 100) : '0');
+  }, [resolveBase]);
+
+  useEffect(() => {
+    const nextBasis = basis === 'income' && expectedIncome <= 0 && balanceBase > 0
+      ? 'balance'
+      : basis === 'balance' && balanceBase <= 0 && expectedIncome > 0
+        ? 'income'
+        : basis;
+
+    if (nextBasis !== basis) {
+      setBasis(nextBasis);
+      syncFromAmount(savedAmount, nextBasis);
+      setSaveError(null);
+      setSaveMessage(null);
+      return;
+    }
+
+    syncFromAmount(savedAmount, nextBasis);
+    setSaveError(null);
+    setSaveMessage(null);
+  }, [balanceBase, basis, expectedIncome, savedAmount, syncFromAmount]);
+
+  const sliderBase = resolveBase(basis);
+  const sliderMax = Math.max(sliderBase, draftAmount, savedAmount, 1);
+  const sliderStep = sliderMax >= 5_000_000 ? 50_000 : sliderMax >= 1_000_000 ? 10_000 : 1_000;
+  const incomePercent = expectedIncome > 0 ? (draftAmount / expectedIncome) * 100 : 0;
+  const balancePercent = balanceBase > 0 ? (draftAmount / balanceBase) * 100 : 0;
+  const isDirty = draftAmount !== savedAmount;
+  const isOver = category.remaining_vnd < 0;
+
+  const handleAmountChange = (value: string) => {
+    const raw = value.replace(/\D/g, '');
+    const nextAmount = raw ? readPlanMoney(raw) : 0;
+    const base = resolveBase(basis);
+
+    setSaveError(null);
+    setSaveMessage(null);
+    setDraftAmount(nextAmount);
+    setAmountInput(raw);
+    setPercentInput(base > 0 ? formatPercentValue((nextAmount / base) * 100) : '0');
+  };
+
+  const handlePercentChange = (value: string) => {
+    const normalized = value.replace(',', '.');
+    const nextPercent = readPercentValue(normalized);
+    const nextAmount = resolveBase(basis) > 0
+      ? Math.round((nextPercent / 100) * resolveBase(basis))
+      : 0;
+
+    setSaveError(null);
+    setSaveMessage(null);
+    setPercentInput(normalized);
+    setDraftAmount(nextAmount);
+    setAmountInput(String(nextAmount));
+  };
+
+  const handleBasisChange = (nextBasis: CategoryBudgetBasis) => {
+    setBasis(nextBasis);
+    const base = resolveBase(nextBasis);
+    setPercentInput(base > 0 ? formatPercentValue((draftAmount / base) * 100) : '0');
+    setSaveError(null);
+    setSaveMessage(null);
+  };
+
+  const handleReset = () => {
+    syncFromAmount(savedAmount, basis);
+    setSaveError(null);
+    setSaveMessage(null);
+  };
+
+  const handleSave = async () => {
+    if (!sourceCategory) {
+      setSaveError('Không tìm thấy category gốc để lưu ngân sách.');
+      return;
+    }
+
+    try {
+      setSaveError(null);
+      setSaveMessage(null);
+
+      const { periodId } = await ensureBudgetPeriod();
+
+      if (existingBudget) {
+        await onUpdateBudget(existingBudget.id, { budgeted_amount: draftAmount });
+      } else {
+        await onCreateBudget({
+          budget_period_id: periodId,
+          category_id: sourceCategory.id,
+          budgeted_amount: draftAmount,
+          reserved_amount: category.reserved_vnd,
+          rollover_amount: category.rollover_vnd ?? 0,
+          notes: null,
+        });
+      }
+
+      setSaveMessage('Đã lưu ngân sách danh mục.');
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : 'Không thể lưu ngân sách danh mục.');
+    }
+  };
+
+  return (
+    <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 dark:border-slate-700 dark:bg-[#0c1222]">
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-bold text-slate-900 dark:text-white">{category.category_name}</p>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400">{category.category_group ?? category.category_key}</p>
+        </div>
+        <span className={cn(
+          'rounded-full px-2 py-0.5 text-[11px] font-bold',
+          isOver ? 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300'
+        )}>
+          {category.status}
+        </span>
+      </div>
+
+      <div className="mb-3 h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
+        <div className={cn('h-full rounded-full', isOver ? 'bg-red-500' : 'bg-blue-500')} style={{ width: `${Math.min(Math.max(category.usage_pct ?? 0, 0), 100)}%` }} />
+      </div>
+
+      <div className="grid grid-cols-3 gap-2 text-xs">
+        <div>
+          <span className="block text-slate-400">Budget</span>
+          <b className="text-slate-700 dark:text-slate-200">{formatCurrency(category.budgeted_vnd)}</b>
+        </div>
+        <div>
+          <span className="block text-slate-400">Đã chi</span>
+          <b className="text-red-600 dark:text-red-400">{formatCurrency(category.spent_vnd)}</b>
+        </div>
+        <div>
+          <span className="block text-slate-400">Còn</span>
+          <b className={isOver ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}>{formatCurrency(category.remaining_vnd)}</b>
+        </div>
+      </div>
+
+      <div className="mt-4 rounded-xl border border-slate-200 bg-white/90 p-3 dark:border-slate-700 dark:bg-slate-900/40">
+        <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+          <span>Chỉnh ngân sách</span>
+          <span>{formatPercentValue(incomePercent)}% income · {formatPercentValue(balancePercent)}% số dư</span>
+        </div>
+
+        <input
+          type="range"
+          min={0}
+          max={sliderMax}
+          step={sliderStep}
+          value={Math.min(draftAmount, sliderMax)}
+          onChange={(event) => {
+            syncFromAmount(Number(event.target.value), basis);
+            setSaveError(null);
+            setSaveMessage(null);
+          }}
+          disabled={!canEdit || isSaving}
+          className="mt-3 h-2 w-full cursor-pointer accent-blue-600 disabled:cursor-not-allowed disabled:opacity-60"
+        />
+
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_140px_140px]">
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Số tiền</span>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={amountInput}
+              onChange={(event) => handleAmountChange(event.target.value)}
+              disabled={!canEdit || isSaving}
+              className={PLANNER_FIELD_CLASS}
+              placeholder="0"
+            />
+          </label>
+
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Phần trăm</span>
+            <input
+              type="number"
+              min={0}
+              step={0.1}
+              value={percentInput}
+              onChange={(event) => handlePercentChange(event.target.value)}
+              disabled={!canEdit || isSaving}
+              className={PLANNER_FIELD_CLASS}
+              placeholder="0"
+            />
+          </label>
+
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Theo cơ sở</span>
+            <select
+              value={basis}
+              onChange={(event) => handleBasisChange(event.target.value as CategoryBudgetBasis)}
+              disabled={!canEdit || isSaving}
+              className={PLANNER_FIELD_CLASS}
+            >
+              <option value="income">Income kế hoạch</option>
+              <option value="balance">Số dư tài khoản</option>
+            </select>
+          </label>
+        </div>
+
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
+          <span>
+            Dự thảo: <b className="text-slate-700 dark:text-slate-200">{formatCurrency(draftAmount)}</b>
+            {' '}· Cơ sở hiện tại: <b className="text-slate-700 dark:text-slate-200">{formatCurrency(resolveBase(basis))}</b>
+          </span>
+          {!sourceCategory && (
+            <span className="text-red-600 dark:text-red-300">Thiếu mapping category để lưu.</span>
+          )}
+        </div>
+
+        {(saveError || saveMessage) && (
+          <div className={cn(
+            'mt-3 rounded-lg border px-3 py-2 text-sm',
+            saveError
+              ? 'border-red-200 bg-red-50 text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300'
+              : 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300'
+          )}>
+            {saveError ?? saveMessage}
+          </div>
+        )}
+
+        <div className="mt-3 flex flex-wrap justify-end gap-2">
+          <button
+            type="button"
+            onClick={handleReset}
+            disabled={isSaving || !isDirty}
+            className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+          >
+            Đặt lại
+          </button>
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={!canEdit || isSaving || !isDirty || !sourceCategory}
+            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isSaving ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
+            Lưu budget
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────
 
 export default function BudgetPlan({ month, hideHeader = false }: { month: string; hideHeader?: boolean }) {
@@ -1083,6 +1394,8 @@ export default function BudgetPlan({ month, hideHeader = false }: { month: strin
   const recurringBills = recurringBillsRes?.data ?? [];
   const categories = categoriesRes?.data ?? [];
   const categoryBudgets = categoryBudgetsRes?.data ?? [];
+  const categoriesByKey = new Map(categories.map((category) => [normalizePlanText(category.key), category]));
+  const categoryBudgetsByCategoryId = new Map(categoryBudgets.map((budget) => [budget.category_id, budget]));
   const workspaceJars = workspaceRes?.data.jars ?? optimisticWorkspaceJars ?? [];
   const budgetLines = budgetLinesRes?.data ?? [];
   const plannerLoading = isPeriodsPending || createPeriodMutation.isPending || (Boolean(effectivePeriodId) && (isWorkspacePending || isBudgetLinesPending));
@@ -1476,7 +1789,7 @@ export default function BudgetPlan({ month, hideHeader = false }: { month: strin
             <div>
               <h3 className="text-lg font-bold text-slate-900 dark:text-white">Ngân sách theo danh mục</h3>
               <p className="text-sm text-slate-500 dark:text-slate-400">
-                Category là trục chính mới; 6 hũ vẫn giữ như template/nhóm tương thích.
+                Category là trục chính mới; có thể kéo thanh, nhập số tiền, hoặc nhập % theo income / số dư để chỉnh nhanh sau khi import JSON.
               </p>
             </div>
             <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-600 dark:bg-blue-500/10 dark:text-blue-300">
@@ -1486,37 +1799,23 @@ export default function BudgetPlan({ month, hideHeader = false }: { month: strin
 
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
             {data.data.categories.map((category) => {
-              const usage = Math.min(Math.max(category.usage_pct ?? 0, 0), 100);
-              const isOver = category.remaining_vnd < 0;
+              const sourceCategory = categoriesByKey.get(normalizePlanText(category.category_key));
+              const existingBudget = sourceCategory ? categoryBudgetsByCategoryId.get(sourceCategory.id) : undefined;
+
               return (
-                <div key={category.category_key} className="rounded-2xl border border-slate-100 bg-slate-50 p-4 dark:border-slate-700 dark:bg-[#0c1222]">
-                  <div className="mb-3 flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-bold text-slate-900 dark:text-white">{category.category_name}</p>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400">{category.category_group ?? category.category_key}</p>
-                    </div>
-                    <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${isOver ? 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300'}`}>
-                      {category.status}
-                    </span>
-                  </div>
-                  <div className="mb-3 h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
-                    <div className={`h-full rounded-full ${isOver ? 'bg-red-500' : 'bg-blue-500'}`} style={{ width: `${usage}%` }} />
-                  </div>
-                  <div className="grid grid-cols-3 gap-2 text-xs">
-                    <div>
-                      <span className="block text-slate-400">Budget</span>
-                      <b className="text-slate-700 dark:text-slate-200">{formatCurrency(category.budgeted_vnd)}</b>
-                    </div>
-                    <div>
-                      <span className="block text-slate-400">Đã chi</span>
-                      <b className="text-red-600 dark:text-red-400">{formatCurrency(category.spent_vnd)}</b>
-                    </div>
-                    <div>
-                      <span className="block text-slate-400">Còn</span>
-                      <b className={isOver ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}>{formatCurrency(category.remaining_vnd)}</b>
-                    </div>
-                  </div>
-                </div>
+                <EditableCategoryBudgetCard
+                  key={category.category_key}
+                  category={category}
+                  sourceCategory={sourceCategory}
+                  existingBudget={existingBudget}
+                  expectedIncome={expectedIncome}
+                  balanceBase={budgetStatus?.account?.account_balance_vnd ?? budgetStatus?.account_balance_vnd ?? budgetStatus?.ending_balance_vnd ?? summary.total_remaining}
+                  canEdit={plannerEditable}
+                  isSaving={plannerMutating}
+                  ensureBudgetPeriod={() => ensureCurrentPeriodWorkspace()}
+                  onCreateBudget={(payload) => createCategoryBudgetMutation.mutateAsync(payload)}
+                  onUpdateBudget={(id, payload) => updateCategoryBudgetMutation.mutateAsync({ id, payload })}
+                />
               );
             })}
           </div>

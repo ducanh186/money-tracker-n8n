@@ -95,6 +95,9 @@ class BudgetPlanController extends Controller
         $totalPlanned = (int) array_sum(array_column($jars, 'planned_amount'));
         $totalActual  = (int) array_sum(array_column($jars, 'actual_amount'));
 
+        $hasPeriod = (bool) ($monthly['has_period'] ?? false);
+        $periodStatus = (string) ($monthly['period_status'] ?? ($hasPeriod ? 'open' : 'needs_plan'));
+
         $payload = [
             'data' => [
                 'month'         => $month,
@@ -103,6 +106,9 @@ class BudgetPlanController extends Controller
                 'expected_income_vnd' => $baseIncome,
                 'actual_income_vnd' => (int) $monthly['actual_income_vnd'],
                 'actual_expense_vnd' => (int) $monthly['actual_expense_vnd'],
+            'has_period'    => $hasPeriod,
+            'period_status' => $periodStatus,
+            'is_preview'    => !$hasPeriod,
                 'jars'          => $jars,
                 'categories'    => $monthly['categories'] ?? [],
                 'budget_basis'  => $monthly['budget_basis'] ?? 'jar_compatibility',
