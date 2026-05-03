@@ -335,14 +335,26 @@ export default function Jars({ month, hideHeader = false }: { month: string; hid
       {/* Summary cards */}
       {activeTab === 'list' && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {(() => {
+            const hasBudgetPlan = budgetStatus?.plan?.has_period ?? budgetStatus?.has_period ?? true;
+            const planAmount = hasBudgetPlan
+              ? (budgetStatus?.plan?.assigned_vnd ?? budgetStatus?.assigned ?? totals?.income_vnd ?? 0)
+              : (budgetStatus?.suggestion?.budgeted_vnd ?? budgetStatus?.budgeted_vnd ?? totals?.income_vnd ?? 0);
+            const committedAmount = budgetStatus?.plan?.committed_vnd ?? budgetStatus?.committed ?? 0;
+            const spentAmount = budgetStatus?.actuals?.expense_vnd ?? budgetStatus?.total_spent ?? totals?.expense_vnd ?? 0;
+            const remainingAmount = hasBudgetPlan
+              ? (budgetStatus?.plan?.available_to_spend_vnd ?? budgetStatus?.available_to_spend_vnd ?? budgetStatus?.available_to_spend ?? totals?.net_vnd ?? 0)
+              : (budgetStatus?.suggestion?.available_to_spend_vnd ?? budgetStatus?.suggestion?.remaining_vnd ?? totals?.net_vnd ?? 0);
+
+            return <>
           <div className="relative overflow-hidden bg-white dark:bg-[#1a2433] rounded-xl p-5 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col gap-2">
             <div className="absolute right-0 top-0 h-20 w-20 translate-x-6 -translate-y-6 rounded-full bg-blue-50 dark:bg-blue-500/10" />
             <div className="relative flex items-center gap-2 text-slate-500 dark:text-slate-400">
               <Wallet className="size-4 text-blue-500" />
-              <p className="text-sm font-medium uppercase tracking-wider">Kế hoạch</p>
+              <p className="text-sm font-medium uppercase tracking-wider">{hasBudgetPlan ? 'Kế hoạch' : 'Plan gợi ý'}</p>
             </div>
             <p className="relative text-blue-600 dark:text-blue-400 text-xl font-bold leading-tight">
-              {formatCurrency(budgetStatus?.assigned ?? totals?.income_vnd ?? 0)}
+              {formatCurrency(planAmount)}
             </p>
           </div>
           <div className="relative overflow-hidden bg-white dark:bg-[#1a2433] rounded-xl p-5 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col gap-2">
@@ -352,7 +364,7 @@ export default function Jars({ month, hideHeader = false }: { month: string; hid
               <p className="text-sm font-medium uppercase tracking-wider">Cam kết</p>
             </div>
             <p className="relative text-purple-600 dark:text-purple-400 text-xl font-bold leading-tight">
-              {formatCurrency(budgetStatus?.committed ?? 0)}
+              {formatCurrency(committedAmount)}
             </p>
           </div>
           <div className="relative overflow-hidden bg-white dark:bg-[#1a2433] rounded-xl p-5 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col gap-2">
@@ -362,19 +374,21 @@ export default function Jars({ month, hideHeader = false }: { month: string; hid
               <p className="text-sm font-medium uppercase tracking-wider">Đã chi</p>
             </div>
             <p className="relative text-red-600 dark:text-red-400 text-xl font-bold leading-tight">
-              {formatCurrency(budgetStatus?.total_spent ?? totals?.expense_vnd ?? 0)}
+              {formatCurrency(spentAmount)}
             </p>
           </div>
           <div className="relative overflow-hidden bg-white dark:bg-[#1a2433] rounded-xl p-5 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col gap-2">
             <div className="absolute right-0 top-0 h-20 w-20 translate-x-6 -translate-y-6 rounded-full bg-emerald-50 dark:bg-emerald-500/10" />
             <div className="relative flex items-center gap-2 text-slate-500 dark:text-slate-400">
               <Wallet className="size-4 text-emerald-500" />
-              <p className="text-sm font-medium uppercase tracking-wider">Còn lại</p>
+              <p className="text-sm font-medium uppercase tracking-wider">{hasBudgetPlan ? 'Còn lại' : 'Còn theo gợi ý'}</p>
             </div>
-            <p className={`relative text-xl font-bold leading-tight ${(budgetStatus?.available_to_spend ?? (totals?.net_vnd ?? 0)) >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
-              {formatCurrency(budgetStatus?.available_to_spend ?? totals?.net_vnd ?? 0)}
+            <p className={`relative text-xl font-bold leading-tight ${remainingAmount >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+              {formatCurrency(remainingAmount)}
             </p>
           </div>
+            </>;
+          })()}
         </div>
       )}
 

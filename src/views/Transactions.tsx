@@ -167,6 +167,13 @@ export default function Transactions({ month, hideHeader = false }: { month: str
       {/* Summary cards */}
       {meta && (
         <div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {(() => {
+            const hasBudgetPlan = budgetStatus?.plan?.has_period ?? budgetStatus?.has_period ?? true;
+            const remainingAmount = hasBudgetPlan
+              ? (budgetStatus?.plan?.available_to_spend_vnd ?? budgetStatus?.available_to_spend_vnd ?? budgetStatus?.available_to_spend ?? meta.totals.net_vnd)
+              : (budgetStatus?.suggestion?.available_to_spend_vnd ?? budgetStatus?.suggestion?.remaining_vnd ?? meta.totals.net_vnd);
+
+            return <>
           <div className="bg-white dark:bg-[#1a2433] rounded-xl p-5 border border-slate-200 dark:border-slate-700 shadow-sm">
             <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Tổng thu</p>
             <p className="text-xl font-bold text-green-600 dark:text-green-400">{formatCurrency(meta.totals.income_vnd)}</p>
@@ -176,9 +183,9 @@ export default function Transactions({ month, hideHeader = false }: { month: str
             <p className="text-xl font-bold text-red-600 dark:text-red-400">{formatCurrency(meta.totals.expense_vnd)}</p>
           </div>
           <div className="bg-white dark:bg-[#1a2433] rounded-xl p-5 border border-slate-200 dark:border-slate-700 shadow-sm">
-            <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Còn chi được</p>
-            <p className={`text-xl font-bold ${(budgetStatus?.available_to_spend ?? meta.totals.net_vnd) >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
-              {formatCurrency(budgetStatus?.available_to_spend ?? meta.totals.net_vnd)}
+            <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">{hasBudgetPlan ? 'Còn chi được' : 'Còn theo gợi ý'}</p>
+            <p className={`text-xl font-bold ${remainingAmount >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+              {formatCurrency(remainingAmount)}
             </p>
           </div>
           <div className="bg-white dark:bg-[#1a2433] rounded-xl p-5 border border-slate-200 dark:border-slate-700 shadow-sm">
@@ -187,6 +194,8 @@ export default function Transactions({ month, hideHeader = false }: { month: str
               {meta.totals.ending_balance_vnd != null ? formatCurrency(meta.totals.ending_balance_vnd) : '—'}
             </p>
           </div>
+            </>;
+          })()}
         </div>
       )}
 
