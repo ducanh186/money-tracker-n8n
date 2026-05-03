@@ -1267,6 +1267,9 @@ export default function BudgetPlan({ month, hideHeader = false }: { month: strin
 
   const plan = data.data;
   const { summary, jars } = plan;
+  const hasSavedPlan = plan.has_period ?? budgetStatus?.plan?.has_period ?? budgetStatus?.has_period ?? false;
+  const isPreviewPlan = plan.is_preview ?? !hasSavedPlan;
+  const planUnassigned = budgetStatus?.plan?.unassigned_vnd ?? budgetStatus?.unassigned ?? 0;
   const expectedIncome = plan.expected_income_vnd ?? plan.base_income;
   const actualIncome = plan.actual_income_vnd ?? plan.sheet_income;
   const parsedHeaderMonth = parseBudgetMonth(month);
@@ -1287,6 +1290,11 @@ export default function BudgetPlan({ month, hideHeader = false }: { month: strin
             <h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
               {budgetHeading}
             </h2>
+            {isPreviewPlan && (
+              <p className="text-sm text-amber-700 dark:text-amber-300">
+                Đang xem Plan gợi ý cho tháng này. Hãy nhập JSON hoặc lưu phân bổ để tạo kế hoạch thật.
+              </p>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <label className={cn(
@@ -1303,11 +1311,11 @@ export default function BudgetPlan({ month, hideHeader = false }: { month: strin
                 onChange={handlePlanJsonImport}
               />
             </label>
-            {budgetStatus && budgetStatus.has_period && budgetStatus.period_status === 'open' && (
+            {budgetStatus && hasSavedPlan && budgetStatus.period_status === 'open' && (
               <button
                 onClick={() => {
-                  if (budgetStatus.unassigned !== 0) {
-                    alert(`Chưa phân bổ hết: ${formatCurrency(budgetStatus.unassigned)} còn dư. Hãy phân bổ hết trước khi đóng tháng.`);
+                  if (planUnassigned !== 0) {
+                    alert(`Chưa phân bổ hết: ${formatCurrency(planUnassigned)} còn dư. Hãy phân bổ hết trước khi đóng tháng.`);
                     return;
                   }
                   if (effectivePeriodId) closePeriodMutation.mutate(effectivePeriodId);
@@ -1355,7 +1363,7 @@ export default function BudgetPlan({ month, hideHeader = false }: { month: strin
         <div className="relative overflow-hidden rounded-[24px] border border-slate-200/80 bg-white/90 p-6 shadow-sm backdrop-blur-sm dark:border-slate-700/80 dark:bg-[#111827]/85">
           <div className="absolute right-0 top-0 h-24 w-24 translate-x-8 -translate-y-8 rounded-full bg-green-50 dark:bg-green-500/10" />
           <div className="relative z-10 flex flex-col gap-1">
-            <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Tổng kế hoạch</span>
+            <span className="text-sm font-medium text-slate-500 dark:text-slate-400">{isPreviewPlan ? 'Plan gợi ý' : 'Tổng kế hoạch'}</span>
             {editingPlan ? (
               <div className="flex items-center gap-2">
                 <input

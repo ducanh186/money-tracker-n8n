@@ -17,13 +17,14 @@ export default function JarMiniGrid({ month }: { month: string }) {
     return null;
   }
 
+  const hasBudgetPlan = budgetStatus.plan?.has_period ?? budgetStatus.has_period;
   const byKey = new Map(budgetStatus.jars.map((j) => [j.key, j]));
 
   return (
     <div className="bg-white dark:bg-[#1a2433] rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm p-4 lg:p-5">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-          {budgetStatus.has_period ? '6 hũ tháng này' : 'Gợi ý 6 hũ'}
+          {hasBudgetPlan ? '6 hũ tháng này' : 'Gợi ý 6 hũ'}
         </h3>
         <a
           href="#jars"

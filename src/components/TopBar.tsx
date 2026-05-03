@@ -17,12 +17,21 @@ export default function TopBar({ currentView, setCurrentView, selectedMonth, onM
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const months = getRecentMonths(12);
   const { data: budgetStatus } = useBudgetStatus(selectedMonth);
-  const expectedIncome = budgetStatus?.expected_income_vnd ?? budgetStatus?.income ?? 0;
-  const actualIncome = budgetStatus?.actual_income_vnd ?? budgetStatus?.sheet_income ?? 0;
-  const accountBalance = budgetStatus?.account_balance_vnd ?? budgetStatus?.ending_balance_vnd ?? 0;
-  const availableToSpend = budgetStatus?.available_to_spend_vnd ?? budgetStatus?.available_to_spend ?? 0;
-  const leftToBudget = budgetStatus?.left_to_budget_vnd ?? budgetStatus?.unassigned ?? 0;
-  const hasBudgetPlan = budgetStatus?.has_period ?? true;
+  const account = budgetStatus?.account;
+  const actuals = budgetStatus?.actuals;
+  const plan = budgetStatus?.plan;
+  const suggestion = budgetStatus?.suggestion;
+  const hasBudgetPlan = plan?.has_period ?? budgetStatus?.has_period ?? true;
+  const expectedIncome = suggestion?.expected_income_vnd ?? budgetStatus?.expected_income_vnd ?? budgetStatus?.income ?? 0;
+  const actualIncome = actuals?.income_vnd ?? budgetStatus?.actual_income_vnd ?? budgetStatus?.sheet_income ?? 0;
+  const accountBalance = account?.account_balance_vnd ?? budgetStatus?.account_balance_vnd ?? budgetStatus?.ending_balance_vnd ?? 0;
+  const plannedAmount = hasBudgetPlan
+    ? (plan?.assigned_vnd ?? budgetStatus?.assigned ?? 0)
+    : (suggestion?.budgeted_vnd ?? budgetStatus?.budgeted_vnd ?? 0);
+  const availableToSpend = hasBudgetPlan
+    ? (plan?.available_to_spend_vnd ?? budgetStatus?.available_to_spend_vnd ?? budgetStatus?.available_to_spend ?? 0)
+    : (suggestion?.available_to_spend_vnd ?? suggestion?.remaining_vnd ?? budgetStatus?.available_to_spend_vnd ?? 0);
+  const leftToBudget = plan?.unassigned_vnd ?? budgetStatus?.left_to_budget_vnd ?? budgetStatus?.unassigned ?? 0;
   const planAmountLabel = hasBudgetPlan ? 'Đã phân bổ:' : 'Plan gợi ý:';
   const availableLabel = hasBudgetPlan ? 'Còn chi được:' : 'Còn theo gợi ý:';
 
@@ -184,7 +193,7 @@ export default function TopBar({ currentView, setCurrentView, selectedMonth, onM
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
               <span className="text-slate-500 dark:text-slate-400">{planAmountLabel}</span>
-              <span className="font-semibold text-blue-600 dark:text-blue-400">{formatCurrency(budgetStatus.assigned)}</span>
+              <span className="font-semibold text-blue-600 dark:text-blue-400">{formatCurrency(plannedAmount)}</span>
             </div>
             {hasBudgetPlan && (
               <div className="flex items-center gap-1.5 shrink-0">

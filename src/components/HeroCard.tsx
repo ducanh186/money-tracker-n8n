@@ -19,16 +19,24 @@ export default function HeroCard({ month }: { month: string }) {
   const { data: budgetStatus } = useBudgetStatus(month);
 
   const totals = summaryRes?.data?.totals;
-  const expectedIncome = budgetStatus?.expected_income_vnd ?? budgetStatus?.income ?? totals?.income_vnd ?? 0;
-  const actualIncome = budgetStatus?.actual_income_vnd ?? budgetStatus?.sheet_income ?? totals?.income_vnd ?? 0;
-  const totalSpent = budgetStatus?.actual_expense_vnd ?? budgetStatus?.total_spent ?? totals?.expense_vnd ?? 0;
+  const actuals = budgetStatus?.actuals;
+  const account = budgetStatus?.account;
+  const plan = budgetStatus?.plan;
+  const suggestion = budgetStatus?.suggestion;
+  const expectedIncome = suggestion?.expected_income_vnd ?? budgetStatus?.expected_income_vnd ?? budgetStatus?.income ?? totals?.income_vnd ?? 0;
+  const actualIncome = actuals?.income_vnd ?? budgetStatus?.actual_income_vnd ?? budgetStatus?.sheet_income ?? totals?.income_vnd ?? 0;
+  const totalSpent = actuals?.expense_vnd ?? budgetStatus?.actual_expense_vnd ?? budgetStatus?.total_spent ?? totals?.expense_vnd ?? 0;
   const accountBalance =
+    account?.account_balance_vnd ??
     budgetStatus?.account_balance_vnd ??
     totals?.account_balance_vnd ??
     totals?.ending_balance_vnd ??
     0;
-  const remaining = budgetStatus?.available_to_spend_vnd ?? budgetStatus?.available_to_spend ?? (expectedIncome - totalSpent);
-  const hasBudgetPlan = budgetStatus?.has_period ?? true;
+  const hasBudgetPlan = plan?.has_period ?? budgetStatus?.has_period ?? true;
+  const usesSuggestedPlan = !hasBudgetPlan && (suggestion?.enabled || expectedIncome > 0);
+  const remaining = hasBudgetPlan
+    ? (plan?.available_to_spend_vnd ?? budgetStatus?.available_to_spend_vnd ?? budgetStatus?.available_to_spend ?? (expectedIncome - totalSpent))
+    : (suggestion?.available_to_spend_vnd ?? suggestion?.remaining_vnd ?? accountBalance);
   const netAfterSpend = (actualIncome > 0 ? actualIncome : expectedIncome) - totalSpent;
   const savingsRate = expectedIncome > 0 ? Math.round((netAfterSpend / expectedIncome) * 100) : 0;
 
@@ -90,8 +98,10 @@ export default function HeroCard({ month }: { month: string }) {
 
       <div className="text-sm text-slate-500 dark:text-slate-400">
         {hasBudgetPlan
-          ? `Dự kiến ${compact(expectedIncome)} · Thực thu ${compact(actualIncome)} · Chi ${compact(totalSpent)}`
-          : `Chưa lập kế hoạch tháng này · Thực thu ${compact(actualIncome)} · Chi ${compact(totalSpent)}`}
+          ? `Kế hoạch đã lưu · Thực thu ${compact(actualIncome)} · Chi ${compact(totalSpent)}`
+          : usesSuggestedPlan
+          ? `Đang dùng Plan gợi ý ${compact(expectedIncome)} · Thực thu ${compact(actualIncome)} · Chi ${compact(totalSpent)}`
+          : `Chưa lưu Plan tháng này · Thực thu ${compact(actualIncome)} · Chi ${compact(totalSpent)}`}
       </div>
     </div>
   );

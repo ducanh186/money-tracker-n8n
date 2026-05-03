@@ -105,6 +105,9 @@ export interface BudgetPlanData {
   expected_income_vnd: number;
   actual_income_vnd: number;
   actual_expense_vnd?: number;
+  has_period?: boolean;
+  period_status?: string;
+  is_preview?: boolean;
   jars: BudgetJar[];
   categories?: CategorySummary[];
   budget_basis?: 'category' | 'jar_compatibility' | string;
@@ -115,6 +118,49 @@ export interface BudgetPlanData {
 
 export interface BudgetPlanResponse {
   data: BudgetPlanData;
+}
+
+export interface BudgetStatusAccountSummary {
+  opening_balance_vnd: number;
+  ending_balance_vnd: number;
+  account_balance_vnd: number;
+  balance_source?: {
+    type: string;
+    from_transaction_datetime?: string | null;
+  };
+}
+
+export interface BudgetStatusActualsSummary {
+  income_vnd: number;
+  expense_vnd: number;
+  spent_vnd: number;
+  reserved_vnd: number;
+}
+
+export interface BudgetStatusPlanSummary {
+  has_period: boolean;
+  status: string;
+  income_vnd: number | null;
+  assigned_vnd: number | null;
+  unassigned_vnd: number | null;
+  committed_vnd: number | null;
+  available_to_spend_vnd: number | null;
+  budget_basis?: string | null;
+  jars: BudgetStatusJarMetric[];
+  categories?: CategorySummary[];
+}
+
+export interface BudgetStatusSuggestionSummary {
+  enabled: boolean;
+  source: string | null;
+  expected_income_vnd: number | null;
+  budgeted_vnd: number | null;
+  reserved_vnd: number | null;
+  remaining_vnd: number | null;
+  available_to_spend_vnd?: number | null;
+  left_to_budget_vnd?: number | null;
+  jars: BudgetStatusJarMetric[];
+  categories?: CategorySummary[];
 }
 
 export interface BudgetSettingData {
@@ -140,8 +186,15 @@ export interface DashboardSummaryData {
     ending_balance_vnd: number | null;
     account_balance_vnd?: number | null;
     opening_balance_vnd?: number | null;
+    assigned?: number | null;
+    unassigned?: number | null;
+    committed?: number | null;
   };
-  expense_by_jar: Record<string, number>;
+  available_to_spend?: number | null;
+  expense_by_jar?: Record<string, number>;
+  has_period?: boolean;
+  period_status?: string;
+  is_preview?: boolean;
   recent_transactions: {
     date: string | null;
     time: string | null;
@@ -375,13 +428,17 @@ export interface BudgetStatusData {
   account_balance_vnd?: number;
   ending_balance_vnd?: number;
   opening_balance_vnd?: number;
+  account?: BudgetStatusAccountSummary;
+  actuals?: BudgetStatusActualsSummary;
+  plan?: BudgetStatusPlanSummary;
+  suggestion?: BudgetStatusSuggestionSummary;
   income: number;
   sheet_income: number;
-  assigned: number;
-  unassigned: number;
-  committed: number;
+  assigned: number | null;
+  unassigned: number | null;
+  committed: number | null;
   total_spent: number;
-  available_to_spend: number;
+  available_to_spend: number | null;
   overspent_jars: OverspentJar[];
   period_status: string;
   planning_insights_enabled: boolean;
