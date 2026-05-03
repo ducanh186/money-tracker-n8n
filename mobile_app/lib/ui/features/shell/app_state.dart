@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/months.dart';
 
-enum AppTab { overview, transactions, jars, more }
+enum AppTab { overview, transactions, jars, budget, more }
 
 class AppState extends ChangeNotifier {
   AppTab _currentTab = AppTab.overview;

@@ -2,6 +2,10 @@ import '../models/money_models.dart';
 import 'money_repository.dart';
 
 class MockMoneyRepository implements MoneyRepository {
+  final Map<String, BudgetPeriodSnapshot> _periodsByMonth = {};
+  final Map<String, Map<int, CategoryBudgetRecord>> _budgetsByMonth = {};
+  int _nextBudgetId = 1000;
+
   @override
   Future<OverviewData> fetchOverview(String month) async {
     await Future<void>.delayed(const Duration(milliseconds: 250));
@@ -125,6 +129,84 @@ class MockMoneyRepository implements MoneyRepository {
     );
   }
 
+  @override
+  Future<BudgetEditorSeed> fetchBudgetEditorSeed(String month) async {
+    await Future<void>.delayed(const Duration(milliseconds: 120));
+
+    return BudgetEditorSeed(
+      month: month,
+      period: _periodsByMonth[month],
+      categories: _mockCategories,
+      categoryBudgets: _budgetsByMonth[month]?.values.toList() ?? const [],
+    );
+  }
+
+  @override
+  Future<BudgetEditorSeed> saveBudget(BudgetSaveRequest request) async {
+    await Future<void>.delayed(const Duration(milliseconds: 180));
+
+    final period =
+        request.period ??
+        BudgetPeriodSnapshot(
+          id: 1,
+          month: request.month,
+          totalIncome: request.expectedIncomeVnd,
+          status: 'open',
+        );
+    _periodsByMonth[request.month] = BudgetPeriodSnapshot(
+      id: period.id,
+      month: request.month,
+      totalIncome: request.expectedIncomeVnd,
+      status: period.status,
+    );
+
+    final monthBudgets = _budgetsByMonth.putIfAbsent(
+      request.month,
+      () => <int, CategoryBudgetRecord>{},
+    );
+
+    for (final category in request.categories) {
+      if (category.categoryId <= 0) {
+        continue;
+      }
+
+      final existingId = category.existingBudgetId;
+      final definition = _mockCategories.firstWhere(
+        (item) => item.id == category.categoryId,
+        orElse: () => BudgetCategoryDefinition(
+          id: category.categoryId,
+          key: 'CAT-${category.categoryId}',
+          name: 'Category ${category.categoryId}',
+          group: null,
+          sortOrder: category.categoryId,
+          isActive: true,
+        ),
+      );
+
+      if (existingId == null &&
+          category.budgetedAmount <= 0 &&
+          category.reservedAmount <= 0 &&
+          category.rolloverAmount <= 0) {
+        continue;
+      }
+
+      final budgetId = existingId ?? _nextBudgetId++;
+      monthBudgets[budgetId] = CategoryBudgetRecord(
+        id: budgetId,
+        budgetPeriodId: _periodsByMonth[request.month]!.id,
+        categoryId: category.categoryId,
+        categoryKey: definition.key,
+        categoryName: definition.name,
+        budgetedAmount: category.budgetedAmount,
+        reservedAmount: category.reservedAmount,
+        rolloverAmount: category.rolloverAmount,
+        notes: category.notes,
+      );
+    }
+
+    return fetchBudgetEditorSeed(request.month);
+  }
+
   JarMetric _jar(String key, int planned, int spent) {
     final definition = jarDefinitions[key] ?? fallbackJarDefinition;
     return JarMetric(
@@ -138,3 +220,46 @@ class MockMoneyRepository implements MoneyRepository {
     );
   }
 }
+
+const _mockCategories = <BudgetCategoryDefinition>[
+  BudgetCategoryDefinition(
+    id: 1,
+    key: 'food',
+    name: 'Ăn uống',
+    group: 'Thiết yếu',
+    sortOrder: 1,
+    isActive: true,
+  ),
+  BudgetCategoryDefinition(
+    id: 2,
+    key: 'transport',
+    name: 'Di chuyển',
+    group: 'Thiết yếu',
+    sortOrder: 2,
+    isActive: true,
+  ),
+  BudgetCategoryDefinition(
+    id: 3,
+    key: 'housing',
+    name: 'Nhà ở',
+    group: 'Thiết yếu',
+    sortOrder: 3,
+    isActive: true,
+  ),
+  BudgetCategoryDefinition(
+    id: 4,
+    key: 'shopping',
+    name: 'Mua sắm',
+    group: 'Hưởng thụ',
+    sortOrder: 4,
+    isActive: true,
+  ),
+  BudgetCategoryDefinition(
+    id: 5,
+    key: 'entertainment',
+    name: 'Giải trí',
+    group: 'Hưởng thụ',
+    sortOrder: 5,
+    isActive: true,
+  ),
+];

@@ -139,15 +139,29 @@ class BudgetStatus {
     return BudgetStatus(
       month: json['month'] as String? ?? '',
       income: _intFromJson(json['income']),
-      expectedIncomeVnd: _intFromJson(json['expected_income_vnd'] ?? json['income']),
-      actualIncomeVnd: _intFromJson(json['actual_income_vnd'] ?? json['sheet_income']),
-      actualExpenseVnd: _intFromJson(json['actual_expense_vnd'] ?? json['total_spent']),
+      expectedIncomeVnd: _intFromJson(
+        json['expected_income_vnd'] ?? json['income'],
+      ),
+      actualIncomeVnd: _intFromJson(
+        json['actual_income_vnd'] ?? json['sheet_income'],
+      ),
+      actualExpenseVnd: _intFromJson(
+        json['actual_expense_vnd'] ?? json['total_spent'],
+      ),
       assigned: _intFromJson(json['assigned']),
-      unassigned: _intFromJson(json['left_to_budget_vnd'] ?? json['unassigned']),
+      unassigned: _intFromJson(
+        json['left_to_budget_vnd'] ?? json['unassigned'],
+      ),
       reservedVnd: _intFromJson(json['reserved_vnd'] ?? json['committed']),
-      totalSpent: _intFromJson(json['actual_expense_vnd'] ?? json['total_spent']),
-      availableToSpend: _intFromJson(json['available_to_spend_vnd'] ?? json['available_to_spend']),
-      accountBalanceVnd: _intFromJson(json['account_balance_vnd'] ?? json['ending_balance_vnd']),
+      totalSpent: _intFromJson(
+        json['actual_expense_vnd'] ?? json['total_spent'],
+      ),
+      availableToSpend: _intFromJson(
+        json['available_to_spend_vnd'] ?? json['available_to_spend'],
+      ),
+      accountBalanceVnd: _intFromJson(
+        json['account_balance_vnd'] ?? json['ending_balance_vnd'],
+      ),
       endingBalanceVnd: _intFromJson(json['ending_balance_vnd']),
       hasPeriod: json['has_period'] != false,
       periodStatus: json['period_status'] as String? ?? '',
@@ -196,6 +210,142 @@ class CategoryMetric {
   }
 }
 
+class BudgetCategoryDefinition {
+  const BudgetCategoryDefinition({
+    required this.id,
+    required this.key,
+    required this.name,
+    required this.group,
+    required this.sortOrder,
+    required this.isActive,
+  });
+
+  final int id;
+  final String key;
+  final String name;
+  final String? group;
+  final int sortOrder;
+  final bool isActive;
+
+  factory BudgetCategoryDefinition.fromJson(Map<String, Object?> json) {
+    return BudgetCategoryDefinition(
+      id: _intFromJson(json['id']),
+      key: json['key'] as String? ?? '',
+      name: json['name'] as String? ?? '',
+      group: json['group'] as String?,
+      sortOrder: _intFromJson(json['sort_order']),
+      isActive: _boolFromJson(json['is_active'], defaultValue: true),
+    );
+  }
+}
+
+class CategoryBudgetRecord {
+  const CategoryBudgetRecord({
+    required this.id,
+    required this.budgetPeriodId,
+    required this.categoryId,
+    required this.categoryKey,
+    required this.categoryName,
+    required this.budgetedAmount,
+    required this.reservedAmount,
+    required this.rolloverAmount,
+    required this.notes,
+  });
+
+  final int id;
+  final int budgetPeriodId;
+  final int categoryId;
+  final String categoryKey;
+  final String categoryName;
+  final int budgetedAmount;
+  final int reservedAmount;
+  final int rolloverAmount;
+  final String? notes;
+
+  factory CategoryBudgetRecord.fromJson(Map<String, Object?> json) {
+    return CategoryBudgetRecord(
+      id: _intFromJson(json['id']),
+      budgetPeriodId: _intFromJson(json['budget_period_id']),
+      categoryId: _intFromJson(json['category_id']),
+      categoryKey: json['category_key'] as String? ?? '',
+      categoryName: json['category_name'] as String? ?? '',
+      budgetedAmount: _intFromJson(json['budgeted_amount']),
+      reservedAmount: _intFromJson(json['reserved_amount']),
+      rolloverAmount: _intFromJson(json['rollover_amount']),
+      notes: json['notes'] as String?,
+    );
+  }
+}
+
+class BudgetPeriodSnapshot {
+  const BudgetPeriodSnapshot({
+    required this.id,
+    required this.month,
+    required this.totalIncome,
+    required this.status,
+  });
+
+  final int id;
+  final String month;
+  final int totalIncome;
+  final String status;
+
+  factory BudgetPeriodSnapshot.fromJson(Map<String, Object?> json) {
+    return BudgetPeriodSnapshot(
+      id: _intFromJson(json['id']),
+      month: json['month'] as String? ?? '',
+      totalIncome: _intFromJson(json['total_income']),
+      status: json['status'] as String? ?? 'draft',
+    );
+  }
+}
+
+class BudgetEditorSeed {
+  const BudgetEditorSeed({
+    required this.month,
+    required this.period,
+    required this.categories,
+    required this.categoryBudgets,
+  });
+
+  final String month;
+  final BudgetPeriodSnapshot? period;
+  final List<BudgetCategoryDefinition> categories;
+  final List<CategoryBudgetRecord> categoryBudgets;
+}
+
+class BudgetCategorySaveDraft {
+  const BudgetCategorySaveDraft({
+    required this.categoryId,
+    required this.budgetedAmount,
+    this.existingBudgetId,
+    this.reservedAmount = 0,
+    this.rolloverAmount = 0,
+    this.notes,
+  });
+
+  final int categoryId;
+  final int budgetedAmount;
+  final int? existingBudgetId;
+  final int reservedAmount;
+  final int rolloverAmount;
+  final String? notes;
+}
+
+class BudgetSaveRequest {
+  const BudgetSaveRequest({
+    required this.month,
+    required this.expectedIncomeVnd,
+    required this.categories,
+    this.period,
+  });
+
+  final String month;
+  final int expectedIncomeVnd;
+  final BudgetPeriodSnapshot? period;
+  final List<BudgetCategorySaveDraft> categories;
+}
+
 class JarMetric {
   const JarMetric({
     required this.key,
@@ -237,7 +387,9 @@ class JarMetric {
       label: json['label'] as String? ?? definition.label,
       planned: planned,
       spent: spent,
-      reserved: _intFromJson(json['reserved_vnd'] ?? json['reserved'] ?? json['committed']),
+      reserved: _intFromJson(
+        json['reserved_vnd'] ?? json['reserved'] ?? json['committed'],
+      ),
       available: available,
       color: definition.color,
       icon: definition.icon,
@@ -337,4 +489,15 @@ int _intFromJson(Object? value) {
   if (value is num) return value.round();
   if (value is String) return int.tryParse(value) ?? 0;
   return 0;
+}
+
+bool _boolFromJson(Object? value, {required bool defaultValue}) {
+  if (value is bool) return value;
+  if (value is num) return value != 0;
+  if (value is String) {
+    final normalized = value.trim().toLowerCase();
+    if (normalized == 'true' || normalized == '1') return true;
+    if (normalized == 'false' || normalized == '0') return false;
+  }
+  return defaultValue;
 }

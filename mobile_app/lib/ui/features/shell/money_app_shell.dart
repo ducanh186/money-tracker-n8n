@@ -5,6 +5,7 @@ import '../../../data/models/money_models.dart';
 import '../../../data/repositories/money_repository.dart';
 import '../../core/formatters.dart';
 import '../../core/months.dart';
+import '../budget/views/budget_screen.dart';
 import '../overview/view_models/overview_view_model.dart';
 import '../overview/views/overview_screen.dart';
 import 'app_state.dart';
@@ -34,7 +35,12 @@ class MoneyAppShell extends StatelessWidget {
               ),
               body: SafeArea(
                 top: false,
-                child: _CurrentTabView(tab: appState.currentTab),
+                child: Column(
+                  children: [
+                    _BudgetStatusStrip(currentTab: appState.currentTab),
+                    Expanded(child: _CurrentTabView(tab: appState.currentTab)),
+                  ],
+                ),
               ),
               floatingActionButton: FloatingActionButton(
                 onPressed: () => _showQuickCaptureSheet(context),
@@ -172,22 +178,211 @@ class _CurrentTabView extends StatelessWidget {
     return switch (tab) {
       AppTab.overview => const OverviewScreen(),
       AppTab.transactions => _OverviewDataView(
-        builder: (context, data, onRefresh) => _TransactionsTab(
-          data: data,
-          onRefresh: onRefresh,
-        ),
+        builder: (context, data, onRefresh) =>
+            _TransactionsTab(data: data, onRefresh: onRefresh),
       ),
       AppTab.jars => _OverviewDataView(
         builder: (context, data, onRefresh) =>
             _JarsTab(data: data, onRefresh: onRefresh),
       ),
+      AppTab.budget => _OverviewDataView(
+        builder: (context, data, onRefresh) =>
+            BudgetScreen(data: data, onRefresh: onRefresh),
+      ),
       AppTab.more => _OverviewDataView(
-        builder: (context, data, onRefresh) => _MoreTab(
-          data: data,
-          onRefresh: onRefresh,
-        ),
+        builder: (context, data, onRefresh) =>
+            _MoreTab(data: data, onRefresh: onRefresh),
       ),
     };
+  }
+}
+
+class _BudgetStatusStrip extends StatelessWidget {
+  const _BudgetStatusStrip({required this.currentTab});
+
+  final AppTab currentTab;
+
+  @override
+  Widget build(BuildContext context) {
+    if (currentTab == AppTab.budget) {
+      return const SizedBox.shrink();
+    }
+
+    return Consumer<OverviewViewModel>(
+      builder: (context, viewModel, _) {
+        final data = viewModel.data;
+        if (data == null) {
+          return const SizedBox.shrink();
+        }
+
+        final status = data.budgetStatus;
+        final plannedAmount = status.hasPeriod
+            ? status.assigned
+            : status.categories.fold<int>(
+                0,
+                (sum, category) => sum + category.budgetedVnd,
+              );
+        final availableAmount = status.hasPeriod
+            ? status.availableToSpend
+            : status.categories.fold<int>(
+                0,
+                (sum, category) => sum + category.remainingVnd,
+              );
+        final planLabel = status.hasPeriod ? 'Đã phân bổ' : 'Plan gợi ý';
+        final availableLabel = status.hasPeriod
+            ? 'Còn chi được'
+            : 'Còn theo gợi ý';
+
+        return Container(
+          height: 46,
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceContainerLowest,
+            border: Border(
+              bottom: BorderSide(
+                color: Theme.of(context).dividerColor.withValues(alpha: 0.2),
+              ),
+            ),
+          ),
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            children: [
+              _StripPill(
+                label: 'Số dư',
+                value: formatCompactCurrency(status.accountBalanceVnd),
+              ),
+              _StripPill(
+                label: 'Dự kiến',
+                value: formatCompactCurrency(status.expectedIncomeVnd),
+              ),
+              _StripPill(
+                label: 'Thực thu',
+                value: formatCompactCurrency(status.actualIncomeVnd),
+                valueColor: Colors.green.shade600,
+              ),
+              _StripPill(
+                label: planLabel,
+                value: formatCompactCurrency(plannedAmount),
+                valueColor: Colors.blue.shade600,
+              ),
+              _StripPill(
+                label: availableLabel,
+                value: formatCompactCurrency(availableAmount),
+                valueColor: availableAmount >= 0
+                    ? Colors.green.shade600
+                    : Colors.red.shade600,
+              ),
+              if (!status.hasPeriod)
+                _StatusChip(
+                  icon: Icons.warning_amber_rounded,
+                  label: 'Đang dùng Plan gợi ý',
+                  color: Colors.amber,
+                  onTap: () => context.read<AppState>().setTab(AppTab.budget),
+                ),
+              if (status.periodStatus == 'open')
+                const _StatusChip(
+                  icon: Icons.schedule_outlined,
+                  label: 'Tháng đang mở',
+                  color: Colors.blueGrey,
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _StripPill extends StatelessWidget {
+  const _StripPill({required this.label, required this.value, this.valueColor});
+
+  final String label;
+  final String value;
+  final Color? valueColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(right: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: Theme.of(context).dividerColor.withValues(alpha: 0.16),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '$label: ',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          Text(
+            value,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: valueColor ?? Theme.of(context).colorScheme.onSurface,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatusChip extends StatelessWidget {
+  const _StatusChip({
+    required this.icon,
+    required this.label,
+    required this.color,
+    this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final MaterialColor color;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final child = Container(
+      margin: const EdgeInsets.only(right: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.22)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color.shade600),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: color.shade700,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (onTap == null) {
+      return child;
+    }
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(999),
+      onTap: onTap,
+      child: child,
+    );
   }
 }
 
@@ -198,7 +393,8 @@ class _OverviewDataView extends StatelessWidget {
     BuildContext context,
     OverviewData data,
     Future<void> Function() onRefresh,
-  ) builder;
+  )
+  builder;
 
   @override
   Widget build(BuildContext context) {
@@ -211,7 +407,10 @@ class _OverviewDataView extends StatelessWidget {
         if (viewModel.error != null && viewModel.data == null) {
           return _TabErrorState(
             message: 'Không tải được dữ liệu: ${viewModel.error}',
-            onRetry: () => viewModel.load(context.read<AppState>().selectedMonth),
+            onRetry: () => viewModel.load(
+              context.read<AppState>().selectedMonth,
+              force: true,
+            ),
           );
         }
 
@@ -223,7 +422,10 @@ class _OverviewDataView extends StatelessWidget {
         return builder(
           context,
           data,
-          () => viewModel.load(context.read<AppState>().selectedMonth),
+          () => viewModel.load(
+            context.read<AppState>().selectedMonth,
+            force: true,
+          ),
         );
       },
     );
@@ -386,7 +588,8 @@ class _JarsTab extends StatelessWidget {
                       ? data.budgetStatus.availableToSpend
                       : data.budgetStatus.accountBalanceVnd,
                 ),
-                tone: (data.budgetStatus.hasPeriod
+                tone:
+                    (data.budgetStatus.hasPeriod
                             ? data.budgetStatus.availableToSpend
                             : data.budgetStatus.accountBalanceVnd) >=
                         0
@@ -548,6 +751,7 @@ class _MoreTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
+    final monthLabel = compactMonthLabel(data.budgetStatus.month);
 
     return RefreshIndicator(
       onRefresh: onRefresh,
@@ -555,35 +759,46 @@ class _MoreTab extends StatelessWidget {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
         children: [
-          const _TabHeader(
+          _TabHeader(
             icon: Icons.menu_rounded,
-            title: 'Khác',
-            subtitle: 'Tiện ích nhanh, trạng thái app và lối tắt điều hướng.',
+            title: 'Tiện ích tháng',
+            subtitle:
+                'Mở các màn nâng cao cho $monthLabel và dùng các lối tắt giống web mobile.',
           ),
           const SizedBox(height: 14),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
+          GridView.count(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisCount: 1,
+            mainAxisSpacing: 12,
+            childAspectRatio: 2.35,
             children: [
-              _StatCard(
-                icon: Icons.calendar_month_outlined,
-                label: 'Tháng',
-                value: compactMonthLabel(data.budgetStatus.month),
+              _MoreFeatureCard(
+                icon: Icons.stacked_bar_chart_rounded,
+                title: 'Kế hoạch chi tiêu',
+                subtitle:
+                    'Phân bổ thu nhập, khoản dự kiến và trạng thái đóng kỳ.',
                 tone: Colors.blue,
+                onTap: () => context.read<AppState>().setTab(AppTab.budget),
               ),
-              _StatCard(
-                icon: Icons.cloud_done_outlined,
-                label: 'Nguồn dữ liệu',
-                value: 'API',
-                tone: Colors.green,
+              _MoreFeatureCard(
+                icon: Icons.flag_outlined,
+                title: 'Quỹ & Mục tiêu',
+                subtitle: 'Giữ chỗ UI giống web. Màn riêng của APK sẽ mở sau.',
+                tone: Colors.indigo,
               ),
-              _StatCard(
-                icon: appState.darkMode
-                    ? Icons.dark_mode_outlined
-                    : Icons.light_mode_outlined,
-                label: 'Giao diện',
-                value: appState.darkMode ? 'Tối' : 'Sáng',
-                tone: Colors.deepPurple,
+              _MoreFeatureCard(
+                icon: Icons.credit_card_outlined,
+                title: 'Nợ',
+                subtitle: 'Giữ chỗ UI giống web. Màn riêng của APK sẽ mở sau.',
+                tone: Colors.deepOrange,
+              ),
+              _MoreFeatureCard(
+                icon: Icons.analytics_outlined,
+                title: 'Phân tích',
+                subtitle: 'Top ăn tiền, xu hướng tháng và giao dịch gần đây.',
+                tone: Colors.teal,
+                onTap: () => context.read<AppState>().setTab(AppTab.overview),
               ),
             ],
           ),
@@ -610,7 +825,8 @@ class _MoreTab extends StatelessWidget {
                   icon: Icons.receipt_long_outlined,
                   title: 'Mở tab Giao dịch',
                   subtitle: 'Xem các giao dịch gần nhất của tháng.',
-                  onTap: () => context.read<AppState>().setTab(AppTab.transactions),
+                  onTap: () =>
+                      context.read<AppState>().setTab(AppTab.transactions),
                 ),
                 const Divider(height: 1),
                 _ActionTile(
@@ -655,7 +871,9 @@ class _TabHeader extends StatelessWidget {
           width: 44,
           height: 44,
           decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
+            color: Theme.of(
+              context,
+            ).colorScheme.primary.withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(14),
           ),
           child: Icon(icon, color: Theme.of(context).colorScheme.primary),
@@ -717,9 +935,9 @@ class _StatCard extends StatelessWidget {
                 value,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
               ),
               const SizedBox(height: 2),
               Text(
@@ -750,8 +968,10 @@ class _TransactionCard extends StatelessWidget {
       null => (Icons.receipt_long_outlined, Colors.blueGrey),
     };
     final meta = [
-      if (transaction.date != null && transaction.date!.isNotEmpty) transaction.date!,
-      if (transaction.time != null && transaction.time!.isNotEmpty) transaction.time!,
+      if (transaction.date != null && transaction.date!.isNotEmpty)
+        transaction.date!,
+      if (transaction.time != null && transaction.time!.isNotEmpty)
+        transaction.time!,
       if (transaction.jar != null && transaction.jar!.isNotEmpty)
         jarDefinitions[transaction.jar!]?.label ?? transaction.jar!,
     ].join(' · ');
@@ -824,7 +1044,10 @@ class _JarBreakdownCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(jar.label, style: Theme.of(context).textTheme.titleMedium),
+                      Text(
+                        jar.label,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
                       Text(
                         jar.key,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -836,9 +1059,9 @@ class _JarBreakdownCard extends StatelessWidget {
                 ),
                 Text(
                   '${jar.usagePct}%',
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w800),
                 ),
               ],
             ),
@@ -848,7 +1071,9 @@ class _JarBreakdownCard extends StatelessWidget {
               child: LinearProgressIndicator(
                 minHeight: 8,
                 value: progress,
-                backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                backgroundColor: Theme.of(
+                  context,
+                ).colorScheme.surfaceContainerHighest,
                 color: jar.isOver ? Colors.red : jar.color,
               ),
             ),
@@ -943,6 +1168,73 @@ class _ActionTile extends StatelessWidget {
   }
 }
 
+class _MoreFeatureCard extends StatelessWidget {
+  const _MoreFeatureCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.tone,
+    this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Color tone;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: tone.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(icon, color: tone),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(title, style: Theme.of(context).textTheme.titleMedium),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                onTap == null
+                    ? Icons.lock_outline_rounded
+                    : Icons.chevron_right_rounded,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _EmptyCard extends StatelessWidget {
   const _EmptyCard({
     required this.icon,
@@ -987,6 +1279,7 @@ class _BottomNavBar extends StatelessWidget {
     final currentTab = context.select<AppState, AppTab>((state) {
       return state.currentTab;
     });
+    final activeTab = currentTab == AppTab.budget ? AppTab.more : currentTab;
 
     return BottomAppBar(
       shape: const CircularNotchedRectangle(),
@@ -998,26 +1291,26 @@ class _BottomNavBar extends StatelessWidget {
           children: [
             _NavButton(
               tab: AppTab.overview,
-              activeTab: currentTab,
+              activeTab: activeTab,
               icon: Icons.pie_chart_outline_rounded,
               label: 'Trang chủ',
             ),
             _NavButton(
               tab: AppTab.transactions,
-              activeTab: currentTab,
+              activeTab: activeTab,
               icon: Icons.list_alt_rounded,
               label: 'Giao dịch',
             ),
             const SizedBox(width: 72),
             _NavButton(
               tab: AppTab.jars,
-              activeTab: currentTab,
+              activeTab: activeTab,
               icon: Icons.account_balance_wallet_outlined,
               label: 'Hũ',
             ),
             _NavButton(
               tab: AppTab.more,
-              activeTab: currentTab,
+              activeTab: activeTab,
               icon: Icons.menu_rounded,
               label: 'Khác',
             ),

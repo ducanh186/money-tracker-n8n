@@ -18,8 +18,8 @@ class OverviewViewModel extends ChangeNotifier {
   Object? get error => _error;
   bool get isLoading => _isLoading;
 
-  Future<void> load(String month) async {
-    if (_loadedMonth == month && _data != null) return;
+  Future<void> load(String month, {bool force = false}) async {
+    if (!force && _loadedMonth == month && _data != null) return;
     _isLoading = true;
     _error = null;
     notifyListeners();

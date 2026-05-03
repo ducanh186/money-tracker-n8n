@@ -89,7 +89,7 @@ class _SyncRow extends StatelessWidget {
       children: [
         Expanded(
           child: Text(
-            'Dữ liệu tổng quan từ API',
+            'Đồng bộ snapshot từ API',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
@@ -186,11 +186,11 @@ class _HeroCard extends StatelessWidget {
                 ),
               ),
             ),
-                const SizedBox(height: 10),
+            const SizedBox(height: 10),
             Text(
               status.hasPeriod
-                  ? 'Dự kiến ${formatCompactCurrency(expectedIncome)} · Thực thu ${formatCompactCurrency(actualIncome)} · Chi ${formatCompactCurrency(status.totalSpent)}'
-                  : 'Chưa lập kế hoạch tháng này · Thực thu ${formatCompactCurrency(actualIncome)} · Chi ${formatCompactCurrency(status.totalSpent)}',
+                  ? 'Kế hoạch đã lưu · Thực thu ${formatCompactCurrency(actualIncome)} · Chi ${formatCompactCurrency(status.totalSpent)}'
+                  : 'Đang dùng Plan gợi ý ${formatCompactCurrency(expectedIncome)} · Thực thu ${formatCompactCurrency(actualIncome)} · Chi ${formatCompactCurrency(status.totalSpent)}',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
