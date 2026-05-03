@@ -47,6 +47,9 @@ class BudgetPlanIncomeApiTest extends TestCase
             ->assertJsonPath('data.base_income', 13_600_000)
             ->assertJsonPath('data.expected_income_vnd', 13_600_000)
             ->assertJsonPath('data.actual_income_vnd', 0)
-            ->assertJsonPath('data.sheet_income', 0);
+            ->assertJsonPath('data.sheet_income', 0)
+            ->assertJsonPath('data.has_period', true)
+            ->assertJsonPath('data.period_status', 'open')
+            ->assertJsonPath('data.is_preview', false);
     }
 }

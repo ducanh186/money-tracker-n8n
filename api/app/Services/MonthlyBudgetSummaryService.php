@@ -59,6 +59,9 @@ class MonthlyBudgetSummaryService
         }, $summaryMetrics)));
 
         $leftToBudget = $expectedIncome - $budgeted;
+        $hasPeriod = $period !== null;
+        $periodStatus = $hasPeriod ? ($period->status ?? 'open') : 'needs_plan';
+        $budgetBasis = $hasCategoryBudgets ? 'category' : 'jar_compatibility';
 
         return [
             'month' => $monthValue,
@@ -77,22 +80,58 @@ class MonthlyBudgetSummaryService
             'ending_balance_vnd' => $balance['ending_balance_vnd'],
             'opening_balance_vnd' => $balance['opening_balance_vnd'],
             'balance_source' => $balance['source'],
+            'account' => [
+                'opening_balance_vnd' => $balance['opening_balance_vnd'],
+                'ending_balance_vnd' => $balance['ending_balance_vnd'],
+                'account_balance_vnd' => $balance['account_balance_vnd'],
+                'balance_source' => $balance['source'],
+            ],
+            'actuals' => [
+                'income_vnd' => $totals['income_vnd'],
+                'expense_vnd' => $totals['expense_vnd'],
+                'spent_vnd' => $totals['expense_vnd'],
+                'reserved_vnd' => 0,
+            ],
+            'plan' => [
+                'has_period' => $hasPeriod,
+                'status' => $periodStatus,
+                'income_vnd' => $hasPeriod ? $expectedIncome : null,
+                'assigned_vnd' => $hasPeriod ? $budgeted : null,
+                'unassigned_vnd' => $hasPeriod ? $leftToBudget : null,
+                'committed_vnd' => $hasPeriod ? $reserved : null,
+                'available_to_spend_vnd' => $hasPeriod ? $available : null,
+                'budget_basis' => $hasPeriod ? $budgetBasis : null,
+                'jars' => $hasPeriod ? $jarMetrics : [],
+                'categories' => $hasPeriod ? $categoryMetrics : [],
+            ],
+            'suggestion' => [
+                'enabled' => !$hasPeriod,
+                'source' => !$hasPeriod ? $budgetBasis : null,
+                'expected_income_vnd' => !$hasPeriod ? $expectedIncome : null,
+                'budgeted_vnd' => !$hasPeriod ? $budgeted : null,
+                'reserved_vnd' => !$hasPeriod ? $reserved : null,
+                'remaining_vnd' => !$hasPeriod ? $available : null,
+                'available_to_spend_vnd' => !$hasPeriod ? $available : null,
+                'left_to_budget_vnd' => !$hasPeriod ? $leftToBudget : null,
+                'jars' => !$hasPeriod ? $jarMetrics : [],
+                'categories' => !$hasPeriod ? $categoryMetrics : [],
+            ],
 
             // Compatibility fields used by existing web/mobile clients.
             'income' => $expectedIncome,
             'sheet_income' => $totals['income_vnd'],
-            'assigned' => $budgeted,
-            'unassigned' => $leftToBudget,
-            'committed' => $reserved,
+            'assigned' => $hasPeriod ? $budgeted : null,
+            'unassigned' => $hasPeriod ? $leftToBudget : null,
+            'committed' => $hasPeriod ? $reserved : null,
             'total_spent' => $totals['expense_vnd'],
-            'available_to_spend' => $available,
+            'available_to_spend' => $hasPeriod ? $available : null,
             'overspent_jars' => $overspent,
-            'period_status' => $period ? ($period->status ?? 'open') : 'needs_plan',
-            'planning_insights_enabled' => $period !== null && $budgeted > 0,
-            'has_period' => $period !== null,
+            'period_status' => $periodStatus,
+            'planning_insights_enabled' => $hasPeriod && $budgeted > 0,
+            'has_period' => $hasPeriod,
             'jars' => $jarMetrics,
             'categories' => $categoryMetrics,
-            'budget_basis' => $hasCategoryBudgets ? 'category' : 'jar_compatibility',
+            'budget_basis' => $budgetBasis,
         ];
     }
 

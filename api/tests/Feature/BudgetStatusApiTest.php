@@ -221,4 +221,43 @@ class BudgetStatusApiTest extends TestCase
         $response->assertJsonPath('data.jars.0.available', 1_500_000);
         $response->assertJsonPath('data.jars.0.reserved', 1_000_000);
     }
+
+    public function test_budget_status_exposes_preview_under_suggestion_when_month_has_no_plan(): void
+    {
+        BudgetPeriod::create([
+            'month' => 'Apr-2026',
+            'year' => 2026,
+            'month_num' => 4,
+            'total_income' => 700_000,
+            'to_be_budgeted' => 0,
+            'status' => 'draft',
+        ]);
+
+        $this->app->instance(TransactionsRepositoryInterface::class, new class implements TransactionsRepositoryInterface {
+            public function getByMonth(string $month): array
+            {
+                return [];
+            }
+
+            public function all(): array
+            {
+                return [];
+            }
+        });
+
+        $response = $this->getJson('/api/budget-status?month=May-2026');
+
+        $response->assertOk();
+        $response->assertJsonPath('data.expected_income_vnd', 700_000);
+        $response->assertJsonPath('data.has_period', false);
+        $response->assertJsonPath('data.period_status', 'needs_plan');
+        $response->assertJsonPath('data.assigned', null);
+        $response->assertJsonPath('data.unassigned', null);
+        $response->assertJsonPath('data.available_to_spend', null);
+        $response->assertJsonPath('data.plan.has_period', false);
+        $response->assertJsonPath('data.suggestion.enabled', true);
+        $response->assertJsonPath('data.suggestion.source', 'jar_compatibility');
+        $response->assertJsonPath('data.suggestion.budgeted_vnd', 700_000);
+        $response->assertJsonPath('data.suggestion.available_to_spend_vnd', 700_000);
+    }
 }
