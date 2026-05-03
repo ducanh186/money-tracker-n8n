@@ -49,6 +49,8 @@ import type {
   CategoriesResponse,
   CategoryBudgetsResponse,
   BudgetTemplatesResponse,
+  CategoryBudget,
+  CreateCategoryBudgetPayload,
 } from './types';
 
 // Base URL — in dev the Vite proxy forwards /api → Laravel at :8000
@@ -346,6 +348,14 @@ export async function fetchCategories(): Promise<CategoriesResponse> {
 
 export async function fetchCategoryBudgets(month: string): Promise<CategoryBudgetsResponse> {
   return smartFetch(`${BASE}/category-budgets?month=${encodeURIComponent(month)}`);
+}
+
+export async function createCategoryBudget(payload: CreateCategoryBudgetPayload): Promise<{ data: CategoryBudget; message: string }> {
+  return apiWrite(`${BASE}/category-budgets`, 'POST', payload);
+}
+
+export async function updateCategoryBudget(id: number, payload: Partial<CreateCategoryBudgetPayload>): Promise<{ data: CategoryBudget; message: string }> {
+  return apiWrite(`${BASE}/category-budgets/${id}`, 'PUT', payload);
 }
 
 export async function fetchBudgetTemplates(): Promise<BudgetTemplatesResponse> {

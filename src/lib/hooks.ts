@@ -24,6 +24,8 @@ import {
   fetchMonthlySummary,
   fetchCategories,
   fetchCategoryBudgets,
+  createCategoryBudget,
+  updateCategoryBudget,
   fetchBudgetTemplates,
   fetchFunds,
   createFund,
@@ -71,6 +73,7 @@ import type {
   CreateRecurringBillPayload,
   SimulateScenarioPayload,
   CreateBudgetLinePayload,
+  CreateCategoryBudgetPayload,
 } from './types';
 
 // ---------------------------------------------------------------
@@ -454,6 +457,37 @@ export function useCategoryBudgets(month: string) {
     queryFn: () => fetchCategoryBudgets(month),
     staleTime: 60_000,
     retry: MAX_RETRIES,
+  });
+}
+
+export function useCreateCategoryBudget() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: createCategoryBudget,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['category-budgets'] });
+      queryClient.invalidateQueries({ queryKey: ['budget-plan'] });
+      queryClient.invalidateQueries({ queryKey: ['budget-status'] });
+      queryClient.invalidateQueries({ queryKey: ['monthly-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+    },
+  });
+}
+
+export function useUpdateCategoryBudget() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: Partial<CreateCategoryBudgetPayload> }) =>
+      updateCategoryBudget(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['category-budgets'] });
+      queryClient.invalidateQueries({ queryKey: ['budget-plan'] });
+      queryClient.invalidateQueries({ queryKey: ['budget-status'] });
+      queryClient.invalidateQueries({ queryKey: ['monthly-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+    },
   });
 }
 

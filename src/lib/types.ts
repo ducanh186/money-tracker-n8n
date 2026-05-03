@@ -462,6 +462,15 @@ export interface CategoryBudget {
   notes: string | null;
 }
 
+export interface CreateCategoryBudgetPayload {
+  budget_period_id: number;
+  category_id: number;
+  budgeted_amount: number;
+  reserved_amount?: number;
+  rollover_amount?: number;
+  notes?: string | null;
+}
+
 export interface CategoriesResponse {
   data: Category[];
 }

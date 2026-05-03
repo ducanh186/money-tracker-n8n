@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import type { ChangeEvent } from 'react';
 import {
   Loader2,
   AlertCircle,
@@ -16,6 +17,7 @@ import {
   Lock,
   Plus,
   Trash2,
+  Upload,
 } from 'lucide-react';
 import { formatCurrency } from '../lib/utils';
 import { cn } from '../lib/utils';
@@ -40,11 +42,17 @@ import {
   useCreateBudgetLine,
   useUpdateBudgetLine,
   useDeleteBudgetLine,
+  useCategories,
+  useCategoryBudgets,
+  useCreateCategoryBudget,
+  useUpdateCategoryBudget,
 } from '../lib/hooks';
 import type {
   BudgetJar,
   BudgetLine,
   BudgetWorkspaceJar,
+  Category,
+  CategoryBudget,
   CreateBudgetLinePayload,
   Debt,
   Fund,
@@ -92,6 +100,30 @@ type BudgetLineDraft = {
   fundId: string;
 };
 
+type PlanJsonCategoryInput = {
+  category_key?: string;
+  key?: string;
+  category?: string;
+  category_name?: string;
+  name?: string;
+  budgeted_vnd?: number | string;
+  budgeted_amount?: number | string;
+  amount?: number | string;
+  reserved_vnd?: number | string;
+  reserved_amount?: number | string;
+  rollover_vnd?: number | string;
+  rollover_amount?: number | string;
+  notes?: string | null;
+};
+
+type PlanJsonInput = {
+  expected_income_vnd?: number | string;
+  expected_income?: number | string;
+  total_income?: number | string;
+  categories?: PlanJsonCategoryInput[];
+  category_budgets?: PlanJsonCategoryInput[];
+};
+
 const PLANNER_TYPE_OPTIONS: Array<{ value: PlannerType; label: string }> = [
   { value: 'general', label: 'Chi thường' },
   { value: 'goal', label: 'Quỹ & mục tiêu' },
@@ -133,6 +165,41 @@ function parseBudgetMonth(month: string): { year: number; monthNum: number } | n
   }
 
   return { year, monthNum };
+}
+
+function normalizePlanText(value: string): string {
+  return value.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+function readPlanMoney(value: number | string | null | undefined): number {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? Math.round(value) : 0;
+  }
+
+  if (typeof value === 'string') {
+    const normalized = value.replace(/[^\d-]/g, '');
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? Math.round(parsed) : 0;
+  }
+
+  return 0;
+}
+
+function resolvePlanCategory(input: PlanJsonCategoryInput, categories: Category[]): Category | null {
+  const rawKey = input.category_key ?? input.key;
+  if (rawKey) {
+    const key = normalizePlanText(rawKey);
+    const byKey = categories.find((category) => normalizePlanText(category.key) === key);
+    if (byKey) return byKey;
+  }
+
+  const rawName = input.category ?? input.category_name ?? input.name;
+  if (rawName) {
+    const name = normalizePlanText(rawName);
+    return categories.find((category) => normalizePlanText(category.name) === name) ?? null;
+  }
+
+  return null;
 }
 
 function createBudgetLineDraft(defaultJarAllocationId?: number, line?: BudgetLine): BudgetLineDraft {
@@ -949,6 +1016,8 @@ export default function BudgetPlan({ month, hideHeader = false }: { month: strin
   // Editable total plan (base_income override) — persisted to DB
   const [editingPlan, setEditingPlan] = useState(false);
   const [planValue, setPlanValue] = useState('');
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importMessage, setImportMessage] = useState<string | null>(null);
 
   const { data: settingRes } = useBudgetSetting(month);
   const updateSettingMutation = useUpdateBudgetSetting();
@@ -966,6 +1035,10 @@ export default function BudgetPlan({ month, hideHeader = false }: { month: strin
   const { data: fundsRes } = useFunds();
   const { data: recurringBillsRes } = useRecurringBills();
   const { data: periodsRes, isPending: isPeriodsPending } = useBudgetPeriods();
+  const { data: categoriesRes } = useCategories();
+  const { data: categoryBudgetsRes } = useCategoryBudgets(month);
+  const createCategoryBudgetMutation = useCreateCategoryBudget();
+  const updateCategoryBudgetMutation = useUpdateCategoryBudget();
 
   const periods = periodsRes?.data ?? [];
   const currentPeriod = periods.find((period) => period.month === month) ?? null;
@@ -1008,11 +1081,13 @@ export default function BudgetPlan({ month, hideHeader = false }: { month: strin
   const debts = debtsRes?.data ?? [];
   const funds = fundsRes?.data ?? [];
   const recurringBills = recurringBillsRes?.data ?? [];
+  const categories = categoriesRes?.data ?? [];
+  const categoryBudgets = categoryBudgetsRes?.data ?? [];
   const workspaceJars = workspaceRes?.data.jars ?? optimisticWorkspaceJars ?? [];
   const budgetLines = budgetLinesRes?.data ?? [];
   const plannerLoading = isPeriodsPending || createPeriodMutation.isPending || (Boolean(effectivePeriodId) && (isWorkspacePending || isBudgetLinesPending));
   const plannerEditable = !createPeriodMutation.isPending;
-  const plannerMutating = createPeriodMutation.isPending || createBudgetLineMutation.isPending || updateBudgetLineMutation.isPending || deleteBudgetLineMutation.isPending;
+  const plannerMutating = createPeriodMutation.isPending || createBudgetLineMutation.isPending || updateBudgetLineMutation.isPending || deleteBudgetLineMutation.isPending || createCategoryBudgetMutation.isPending || updateCategoryBudgetMutation.isPending;
   const hasHydratedBudgetLines = effectivePeriodId !== null && !isBudgetLinesPending;
 
   const budgetLinesByJar: Record<string, BudgetLine[]> = {};
@@ -1023,7 +1098,7 @@ export default function BudgetPlan({ month, hideHeader = false }: { month: strin
     budgetLinesByJar[line.jar_key].push(line);
   }
 
-  const ensureCurrentPeriodWorkspace = useCallback(async () => {
+  const ensureCurrentPeriodWorkspace = useCallback(async (expectedIncomeOverride?: number) => {
     if (effectivePeriodId) {
       if (workspaceJars.length > 0) {
         return {
@@ -1045,6 +1120,7 @@ export default function BudgetPlan({ month, hideHeader = false }: { month: strin
     }
 
     const totalIncome =
+      expectedIncomeOverride ??
       budgetStatus?.expected_income_vnd ??
       data?.data.expected_income_vnd ??
       budgetStatus?.income ??
@@ -1074,6 +1150,96 @@ export default function BudgetPlan({ month, hideHeader = false }: { month: strin
     isPeriodsPending,
     month,
     workspaceJars,
+  ]);
+
+  const handlePlanJsonImport = useCallback(async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+
+    if (!file) {
+      return;
+    }
+
+    setImportError(null);
+    setImportMessage(null);
+
+    try {
+      const parsed = JSON.parse(await file.text()) as PlanJsonInput;
+      const importedRows = parsed.categories ?? parsed.category_budgets ?? [];
+
+      if (!Array.isArray(importedRows) || importedRows.length === 0) {
+        throw new Error('File JSON cần có mảng "categories" hoặc "category_budgets".');
+      }
+
+      if (categories.length === 0) {
+        throw new Error('Danh mục đang tải chưa xong. Thử lại sau vài giây.');
+      }
+
+      const expectedIncomeFromFile = readPlanMoney(
+        parsed.expected_income_vnd ?? parsed.expected_income ?? parsed.total_income
+      );
+      const { periodId } = await ensureCurrentPeriodWorkspace(expectedIncomeFromFile > 0 ? expectedIncomeFromFile : undefined);
+
+      if (expectedIncomeFromFile > 0) {
+        await updateSettingMutation.mutateAsync({ month, baseIncomeOverride: expectedIncomeFromFile });
+        setPlanValue(String(expectedIncomeFromFile));
+      }
+
+      const existingByCategoryId = new Map<number, CategoryBudget>(
+        categoryBudgets.map((budget) => [budget.category_id, budget])
+      );
+
+      let importedCount = 0;
+      const unknownCategories: string[] = [];
+
+      for (const row of importedRows) {
+        const category = resolvePlanCategory(row, categories);
+        const budgetedAmount = readPlanMoney(row.budgeted_vnd ?? row.budgeted_amount ?? row.amount);
+
+        if (!category) {
+          unknownCategories.push(row.category_key ?? row.key ?? row.category ?? row.category_name ?? row.name ?? '(không tên)');
+          continue;
+        }
+
+        if (budgetedAmount < 0) {
+          throw new Error(`Số tiền của "${category.name}" không được âm.`);
+        }
+
+        const payload = {
+          budget_period_id: periodId,
+          category_id: category.id,
+          budgeted_amount: budgetedAmount,
+          reserved_amount: readPlanMoney(row.reserved_vnd ?? row.reserved_amount),
+          rollover_amount: readPlanMoney(row.rollover_vnd ?? row.rollover_amount),
+          notes: row.notes ?? null,
+        };
+        const existing = existingByCategoryId.get(category.id);
+
+        if (existing) {
+          await updateCategoryBudgetMutation.mutateAsync({ id: existing.id, payload });
+        } else {
+          await createCategoryBudgetMutation.mutateAsync(payload);
+        }
+
+        importedCount += 1;
+      }
+
+      if (unknownCategories.length > 0) {
+        throw new Error(`Không tìm thấy danh mục: ${unknownCategories.join(', ')}.`);
+      }
+
+      setImportMessage(`Đã nhập ${importedCount} danh mục từ ${file.name}.`);
+    } catch (err) {
+      setImportError(err instanceof Error ? err.message : 'Không nhập được file JSON.');
+    }
+  }, [
+    categories,
+    categoryBudgets,
+    createCategoryBudgetMutation,
+    ensureCurrentPeriodWorkspace,
+    month,
+    updateCategoryBudgetMutation,
+    updateSettingMutation,
   ]);
 
   const handleSavePercent = useCallback((jarId: number, percent: number) => {
@@ -1123,6 +1289,20 @@ export default function BudgetPlan({ month, hideHeader = false }: { month: strin
             </h2>
           </div>
           <div className="flex items-center gap-2">
+            <label className={cn(
+              "flex cursor-pointer items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-200 dark:hover:bg-slate-800",
+              plannerMutating && "pointer-events-none opacity-60"
+            )}>
+              <Upload className="size-4" />
+              Nhập Plan JSON
+              <input
+                type="file"
+                accept="application/json,.json"
+                className="hidden"
+                disabled={plannerMutating}
+                onChange={handlePlanJsonImport}
+              />
+            </label>
             {budgetStatus && budgetStatus.has_period && budgetStatus.period_status === 'open' && (
               <button
                 onClick={() => {
@@ -1140,6 +1320,17 @@ export default function BudgetPlan({ month, hideHeader = false }: { month: strin
               </button>
             )}
           </div>
+        </div>
+      )}
+
+      {(importError || importMessage) && (
+        <div className={cn(
+          "rounded-xl border px-4 py-3 text-sm font-medium",
+          importError
+            ? "border-red-200 bg-red-50 text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300"
+            : "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300"
+        )}>
+          {importError ?? importMessage}
         </div>
       )}
 
