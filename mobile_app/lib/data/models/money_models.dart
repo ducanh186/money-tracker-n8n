@@ -147,7 +147,7 @@ class BudgetStatus {
       unassigned: _intFromJson(
         json['left_to_budget_vnd'] ?? json['unassigned'],
       ),
-      reservedVnd: _intFromJson(json['reserved_vnd'] ?? json['committed']),
+      reservedVnd: _intFromJson(json['reserved_vnd']),
       totalSpent: _intFromJson(
         json['actual_expense_vnd'] ?? json['total_spent'],
       ),
@@ -383,7 +383,7 @@ class JarMetric {
       planned: planned,
       spent: spent,
       reserved: _intFromJson(
-        json['reserved_vnd'] ?? json['reserved'] ?? json['committed'],
+        json['reserved_vnd'] ?? json['reserved'],
       ),
       available: available,
       color: definition.color,

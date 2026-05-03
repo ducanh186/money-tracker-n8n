@@ -301,7 +301,6 @@ class MonthlyBudgetSummaryService
             'label' => $label,
             'planned' => $planned,
             'budgeted_vnd' => $planned,
-            'committed' => $reserved,
             'reserved' => $reserved,
             'reserved_vnd' => $reserved,
             'spent' => $spent,

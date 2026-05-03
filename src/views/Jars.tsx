@@ -435,8 +435,8 @@ export default function Jars({ month, hideHeader = false }: { month: string; hid
                                 <span className="font-semibold text-blue-600 dark:text-blue-400">{formatCurrency(metrics.planned)}</span>
                               </div>
                               <div>
-                                <span className="text-slate-400 dark:text-slate-500 block">Cam kết</span>
-                                <span className="font-semibold text-purple-600 dark:text-purple-400">{formatCurrency(metrics.committed)}</span>
+                                <span className="text-slate-400 dark:text-slate-500 block">Giữ trước</span>
+                                <span className="font-semibold text-purple-600 dark:text-purple-400">{formatCurrency(metrics.reserved)}</span>
                               </div>
                               <div>
                                 <span className="text-slate-400 dark:text-slate-500 block">Đã chi</span>
@@ -534,8 +534,8 @@ export default function Jars({ month, hideHeader = false }: { month: string; hid
                         <span className="text-lg font-bold text-blue-600 dark:text-blue-400">{formatCurrency(metrics.planned)}</span>
                       </div>
                       <div className="flex justify-between items-baseline">
-                        <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Cam kết</span>
-                        <span className="text-lg font-bold text-purple-600 dark:text-purple-400">{formatCurrency(metrics.committed)}</span>
+                        <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Giữ trước</span>
+                        <span className="text-lg font-bold text-purple-600 dark:text-purple-400">{formatCurrency(metrics.reserved)}</span>
                       </div>
                       <div className="flex justify-between items-baseline">
                         <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Đã chi</span>

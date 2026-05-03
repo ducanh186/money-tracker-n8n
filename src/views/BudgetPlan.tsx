@@ -2046,7 +2046,7 @@ export default function BudgetPlan({ month, hideHeader = false }: { month: strin
             .reduce((sum, line) => sum + line.planned_amount, 0);
           const committedAmount = hasHydratedBudgetLines
             ? committedFromLines
-            : (jarMetric?.reserved ?? jarMetric?.committed ?? committedFromLines);
+            : (jarMetric?.reserved ?? committedFromLines);
           const availableAmount =
             jarMetric?.available ??
             (jar.planned_amount + (jarMetric?.rollover ?? 0) - committedAmount - spentAmount);
